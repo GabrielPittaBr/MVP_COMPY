@@ -1,23 +1,19 @@
 // COMPY — Ponto de entrada do aplicativo.
-// O bootstrap completo (Firebase + ProviderScope + GoRouter) é configurado
-// no commit 3. Este arquivo serve como esqueleto inicial do scaffold.
+//
+// Bootstrap:
+// 1. Garante widgets binding;
+// 2. Tenta inicializar Firebase (silencioso quando firebase_options.dart
+//    ainda não foi gerado — o app continua rodando com mocks);
+// 3. Roda o app dentro de um ProviderScope (Riverpod).
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-void main() {
-  runApp(const _BootstrapPlaceholder());
-}
+import 'app.dart';
+import 'core/services/firebase_service.dart';
 
-class _BootstrapPlaceholder extends StatelessWidget {
-  const _BootstrapPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'COMPY',
-      home: Scaffold(
-        body: Center(child: Text('COMPY — bootstrap em construção')),
-      ),
-    );
-  }
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseService.instance.ensureInitialized();
+  runApp(const ProviderScope(child: CompyApp()));
 }
