@@ -1,0 +1,35 @@
+import 'package:flutter/material.dart';
+
+import '../../../../shared/widgets/rounded_text_field.dart';
+
+/// Campo simples de formulário (label + RoundedTextField).
+class EventFormField extends StatelessWidget {
+  const EventFormField({
+    required this.hint,
+    required this.controller,
+    this.readOnly = false,
+    this.onTap,
+    this.suffix,
+    super.key,
+  });
+
+  final String hint;
+  final TextEditingController controller;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final Widget? suffix;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: RoundedTextField(
+        hint: hint,
+        controller: controller,
+        readOnly: readOnly,
+        onTap: onTap,
+        suffix: suffix,
+      ),
+    );
+  }
+}
