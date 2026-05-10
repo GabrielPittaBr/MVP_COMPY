@@ -21,7 +21,7 @@ class BadgesRow extends StatelessWidget {
                 children: <Widget>[
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: b.color.withValues(alpha: 0.2),
+                    backgroundColor: b.color.withOpacity(0.2),
                     child: Icon(b.icon, color: b.color, size: 30),
                   ),
                   const SizedBox(height: 6),

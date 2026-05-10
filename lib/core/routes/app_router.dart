@@ -21,7 +21,9 @@ abstract final class AppRoutes {
   static const String chat = '/chat';
   static const String chatRoom = '/chat/:conversationId';
   static const String profile = '/profile';
-  static const String maps = '/maps';
+
+  /// Mapa fica como sub-rota da home para preservar o bottom nav (mockup).
+  static const String maps = '/home/maps';
 }
 
 /// Provider que expõe o router para o `MaterialApp.router`.
@@ -31,23 +33,22 @@ GoRouter _buildRouter() {
   return GoRouter(
     initialLocation: AppRoutes.home,
     routes: <RouteBase>[
-      // Rota /maps fica fora do shell pois o mapa é tela cheia
-      // (acessada pelo card "Explore locais" da home).
-      GoRoute(
-        path: AppRoutes.maps,
-        builder: (context, state) => const MapsPage(),
-      ),
-
       // Shell com bottom nav preservando estado entre as 5 abas (RNF07).
       StatefulShellRoute.indexedStack(
         builder: (context, state, navShell) => _ScaffoldWithNavBar(navShell: navShell),
         branches: <StatefulShellBranch>[
-          // Branch 0 — Início
+          // Branch 0 — Início + Mapa (mantém bottom nav no mapa)
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
                 path: AppRoutes.home,
                 builder: (context, state) => const HomePage(),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: 'maps',
+                    builder: (context, state) => const MapsPage(),
+                  ),
+                ],
               ),
             ],
           ),

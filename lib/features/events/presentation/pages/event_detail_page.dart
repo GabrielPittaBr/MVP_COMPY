@@ -46,7 +46,7 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dateFormat = DateFormat("EEEE',' h:mm a", 'pt_BR');
+    final dateFormat = DateFormat('EEEE, h:mm a', 'pt_BR');
 
     return CustomScrollView(
       slivers: <Widget>[

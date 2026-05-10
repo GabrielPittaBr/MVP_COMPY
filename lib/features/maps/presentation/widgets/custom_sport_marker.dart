@@ -50,7 +50,7 @@ class _DropPinPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = color;
     final shadow = Paint()
-      ..color = Colors.black.withValues(alpha: 0.18)
+      ..color = Colors.black.withOpacity(0.18)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
     // Corpo arredondado (círculo)

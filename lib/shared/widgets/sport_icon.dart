@@ -24,7 +24,7 @@ class SportIcon extends StatelessWidget {
       width: size * 1.6,
       height: size * 1.6,
       decoration: BoxDecoration(
-        color: sport.color.withValues(alpha: 0.15),
+        color: sport.color.withOpacity(0.15),
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,

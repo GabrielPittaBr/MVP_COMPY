@@ -36,7 +36,7 @@ class CategoryCircle extends StatelessWidget {
               errorWidget: (_, __, ___) => Container(
                 width: 72,
                 height: 72,
-                color: category.sport.color.withValues(alpha: 0.15),
+                color: category.sport.color.withOpacity(0.15),
                 child: Icon(category.sport.icon, color: category.sport.color),
               ),
             ),

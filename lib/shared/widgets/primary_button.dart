@@ -22,7 +22,7 @@ class PrimaryButton extends StatelessWidget {
       child: FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primary.withValues(alpha: 0.85),
+          backgroundColor: AppColors.primary.withOpacity(0.85),
           disabledBackgroundColor: AppColors.outline,
         ),
         child: Row(

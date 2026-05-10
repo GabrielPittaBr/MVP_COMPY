@@ -1,7 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -87,9 +86,6 @@ class ChatRoomPage extends ConsumerWidget {
 class _DateChip extends StatelessWidget {
   const _DateChip({required this.text});
   final String text;
-
-  // ignore: unused_element
-  String _ignoreUnused() => DateFormat.yMd().format(DateTime.now());
 
   @override
   Widget build(BuildContext context) {
