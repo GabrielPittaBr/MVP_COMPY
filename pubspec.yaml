@@ -1,0 +1,46 @@
+name: mvp_compy
+description: COMPY — App para conectar praticantes de esportes em Taquara/RS.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Estado
+  flutter_riverpod: ^2.5.1
+
+  # Navegação
+  go_router: ^14.2.0
+
+  # Backend (scaffold — datasources reais, mas repositories servem mock por padrão)
+  firebase_core: ^3.3.0
+  firebase_auth: ^5.1.4
+  cloud_firestore: ^5.2.1
+
+  # Mapa OSM (sem API key — RF04)
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Tipografia
+  google_fonts: ^6.2.1
+
+  # Imagens em rede com cache
+  cached_network_image: ^3.3.1
+
+  # Util
+  intl: ^0.19.0
+  equatable: ^2.0.5
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
