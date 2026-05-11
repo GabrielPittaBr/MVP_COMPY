@@ -7,7 +7,7 @@ import '../datasources/profile_remote_datasource.dart';
 class ProfileRepositoryImpl implements ProfileRepository {
   ProfileRepositoryImpl(this._remote);
   // ignore: unused_field
-  final ProfileRemoteDataSource _remote;
+  final ProfileRemoteDataSource? _remote;
 
   @override
   Future<UserProfile> getCurrentProfile() async {

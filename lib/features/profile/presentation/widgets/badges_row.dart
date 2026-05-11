@@ -6,7 +6,7 @@ import '../../domain/entities/badge.dart';
 class BadgesRow extends StatelessWidget {
   const BadgesRow({required this.badges, super.key});
 
-  final List<Badge> badges;
+  final List<SportBadge> badges;
 
   @override
   Widget build(BuildContext context) {

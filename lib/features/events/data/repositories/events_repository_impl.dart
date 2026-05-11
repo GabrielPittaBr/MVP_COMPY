@@ -7,7 +7,7 @@ import '../datasources/in_memory_events_store.dart';
 class EventsRepositoryImpl implements EventsRepository {
   EventsRepositoryImpl(this._remote);
   // ignore: unused_field
-  final EventsRemoteDataSource _remote;
+  final EventsRemoteDataSource? _remote;
 
   @override
   Stream<List<Event>> watchAll() {

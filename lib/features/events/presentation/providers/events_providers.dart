@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_flags.dart';
 import '../../../../shared/models/event.dart';
 import '../../data/datasources/events_remote_datasource.dart';
 import '../../data/repositories/events_repository_impl.dart';
@@ -9,8 +10,8 @@ import '../../domain/usecases/create_event.dart';
 import '../../domain/usecases/get_event_detail.dart';
 import '../../domain/usecases/join_event.dart';
 
-final eventsRemoteDataSourceProvider = Provider<EventsRemoteDataSource>(
-  (ref) => EventsRemoteDataSource(FirebaseFirestore.instance),
+final eventsRemoteDataSourceProvider = Provider<EventsRemoteDataSource?>(
+  (ref) => kUseFirebaseRepos ? EventsRemoteDataSource(FirebaseFirestore.instance) : null,
 );
 
 final eventsRepositoryProvider = Provider<EventsRepository>(

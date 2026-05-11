@@ -8,7 +8,7 @@ import '../datasources/in_memory_chat_store.dart';
 class ChatRepositoryImpl implements ChatRepository {
   ChatRepositoryImpl(this._remote);
   // ignore: unused_field
-  final ChatRemoteDataSource _remote;
+  final ChatRemoteDataSource? _remote;
 
   @override
   Stream<List<Conversation>> watchConversations() {
@@ -37,7 +37,7 @@ class ChatRepositoryImpl implements ChatRepository {
       );
       return;
     }
-    return _remote.sendMessage(
+    return _remote!.sendMessage(
       conversationId: conversationId,
       senderId: InMemoryChatStore.currentUserId,
       text: text,

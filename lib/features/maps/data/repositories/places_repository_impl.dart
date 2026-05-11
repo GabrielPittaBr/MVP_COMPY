@@ -8,7 +8,7 @@ import '../datasources/places_remote_datasource.dart';
 class PlacesRepositoryImpl implements PlacesRepository {
   PlacesRepositoryImpl(this._remote);
   // ignore: unused_field
-  final PlacesRemoteDataSource _remote;
+  final PlacesRemoteDataSource? _remote;
 
   @override
   Future<List<SportPlace>> getAll() async {

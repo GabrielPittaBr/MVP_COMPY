@@ -24,7 +24,7 @@ class UserProfile extends Equatable {
   final UserSummary summary;
   final String bio;
   final List<Sport> favoriteSports;
-  final List<Badge> badges;
+  final List<SportBadge> badges;
   final List<UserSummary> friends;
   final RatingSummary rating;
   final List<String> gallery;

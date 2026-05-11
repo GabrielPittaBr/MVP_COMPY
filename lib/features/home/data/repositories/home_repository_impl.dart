@@ -12,7 +12,7 @@ import '../datasources/mock_events.dart';
 class HomeRepositoryImpl implements HomeRepository {
   HomeRepositoryImpl(this._remote);
   // ignore: unused_field
-  final HomeRemoteDataSource _remote;
+  final HomeRemoteDataSource? _remote;
 
   @override
   List<SportCategory> getCategories() {

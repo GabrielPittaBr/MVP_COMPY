@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_flags.dart';
 import '../../../../shared/models/sport.dart';
 import '../../data/datasources/places_remote_datasource.dart';
 import '../../data/repositories/places_repository_impl.dart';
@@ -8,8 +9,8 @@ import '../../domain/entities/sport_place.dart';
 import '../../domain/repositories/places_repository.dart';
 import '../../domain/usecases/get_places_by_sport.dart';
 
-final placesRemoteDataSourceProvider = Provider<PlacesRemoteDataSource>(
-  (ref) => PlacesRemoteDataSource(FirebaseFirestore.instance),
+final placesRemoteDataSourceProvider = Provider<PlacesRemoteDataSource?>(
+  (ref) => kUseFirebaseRepos ? PlacesRemoteDataSource(FirebaseFirestore.instance) : null,
 );
 
 final placesRepositoryProvider = Provider<PlacesRepository>(

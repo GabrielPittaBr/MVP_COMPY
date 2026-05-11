@@ -17,20 +17,20 @@ abstract final class MockProfile {
         ),
         bio: 'Apaixonado por esportes coletivos. Busca parceiros para treinar em Taquara.',
         favoriteSports: const <Sport>[Sport.futebol, Sport.volei, Sport.basquete],
-        badges: const <Badge>[
-          Badge(
+        badges: const <SportBadge>[
+          SportBadge(
             id: 'b1',
             label: 'Craque da bola',
             icon: Icons.emoji_events,
             color: Color(0xFFE63946),
           ),
-          Badge(
+          SportBadge(
             id: 'b2',
             label: 'Vôlei de elite',
             icon: Icons.workspace_premium,
             color: Color(0xFFF4A261),
           ),
-          Badge(
+          SportBadge(
             id: 'b3',
             label: 'Hooper',
             icon: Icons.sports_basketball,

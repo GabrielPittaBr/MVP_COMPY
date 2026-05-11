@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_flags.dart';
 import '../../data/datasources/chat_remote_datasource.dart';
 import '../../data/repositories/chat_repository_impl.dart';
 import '../../domain/entities/conversation.dart';
@@ -10,8 +11,8 @@ import '../../domain/usecases/get_conversations.dart';
 import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/watch_messages.dart';
 
-final chatRemoteDataSourceProvider = Provider<ChatRemoteDataSource>(
-  (ref) => ChatRemoteDataSource(FirebaseFirestore.instance),
+final chatRemoteDataSourceProvider = Provider<ChatRemoteDataSource?>(
+  (ref) => kUseFirebaseRepos ? ChatRemoteDataSource(FirebaseFirestore.instance) : null,
 );
 
 final chatRepositoryProvider = Provider<ChatRepository>(
