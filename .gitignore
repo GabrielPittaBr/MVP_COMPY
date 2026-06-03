@@ -1,3 +1,6 @@
+#node_modules
+node_modules/
+
 # Flutter / Dart / Pub
 .dart_tool/
 .flutter-plugins
