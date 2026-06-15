@@ -3,15 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../firebase_options.dart';
 import '../constants/app_flags.dart';
 
 /// Inicializa o Firebase de forma defensiva.
-///
-/// Em desenvolvimento (`kUseFirebaseRepos == false`) tentamos chamar
-/// `Firebase.initializeApp()` mesmo assim, mas qualquer falha (por exemplo,
-/// `firebase_options.dart` ausente) é absorvida — o app segue funcionando
-/// 100% via mocks. Quando o time configurar o projeto via
-/// `flutterfire configure`, basta ligar a flag.
 class FirebaseService {
   FirebaseService._();
   static final FirebaseService instance = FirebaseService._();
@@ -22,13 +17,17 @@ class FirebaseService {
   Future<void> ensureInitialized() async {
     if (_initialized) return;
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
       _initialized = true;
+      if (kDebugMode) {
+        debugPrint('[FirebaseService] Inicialização bem-sucedida.');
+      }
     } catch (e) {
-      // Ausência de firebase_options é esperada antes do flutterfire configure.
       if (kDebugMode) {
         debugPrint(
-          '[FirebaseService] Inicialização ignorada (modo mock): $e',
+          '[FirebaseService] Erro ao inicializar Firebase (usando mocks): $e',
         );
       }
       _initialized = false;
