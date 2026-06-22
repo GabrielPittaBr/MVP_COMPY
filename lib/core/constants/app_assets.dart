@@ -21,4 +21,17 @@ abstract final class AppAssets {
   /// Foto de galeria placeholder (um time em campo).
   static const String galleryTeamPhoto =
       'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=600';
+
+  // ------- Carrossel da tela de login -------
+
+  /// 4 fotos esportivas para o carrossel do login (telas largas: w=800).
+  static const List<String> loginCarousel = <String>[
+    'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=800', // futebol
+    'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800', // basquete
+    'https://images.unsplash.com/photo-1592656094267-764a45160876?w=800', // vôlei
+    'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=800', // esporte geral
+  ];
+
+  /// Caminho local da logo (PNG fornecido pelo usuário).
+  static const String logoAsset = 'assets/images/logo.png';
 }

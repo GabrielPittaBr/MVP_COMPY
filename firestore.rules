@@ -1,9 +1,48 @@
 rules_version = '2';
 
+// Regras de segurança do Firestore — COMPY.
+//
+// Estratégia: exigir usuário autenticado (inclui login anônimo e contas reais)
+// para qualquer leitura/escrita. Escritas em documentos de identidade (users,
+// usernames) são restritas ao próprio dono (request.auth.uid).
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Perfis públicos — qualquer autenticado lê; só o dono cria/edita o seu.
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == userId;
+    }
+
+    // Índice de unicidade de username (doc id = username em minúsculo).
+    // O doc guarda { uid }. Só o dono pode reivindicar o próprio username.
+    match /usernames/{username} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Eventos — leitura e criação/edição para autenticados.
+    match /events/{eventId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+    }
+
+    // Conversas e mensagens — autenticados.
+    match /conversations/{conversationId} {
+      allow read, write: if signedIn();
+
+      match /messages/{messageId} {
+        allow read, write: if signedIn();
+      }
+    }
+
+    // Locais (mapa) — somente leitura para autenticados.
+    match /places/{placeId} {
+      allow read: if signedIn();
     }
   }
 }

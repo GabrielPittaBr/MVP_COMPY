@@ -57,4 +57,35 @@ abstract final class AppStrings {
   static const String chatFindMore = 'Encontre mais companheiros...';
   static const String chatHint = 'Digite uma mensagem...';
   static const String chatToday = 'Hoje';
+
+  // Auth — login / cadastro / username
+  static const String authTagline = 'Ache seu próximo jogo em Taquara';
+  static const String authLoginWithEmail = 'Entrar com email';
+  static const String authLoginWithGoogle = 'Entrar com Google';
+  static const String authCreateAccount = 'Criar Conta';
+  static const String authPrivacyPrefix = 'Ao continuar, você concorda com nossa';
+  static const String authPrivacyPolicy = 'Política de Privacidade';
+  static const String authName = 'Nome completo';
+  static const String authUsername = 'Username (ex.: @joao)';
+  static const String authEmail = 'E-mail';
+  static const String authPassword = 'Senha (mín. 6 caracteres)';
+  static const String authLoginTitle = 'Bem-vindo ao COMPY';
+  static const String authSignupTitle = 'Criar conta';
+  static const String authSignupButton = 'Cadastrar';
+  static const String authAlreadyHaveAccount = 'Já tenho uma conta';
+  static const String authChooseUsername = 'Escolha seu username';
+  static const String authChooseUsernameHint =
+      'Defina um username exclusivo para sua conta.';
+  static const String authUsernameField = 'Username';
+  static const String authConfirmUsername = 'Confirmar';
+  static const String authBack = 'Voltar';
+  static const String authLoading = 'Aguarde...';
+  static const String authErrorUsernameTaken = 'Este username já está em uso.';
+  static const String authErrorUsernameEmpty = 'O username não pode ser vazio.';
+  static const String authErrorEmailInvalid = 'Informe um e-mail válido.';
+  static const String authErrorPasswordShort = 'A senha precisa ter ao menos 6 caracteres.';
+  static const String authErrorNameEmpty = 'Informe seu nome.';
+  static const String authErrorGeneric = 'Ocorreu um erro. Tente novamente.';
+  static const String authErrorInvalidCredential = 'E-mail ou senha incorretos.';
+  static const String authErrorEmailAlreadyInUse = 'Este e-mail já está cadastrado.';
 }
