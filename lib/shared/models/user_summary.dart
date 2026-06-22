@@ -14,6 +14,30 @@ class UserSummary extends Equatable {
   final String handle;
   final String avatarUrl;
 
+  Map<String, dynamic> toMap() => <String, dynamic>{
+        'id': id,
+        'name': name,
+        'handle': handle,
+        'avatarUrl': avatarUrl,
+      };
+
+  factory UserSummary.fromMap(dynamic data) {
+    if (data is! Map) {
+      return const UserSummary(
+        id: 'unknown',
+        name: 'Desconhecido',
+        handle: '@unknown',
+        avatarUrl: '',
+      );
+    }
+    return UserSummary(
+      id: (data['id'] as String?) ?? '',
+      name: (data['name'] as String?) ?? '',
+      handle: (data['handle'] as String?) ?? '',
+      avatarUrl: (data['avatarUrl'] as String?) ?? '',
+    );
+  }
+
   @override
   List<Object?> get props => <Object?>[id, name, handle, avatarUrl];
 }

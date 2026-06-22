@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -45,6 +46,56 @@ class Event extends Equatable {
 
   /// RN-05: evento sem vagas restantes deve ser ocultado / impedido de receber inscrições.
   bool get isFull => remainingSpots <= 0;
+
+  // ── Serialização Firestore ──────────────────────────────────────
+
+  Map<String, dynamic> toMap() => <String, dynamic>{
+        'title': title,
+        'sport': sport.name,
+        'location': location,
+        'coordinates': GeoPoint(coordinates.latitude, coordinates.longitude),
+        'dateTime': Timestamp.fromDate(dateTime),
+        'skillLevel': skillLevel.name,
+        'totalSpots': totalSpots,
+        'remainingSpots': remainingSpots,
+        'bannerUrl': bannerUrl,
+        'creator': creator.toMap(),
+        'description': description,
+        'participants': participants.map((p) => p.toMap()).toList(),
+      };
+
+  factory Event.fromMap(String id, Map<String, dynamic> data) {
+    final geoPoint = data['coordinates'] as GeoPoint?;
+    final timestamp = data['dateTime'] as Timestamp?;
+
+    return Event(
+      id: id,
+      title: (data['title'] as String?) ?? '',
+      sport: Sport.values.firstWhere(
+        (s) => s.name == data['sport'],
+        orElse: () => Sport.futebol,
+      ),
+      location: (data['location'] as String?) ?? '',
+      coordinates: geoPoint != null
+          ? LatLng(geoPoint.latitude, geoPoint.longitude)
+          : const LatLng(0, 0),
+      dateTime: timestamp?.toDate() ?? DateTime.now(),
+      skillLevel: SkillLevel.values.firstWhere(
+        (l) => l.name == data['skillLevel'],
+        orElse: () => SkillLevel.todos,
+      ),
+      totalSpots: (data['totalSpots'] as int?) ?? 0,
+      remainingSpots: (data['remainingSpots'] as int?) ?? 0,
+      bannerUrl: (data['bannerUrl'] as String?) ?? '',
+      creator: UserSummary.fromMap(data['creator']),
+      description: (data['description'] as String?) ?? '',
+      participants: (data['participants'] as List<dynamic>? ?? <dynamic>[])
+          .map((p) => UserSummary.fromMap(p))
+          .toList(),
+    );
+  }
+
+  // ── copyWith ────────────────────────────────────────────────────
 
   Event copyWith({
     int? remainingSpots,

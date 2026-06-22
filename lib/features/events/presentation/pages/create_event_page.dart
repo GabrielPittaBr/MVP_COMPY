@@ -5,15 +5,17 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
+import '../../../../core/services/auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/skill_level.dart';
 import '../../../../shared/models/sport.dart';
+import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/primary_button.dart';
-import '../../data/datasources/in_memory_events_store.dart';
 import '../providers/events_providers.dart';
 import '../widgets/event_form_field.dart';
 
@@ -37,6 +39,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   SkillLevel? _skill;
   DateTime? _date;
   TimeOfDay? _time;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -129,8 +132,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
               ),
               const SizedBox(height: 24),
               PrimaryButton(
-                label: AppStrings.eventCreate,
-                onPressed: _canSubmit() ? _submit : null,
+                label: _isLoading ? 'Criando...' : AppStrings.eventCreate,
+                onPressed: (_canSubmit() && !_isLoading) ? _submit : null,
               ),
             ],
           ),
@@ -225,6 +228,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   }
 
   Future<void> _submit() async {
+    setState(() => _isLoading = true);
+
     final dateTime = DateTime(
       _date!.year,
       _date!.month,
@@ -233,8 +238,18 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       _time!.minute,
     );
     final spots = int.parse(_spotsCtrl.text);
+
+    // Obtém o usuário real do Firebase Auth.
+    final firebaseUser = AuthService.instance.currentUser;
+    final creator = UserSummary(
+      id: firebaseUser?.uid ?? 'anon_${DateTime.now().millisecondsSinceEpoch}',
+      name: firebaseUser?.displayName ?? 'Usuário',
+      handle: '@${firebaseUser?.uid.substring(0, 8) ?? 'anon'}',
+      avatarUrl: AppAssets.avatar(firebaseUser?.displayName ?? 'U'),
+    );
+
     final draft = Event(
-      id: 'evt_${DateTime.now().millisecondsSinceEpoch}',
+      id: '', // Firestore gerará o ID
       title: 'Evento de ${_sport!.label}',
       sport: _sport!,
       location: 'Taquara',
@@ -244,13 +259,30 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       totalSpots: spots,
       remainingSpots: spots,
       bannerUrl: _sport!.banner,
-      creator: InMemoryEventsStore.currentUser,
+      creator: creator,
+      description: _participantsCtrl.text,
     );
-    await ref.read(createEventProvider).call(draft);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Evento criado!'), backgroundColor: AppColors.success),
-    );
-    context.go(AppRoutes.events);
+
+    try {
+      await ref.read(createEventProvider).call(draft);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Evento criado!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      context.go(AppRoutes.events);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao criar evento: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 }
