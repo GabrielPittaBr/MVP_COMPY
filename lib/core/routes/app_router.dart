@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/domain/entities/auth_user.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
+import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/username_page.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
 import '../../features/chat/presentation/pages/chat_room_page.dart';
@@ -20,6 +21,9 @@ import 'go_router_refresh_stream.dart';
 
 /// Caminhos das principais telas — centralizados para evitar strings espalhadas.
 abstract final class AppRoutes {
+  // Splash (carregamento inicial)
+  static const String splash = '/';
+
   // Auth (fora do shell — sem bottom nav)
   static const String login = '/login';
   static const String signup = '/signup';
@@ -40,25 +44,40 @@ abstract final class AppRoutes {
 
 /// Provider que expõe o router para o `MaterialApp.router`.
 final appRouterProvider = Provider<GoRouter>((ref) {
-  // authStateProvider é um StreamProvider; pegamos o stream bruto para o
-  // refreshListenable. O router vai chamar redirect sempre que emitir.
   final authNotifier = GoRouterRefreshStream(
     ref.watch(authRepositoryProvider).authState(),
   );
 
+  // Notifica o router quando o controller muda (ex: após signup/login),
+  // evitando a race condition onde authStateChanges dispara antes do
+  // Firestore ser escrito.
+  ref.listen<AsyncValue<AuthUser?>>(
+    authControllerProvider,
+    (_, __) => authNotifier.notify(),
+  );
+
   return GoRouter(
-    initialLocation: AppRoutes.login,
+    initialLocation: AppRoutes.splash,
     refreshListenable: authNotifier,
 
     // ── Guard de autenticação ────────────────────────────────────────────────
     redirect: (BuildContext context, GoRouterState state) {
       final AsyncValue<AuthUser?> authAsync = ref.read(authStateProvider);
+      final AsyncValue<AuthUser?> controllerAsync =
+          ref.read(authControllerProvider);
 
-      // Enquanto o estado ainda está carregando, não redireciona.
-      if (authAsync.isLoading) return null;
-
-      final AuthUser? user = authAsync.valueOrNull;
       final String location = state.uri.path;
+
+      // Exibe splash enquanto o estado de auth carrega.
+      if (authAsync.isLoading) {
+        return location == AppRoutes.splash ? null : AppRoutes.splash;
+      }
+
+      // O estado do controller tem prioridade sobre o stream para evitar
+      // a race condition no cadastro por e-mail (authStateChanges dispara
+      // antes do perfil ser gravado no Firestore).
+      final AuthUser? user =
+          controllerAsync.valueOrNull ?? authAsync.valueOrNull;
 
       final bool onAuthRoute = location == AppRoutes.login ||
           location == AppRoutes.signup ||
@@ -74,8 +93,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return AppRoutes.username;
       }
 
-      // Autenticado com username mas tentando acessar rota de auth → /home
-      if (user.hasUsername && onAuthRoute) {
+      // Autenticado com username em rota pública → /home
+      if (user.hasUsername && (onAuthRoute || location == AppRoutes.splash)) {
         return AppRoutes.home;
       }
 
@@ -83,6 +102,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
 
     routes: <RouteBase>[
+      // ── Splash ─────────────────────────────────────────────────────────────
+      GoRoute(
+        path: AppRoutes.splash,
+        builder: (context, state) => const SplashPage(),
+      ),
+
       // ── Rotas de autenticação (fora do shell — sem bottom nav) ─────────────
       GoRoute(
         path: AppRoutes.login,
