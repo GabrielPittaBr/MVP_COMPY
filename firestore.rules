@@ -20,8 +20,9 @@ service cloud.firestore {
 
     // Índice de unicidade de username (doc id = username em minúsculo).
     // O doc guarda { uid }. Só o dono pode reivindicar o próprio username.
+    // Leitura pública: isUsernameAvailable() é chamado antes do login (signup).
     match /usernames/{username} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
     }
 
