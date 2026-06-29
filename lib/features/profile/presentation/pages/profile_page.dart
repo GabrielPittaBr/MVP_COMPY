@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/profile_providers.dart';
 import '../widgets/badges_row.dart';
 import '../widgets/favorite_sports_chips.dart';
@@ -20,7 +21,18 @@ class ProfilePage extends ConsumerWidget {
     final profileAsync = ref.watch(currentProfileProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.profileTitle)),
+      appBar: AppBar(
+        title: const Text(AppStrings.profileTitle),
+        actions: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sair',
+            onPressed: () async {
+              await ref.read(authControllerProvider.notifier).signOut();
+            },
+          ),
+        ],
+      ),
       body: profileAsync.when(
         data: (profile) => SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),

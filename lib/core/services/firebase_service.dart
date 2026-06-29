@@ -21,11 +21,15 @@ class FirebaseService {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      await FirebaseAppCheck.instance.activate(
-        androidProvider:
-            kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-      );
       _initialized = true;
+      try {
+        await FirebaseAppCheck.instance.activate(
+          androidProvider:
+              kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+        );
+      } catch (e) {
+        if (kDebugMode) debugPrint('[FirebaseService] App Check: $e');
+      }
       if (kDebugMode) {
         debugPrint('[FirebaseService] Inicialização bem-sucedida.');
       }

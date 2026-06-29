@@ -17,7 +17,6 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/maps/presentation/pages/maps_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
-import 'go_router_refresh_stream.dart';
 
 /// Caminhos das principais telas — centralizados para evitar strings espalhadas.
 abstract final class AppRoutes {
@@ -44,13 +43,14 @@ abstract final class AppRoutes {
 
 /// Provider que expõe o router para o `MaterialApp.router`.
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authNotifier = GoRouterRefreshStream(
-    ref.watch(authRepositoryProvider).authState(),
-  );
+  final authNotifier = _RouterNotifier();
 
-  // Notifica o router quando o controller muda (ex: após signup/login),
-  // evitando a race condition onde authStateChanges dispara antes do
-  // Firestore ser escrito.
+  // Notifica o router via ref.listen, garantindo que authStateProvider
+  // já está atualizado quando o redirect roda (evita race condition).
+  ref.listen<AsyncValue<AuthUser?>>(
+    authStateProvider,
+    (_, __) => authNotifier.notify(),
+  );
   ref.listen<AsyncValue<AuthUser?>>(
     authControllerProvider,
     (_, __) => authNotifier.notify(),
@@ -228,4 +228,8 @@ class _ScaffoldWithNavBar extends StatelessWidget {
       ),
     );
   }
+}
+
+class _RouterNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
 }

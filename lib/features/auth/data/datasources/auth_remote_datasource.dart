@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -35,8 +37,12 @@ class AuthRemoteDataSource {
   /// Emite [AuthUser] quando autenticado, null quando deslogado.
   Stream<AuthUser?> authState() {
     return _auth.authStateChanges().asyncMap((User? firebaseUser) async {
+      debugPrint('[Auth] authStateChanges emitiu: ${firebaseUser?.uid ?? 'null'}');
       if (firebaseUser == null) return null;
-      return _toAuthUser(firebaseUser);
+      debugPrint('[Auth] chamando _toAuthUser...');
+      final result = await _toAuthUser(firebaseUser);
+      debugPrint('[Auth] _toAuthUser concluído: hasUsername=${result.hasUsername}');
+      return result;
     });
   }
 
@@ -189,12 +195,16 @@ class AuthRemoteDataSource {
   }
 
   Future<bool> _userHasProfile(String uid) async {
+    debugPrint('[Auth] _userHasProfile iniciando para $uid');
     try {
+      debugPrint('[Auth] chamando Firestore .get()...');
       final DocumentSnapshot<Map<String, dynamic>> doc =
-          await _firestore.collection('users').doc(uid).get();
+          await _firestore.collection('users').doc(uid).get()
+              .timeout(const Duration(seconds: 10));
+      debugPrint('[Auth] Firestore .get() concluído: exists=${doc.exists}');
       return doc.exists && (doc.data()?['handle'] as String?)?.isNotEmpty == true;
     } catch (e) {
-      if (kDebugMode) debugPrint('[AuthRemoteDataSource] _userHasProfile error: $e');
+      debugPrint('[Auth] _userHasProfile erro/timeout: $e');
       return false;
     }
   }
