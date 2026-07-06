@@ -17,6 +17,12 @@ abstract final class AppAssets {
       'https://images.unsplash.com/photo-1611251135345-18c56206b863?w=600';
   static const String genericSportBanner =
       'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=600';
+  static const String runningBanner =
+      'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600';
+  static const String cyclingBanner =
+      'https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=600';
+  static const String walkingBanner =
+      'https://images.unsplash.com/photo-1483721310020-03333e577078?w=600';
 
   /// Foto de galeria placeholder (um time em campo).
   static const String galleryTeamPhoto =

@@ -29,11 +29,14 @@ abstract final class AppStrings {
   static const String eventsTitle = 'Eventos';
   static const String eventCreateTitle = 'Criar evento';
   static const String eventSelectSport = 'Selecionar esporte';
+  static const String eventSelectLocation = 'Selecionar local';
+  static const String eventSelectLocationFirst =
+      'Selecione o local do evento primeiro.';
   static const String eventDate = 'Data';
   static const String eventTime = 'Horário';
   static const String eventSkillLevel = 'Nível de habilidade';
   static const String eventParticipants = 'Participantes';
-  static const String eventVacancies = 'Vagas restantes';
+  static const String eventParticipantsNumber = 'Número de participantes';
   static const String eventLocation = 'Local';
   static const String eventCreate = 'Criar evento';
   static const String eventJoin = 'Participar';

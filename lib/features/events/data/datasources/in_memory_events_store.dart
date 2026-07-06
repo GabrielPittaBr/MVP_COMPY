@@ -67,7 +67,7 @@ class InMemoryEventsStore {
   }
 
   /// Usuário "logado" mockado para o MVP. Quando RF02 estiver pronto,
-  /// substituir por leitura do AuthService.
+  /// substituir por leitura do authStateProvider.
   static UserSummary get currentUser => UserSummary(
         id: 'u_joao',
         name: 'João Souza',
