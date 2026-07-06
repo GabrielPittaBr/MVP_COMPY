@@ -1,12 +1,14 @@
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/user_summary.dart';
 
 abstract interface class EventsRepository {
   Stream<List<Event>> watchAll();
   Future<Event?> getById(String id);
 
-  /// Adiciona o usuário atual como participante e decrementa vagas.
+  /// Adiciona [user] (o usuário autenticado) como participante e
+  /// decrementa vagas. Idempotente para quem já participa.
   /// Lança [EventFullException] se o evento estiver lotado (RN-05).
-  Future<Event> joinEvent(String eventId);
+  Future<Event> joinEvent(String eventId, UserSummary user);
 
   /// Cria um novo evento com os dados informados.
   Future<Event> createEvent(Event draft);

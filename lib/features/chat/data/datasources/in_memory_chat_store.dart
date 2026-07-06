@@ -23,7 +23,7 @@ class InMemoryChatStore {
   final Map<String, StreamController<List<Message>>> _messagesCtls =
       <String, StreamController<List<Message>>>{};
 
-  /// Id do usuário corrente — coordenado com [InMemoryEventsStore.currentUser].
+  /// Id do usuário "logado" mockado (usado apenas no modo sem Firebase).
   static const String currentUserId = 'u_joao';
 
   void _seed() {

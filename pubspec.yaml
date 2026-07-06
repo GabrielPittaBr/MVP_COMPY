@@ -31,6 +31,9 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
 
+  # Geolocalização do usuário (RF03 — eventos próximos por raio real)
+  geolocator: ^13.0.1
+
   # Tipografia
   google_fonts: ^6.2.1
 

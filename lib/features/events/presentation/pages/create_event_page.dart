@@ -255,8 +255,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         throw StateError('Você precisa estar logado para criar um evento.');
       }
       // UserSummary real do usuário logado (users/{uid} no Firestore).
-      final profile = await ref.read(currentProfileProvider.future);
-      final creator = profile.summary;
+      final creator = await ref.read(currentUserSummaryProvider.future);
 
       final dateTime = DateTime(
         _date!.year,

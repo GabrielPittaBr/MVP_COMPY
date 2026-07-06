@@ -1,5 +1,6 @@
 import '../../../../core/constants/app_flags.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/user_summary.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../datasources/events_remote_datasource.dart';
 import '../datasources/in_memory_events_store.dart';
@@ -30,7 +31,7 @@ class EventsRepositoryImpl implements EventsRepository {
   }
 
   @override
-  Future<Event> joinEvent(String eventId) async {
+  Future<Event> joinEvent(String eventId, UserSummary user) async {
     if (!kUseFirebaseRepos || _remote == null) {
       final store = InMemoryEventsStore.instance;
       final current = store.getById(eventId);
@@ -38,18 +39,12 @@ class EventsRepositoryImpl implements EventsRepository {
         throw StateError('Evento $eventId não encontrado');
       }
       if (current.isFull) throw const EventFullException();
-      return store.join(eventId, InMemoryEventsStore.currentUser);
+      return store.join(eventId, user);
     }
 
-    // Firestore path
-    final doc = await _remote.fetchById(eventId);
-    final data = doc.data();
-    if (data == null) throw StateError('Evento $eventId não encontrado');
-    final event = Event.fromMap(doc.id, data);
-    if (event.isFull) throw const EventFullException();
-
-    final userId = event.creator.id; // placeholder — o caller já valida
-    await _remote.join(eventId, userId);
+    // Firestore: a transação do datasource valida vagas e registra o
+    // UserSummary real do usuário autenticado atomicamente (RN-05).
+    await _remote.join(eventId, user.toMap());
 
     // Re-fetch para retornar o estado atualizado.
     final updated = await _remote.fetchById(eventId);
