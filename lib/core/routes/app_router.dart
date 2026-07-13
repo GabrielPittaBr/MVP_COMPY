@@ -13,6 +13,7 @@ import '../../features/chat/presentation/pages/conversations_page.dart';
 import '../../features/events/presentation/pages/create_event_page.dart';
 import '../../features/events/presentation/pages/event_detail_page.dart';
 import '../../features/events/presentation/pages/events_list_page.dart';
+import '../../features/events/presentation/pages/search_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/maps/presentation/pages/maps_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -39,6 +40,9 @@ abstract final class AppRoutes {
 
   /// Mapa fica como sub-rota da home para preservar o bottom nav (mockup).
   static const String maps = '/home/maps';
+
+  /// Busca de eventos — sub-rota da home (aberta pelo SearchField).
+  static const String search = '/home/search';
 }
 
 /// Provider que expõe o router para o `MaterialApp.router`.
@@ -146,6 +150,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'maps',
                     builder: (context, state) => const MapsPage(),
+                  ),
+                  GoRoute(
+                    path: 'search',
+                    builder: (context, state) => const SearchPage(),
                   ),
                 ],
               ),

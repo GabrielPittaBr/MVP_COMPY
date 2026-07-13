@@ -52,6 +52,9 @@ class Event extends Equatable {
 
   Map<String, dynamic> toMap() => <String, dynamic>{
         'title': title,
+        // Índice de busca por prefixo (Firestore não faz busca
+        // case-insensitive; gravamos a versão minúscula para consultar).
+        'titleLower': title.toLowerCase(),
         'sport': sport.name,
         'location': location,
         'coordinates': GeoPoint(coordinates.latitude, coordinates.longitude),

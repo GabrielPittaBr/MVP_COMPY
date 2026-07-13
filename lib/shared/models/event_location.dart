@@ -35,7 +35,6 @@ class EventLocation extends Equatable {
       Sport.basquete,
       Sport.futsal,
       Sport.volei,
-      // Esportes de pista:
       Sport.corrida,
       Sport.ciclismo,
       Sport.caminhada,

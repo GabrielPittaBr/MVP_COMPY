@@ -108,6 +108,10 @@ class InMemoryChatStore {
     yield* _conversationsCtl.stream;
   }
 
+  /// Snapshot imutável da lista atual — usado pela paginação mock.
+  List<Conversation> get conversationsSnapshot =>
+      List<Conversation>.unmodifiable(_conversations);
+
   Stream<List<Message>> watchMessages(String conversationId) async* {
     final ctl = _messagesCtls.putIfAbsent(
       conversationId,

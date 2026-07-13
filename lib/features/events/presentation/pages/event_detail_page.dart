@@ -176,7 +176,7 @@ class _Body extends ConsumerWidget {
       await ref.read(joinEventProvider).call(event.id, user);
       // Re-emite o evento atualizado.
       ref.invalidate(eventDetailProvider(event.id));
-      ref.invalidate(allEventsProvider);
+      ref.invalidate(paginatedEventsProvider);
       messenger.showSnackBar(
         const SnackBar(content: Text('Você entrou no evento!')),
       );

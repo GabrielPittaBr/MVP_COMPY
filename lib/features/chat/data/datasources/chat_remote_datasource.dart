@@ -7,12 +7,26 @@ class ChatRemoteDataSource {
   ChatRemoteDataSource(this._firestore);
   final FirebaseFirestore _firestore;
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> watchConversations(String userId) {
-    return _firestore
+  /// Página de conversas do usuário, mais recentes primeiro. Passe o
+  /// último documento da página anterior em [startAfter] para buscar a
+  /// próxima (paginação com `startAfterDocument`).
+  ///
+  /// Requer índice composto `members` (array-contains) +
+  /// `lastMessageAt` (desc) — ver `firestore.indexes.json`.
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchConversationsPage(
+    String userId, {
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+    int limit = 10,
+  }) {
+    Query<Map<String, dynamic>> query = _firestore
         .collection('conversations')
         .where('members', arrayContains: userId)
         .orderBy('lastMessageAt', descending: true)
-        .snapshots();
+        .limit(limit);
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+    return query.get();
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> watchMessages(String conversationId) {

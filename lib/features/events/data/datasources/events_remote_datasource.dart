@@ -7,8 +7,47 @@ class EventsRemoteDataSource {
   EventsRemoteDataSource(this._firestore);
   final FirebaseFirestore _firestore;
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> watchAll() {
-    return _firestore.collection('events').snapshots();
+  /// Página de eventos ordenada por data. Passe o último documento da
+  /// página anterior em [startAfter] para buscar a próxima (paginação
+  /// com `startAfterDocument`).
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchPage({
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+    int limit = 10,
+  }) {
+    Query<Map<String, dynamic>> query =
+        _firestore.collection('events').orderBy('dateTime').limit(limit);
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+    return query.get();
+  }
+
+  /// Busca por prefixo do título (campo `titleLower`, minúsculo).
+  Future<QuerySnapshot<Map<String, dynamic>>> searchByTitlePrefix(
+    String prefixLower, {
+    int limit = 20,
+  }) {
+    return _firestore
+        .collection('events')
+        .orderBy('titleLower')
+        // O range fecha com U+F8FF (último code point útil) concatenado
+        // ao prefixo — caractere invisível no fim da string do endAt.
+        .startAt(<String>[prefixLower])
+        .endAt(<String>['$prefixLower'])
+        .limit(limit)
+        .get();
+  }
+
+  /// Busca por modalidades esportivas (campo `sport` = nome do enum).
+  Future<QuerySnapshot<Map<String, dynamic>>> searchBySports(
+    List<String> sportNames, {
+    int limit = 20,
+  }) {
+    return _firestore
+        .collection('events')
+        .where('sport', whereIn: sportNames)
+        .limit(limit)
+        .get();
   }
 
   Future<DocumentSnapshot<Map<String, dynamic>>> fetchById(String id) {

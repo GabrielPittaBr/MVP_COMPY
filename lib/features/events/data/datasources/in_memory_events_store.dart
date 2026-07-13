@@ -27,6 +27,9 @@ class InMemoryEventsStore {
     yield* _controller.stream;
   }
 
+  /// Snapshot imutável da lista atual — usado pela paginação e busca mock.
+  List<Event> get snapshot => List<Event>.unmodifiable(_events);
+
   Event? getById(String id) {
     try {
       return _events.firstWhere((e) => e.id == id);

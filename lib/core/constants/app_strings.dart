@@ -17,6 +17,12 @@ abstract final class AppStrings {
   // Home
   static const String homeGreetingPrefix = 'Oi,';
   static const String homeSearchHint = 'Encontre esportes';
+
+  // Busca
+  static const String searchHint = 'Buscar evento ou esporte';
+  static const String searchPrompt =
+      'Digite ao menos 2 letras para buscar por\nnome do evento ou modalidade esportiva.';
+  static const String searchNoResults = 'Nenhum evento encontrado.';
   static const String homeCategories = 'Categorias';
   static const String homeExplore = 'Explore locais';
   static const String homeNearbyEvents = 'Eventos Próximos';

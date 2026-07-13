@@ -18,7 +18,10 @@ class ChatRoomPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final conversations = ref.watch(conversationsProvider).valueOrNull ?? <Conversation>[];
+    // Peer vem da lista paginada já carregada (a navegação parte dela).
+    final conversations =
+        ref.watch(paginatedConversationsProvider).valueOrNull ??
+            <Conversation>[];
     Conversation? conversation;
     try {
       conversation = conversations.firstWhere((c) => c.id == conversationId);
