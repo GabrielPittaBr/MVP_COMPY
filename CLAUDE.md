@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **COMPY** is a Flutter mobile app (TCC project) that connects sports practitioners in Taquara/RS, Brazil. It supports event discovery, map browsing, real-time chat, and user profiles.
 
-- **Languages:** Dart / Flutter 3.22+ (the `package.json` and `node_modules/` at the root are Firebase CLI artifacts — not a Node project)
+- **Languages:** Dart / Flutter 3.22+ (not a Node project — the Firebase CLI used for `firebase.json`/`flutterfire configure` runs from a global `firebase-tools` install, not from any local `node_modules/`)
 - **State management:** Flutter Riverpod 2.5.1
 - **Routing:** GoRouter 14.2.0 (5-tab `StatefulShellRoute.indexedStack`)
 - **Backend:** Firebase Auth + Firestore (`compy-tcc` project, region `southamerica-east1`)
