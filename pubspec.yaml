@@ -49,6 +49,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # Geração do ícone do app (launcher icon)
+  flutter_launcher_icons: ^0.14.1
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/compy-icon.png"
+
 flutter:
   uses-material-design: true
   assets:
