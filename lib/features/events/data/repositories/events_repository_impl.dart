@@ -1,5 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../../../core/constants/app_flags.dart';
+import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/paged_result.dart';
+import '../../../../shared/models/sport.dart';
+import '../../../../shared/models/user_summary.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../datasources/events_remote_datasource.dart';
 import '../datasources/in_memory_events_store.dart';
@@ -9,13 +15,71 @@ class EventsRepositoryImpl implements EventsRepository {
   final EventsRemoteDataSource? _remote;
 
   @override
-  Stream<List<Event>> watchAll() {
+  Future<PagedResult<Event>> fetchPage({Object? cursor, int pageSize = 10}) async {
     if (!kUseFirebaseRepos || _remote == null) {
-      return InMemoryEventsStore.instance.watchAll();
+      // Mock: o cursor é o offset na lista em memória.
+      final all = InMemoryEventsStore.instance.snapshot;
+      final offset = (cursor as int?) ?? 0;
+      final items = all.skip(offset).take(pageSize).toList();
+      final nextOffset = offset + items.length;
+      return PagedResult<Event>(
+        items: items,
+        cursor: nextOffset,
+        hasMore: nextOffset < all.length,
+      );
     }
-    return _remote.watchAll().map((snapshot) {
-      return snapshot.docs.map((doc) => Event.fromMap(doc.id, doc.data())).toList();
-    });
+
+    final snapshot = await _remote.fetchPage(
+      startAfter: cursor as DocumentSnapshot<Map<String, dynamic>>?,
+      limit: pageSize,
+    );
+    final items = snapshot.docs
+        .map((doc) => Event.fromMap(doc.id, doc.data()))
+        .toList();
+    return PagedResult<Event>(
+      items: items,
+      // Último documento da página — cursor do startAfterDocument.
+      cursor: snapshot.docs.isNotEmpty ? snapshot.docs.last : cursor,
+      hasMore: snapshot.docs.length == pageSize,
+    );
+  }
+
+  @override
+  Future<List<Event>> search(String query) async {
+    final normalized = TextNormalizer.normalize(query);
+    if (normalized.isEmpty) return const <Event>[];
+
+    // Modalidades cujo nome começa com o termo digitado ("vol" → Vôlei).
+    final matchedSports = Sport.values
+        .where((s) => TextNormalizer.normalize(s.label).startsWith(normalized))
+        .map((s) => s.name)
+        .toList();
+
+    if (!kUseFirebaseRepos || _remote == null) {
+      return InMemoryEventsStore.instance.snapshot
+          .where((e) =>
+              TextNormalizer.normalize(e.title).contains(normalized) ||
+              matchedSports.contains(e.sport.name))
+          .toList();
+    }
+
+    // Duas consultas em paralelo: prefixo do título + modalidades.
+    final snapshots = await Future.wait(
+      <Future<QuerySnapshot<Map<String, dynamic>>>>[
+        _remote.searchByTitlePrefix(query.trim().toLowerCase()),
+        if (matchedSports.isNotEmpty) _remote.searchBySports(matchedSports),
+      ],
+    );
+
+    final byId = <String, Event>{};
+    for (final snapshot in snapshots) {
+      for (final doc in snapshot.docs) {
+        byId[doc.id] = Event.fromMap(doc.id, doc.data());
+      }
+    }
+    final results = byId.values.toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    return results;
   }
 
   @override
@@ -30,7 +94,7 @@ class EventsRepositoryImpl implements EventsRepository {
   }
 
   @override
-  Future<Event> joinEvent(String eventId) async {
+  Future<Event> joinEvent(String eventId, UserSummary user) async {
     if (!kUseFirebaseRepos || _remote == null) {
       final store = InMemoryEventsStore.instance;
       final current = store.getById(eventId);
@@ -38,18 +102,12 @@ class EventsRepositoryImpl implements EventsRepository {
         throw StateError('Evento $eventId não encontrado');
       }
       if (current.isFull) throw const EventFullException();
-      return store.join(eventId, InMemoryEventsStore.currentUser);
+      return store.join(eventId, user);
     }
 
-    // Firestore path
-    final doc = await _remote.fetchById(eventId);
-    final data = doc.data();
-    if (data == null) throw StateError('Evento $eventId não encontrado');
-    final event = Event.fromMap(doc.id, data);
-    if (event.isFull) throw const EventFullException();
-
-    final userId = event.creator.id; // placeholder — o caller já valida
-    await _remote.join(eventId, userId);
+    // Firestore: a transação do datasource valida vagas e registra o
+    // UserSummary real do usuário autenticado atomicamente (RN-05).
+    await _remote.join(eventId, user.toMap());
 
     // Re-fetch para retornar o estado atualizado.
     final updated = await _remote.fetchById(eventId);

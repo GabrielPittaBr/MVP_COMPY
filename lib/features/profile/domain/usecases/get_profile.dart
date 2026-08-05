@@ -5,5 +5,5 @@ class GetProfile {
   const GetProfile(this._repository);
   final ProfileRepository _repository;
 
-  Future<UserProfile> call() => _repository.getCurrentProfile();
+  Future<UserProfile> call(String uid) => _repository.getCurrentProfile(uid);
 }

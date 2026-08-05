@@ -23,7 +23,7 @@ class InMemoryChatStore {
   final Map<String, StreamController<List<Message>>> _messagesCtls =
       <String, StreamController<List<Message>>>{};
 
-  /// Id do usuário corrente — coordenado com [InMemoryEventsStore.currentUser].
+  /// Id do usuário "logado" mockado (usado apenas no modo sem Firebase).
   static const String currentUserId = 'u_joao';
 
   void _seed() {
@@ -107,6 +107,10 @@ class InMemoryChatStore {
     yield List<Conversation>.unmodifiable(_conversations);
     yield* _conversationsCtl.stream;
   }
+
+  /// Snapshot imutável da lista atual — usado pela paginação mock.
+  List<Conversation> get conversationsSnapshot =>
+      List<Conversation>.unmodifiable(_conversations);
 
   Stream<List<Message>> watchMessages(String conversationId) async* {
     final ctl = _messagesCtls.putIfAbsent(

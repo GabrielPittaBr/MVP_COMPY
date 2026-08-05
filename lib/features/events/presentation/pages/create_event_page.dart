@@ -3,23 +3,27 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:latlong2/latlong.dart';
 
-import '../../../../core/constants/app_assets.dart';
 import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
-import '../../../../core/services/auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/event_location.dart';
 import '../../../../shared/models/skill_level.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/primary_button.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/events_providers.dart';
 import '../widgets/event_form_field.dart';
 
-/// Tela "3 Criar evento" — formulário com campos obrigatórios (RF07).
+/// Tela "4 Criar evento" — formulário com campos obrigatórios (RF07).
+///
+/// Ordem de preenchimento: o Local é a primeira informação selecionada,
+/// pois ele determina quais esportes estão disponíveis (pins curados
+/// pela equipe — ver [EventLocation]).
 class CreateEventPage extends ConsumerStatefulWidget {
   const CreateEventPage({super.key});
 
@@ -28,13 +32,14 @@ class CreateEventPage extends ConsumerStatefulWidget {
 }
 
 class _CreateEventPageState extends ConsumerState<CreateEventPage> {
+  final _locationCtrl = TextEditingController();
   final _sportCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
   final _timeCtrl = TextEditingController();
   final _skillCtrl = TextEditingController();
   final _participantsCtrl = TextEditingController();
-  final _spotsCtrl = TextEditingController();
 
+  EventLocation? _location;
   Sport? _sport;
   SkillLevel? _skill;
   DateTime? _date;
@@ -43,12 +48,12 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   @override
   void dispose() {
+    _locationCtrl.dispose();
     _sportCtrl.dispose();
     _dateCtrl.dispose();
     _timeCtrl.dispose();
     _skillCtrl.dispose();
     _participantsCtrl.dispose();
-    _spotsCtrl.dispose();
     super.dispose();
   }
 
@@ -64,6 +69,17 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           child: Column(
             children: <Widget>[
+              // 1) Local — primeira informação a ser selecionada.
+              EventFormField(
+                hint: AppStrings.eventSelectLocation,
+                controller: _locationCtrl,
+                readOnly: true,
+                onTap: _pickLocation,
+                suffix: const Icon(Icons.location_on_outlined),
+              ),
+              _LocationMapPreview(location: _location),
+              const SizedBox(height: 12),
+              // 2) Esporte — restrito aos praticáveis no local escolhido.
               EventFormField(
                 hint: AppStrings.eventSelectSport,
                 controller: _sportCtrl,
@@ -89,48 +105,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                 onTap: _pickSkill,
               ),
               EventFormField(
-                hint: AppStrings.eventParticipants,
+                hint: AppStrings.eventParticipantsNumber,
                 controller: _participantsCtrl,
+                keyboardType: TextInputType.number,
               ),
-              EventFormField(
-                hint: AppStrings.eventVacancies,
-                controller: _spotsCtrl,
-              ),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(4, 8, 0, 8),
-                  child: Text(
-                    AppStrings.eventLocation,
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: SizedBox(
-                  height: 140,
-                  child: AbsorbPointer(
-                    child: FlutterMap(
-                      options: const MapOptions(
-                        initialCenter: AppGeo.taquaraCenter,
-                        initialZoom: 13.5,
-                        interactionOptions: InteractionOptions(
-                          flags: InteractiveFlag.none,
-                        ),
-                      ),
-                      children: <Widget>[
-                        TileLayer(
-                          urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'br.com.compy.mvp',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               PrimaryButton(
                 label: _isLoading ? 'Criando...' : AppStrings.eventCreate,
                 onPressed: (_canSubmit() && !_isLoading) ? _submit : null,
@@ -143,20 +122,60 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   }
 
   bool _canSubmit() =>
+      _location != null &&
       _sport != null &&
       _date != null &&
       _time != null &&
       _skill != null &&
-      int.tryParse(_spotsCtrl.text) != null;
+      (int.tryParse(_participantsCtrl.text) ?? 0) >= 2;
+
+  Future<void> _pickLocation() async {
+    final picked = await showModalBottomSheet<EventLocation>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (final loc in EventLocation.all)
+              ListTile(
+                leading: const Icon(Icons.location_on, color: AppColors.error),
+                title: Text(loc.name),
+                subtitle: Text(loc.city),
+                onTap: () => Navigator.of(context).pop(loc),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) {
+      setState(() {
+        _location = picked;
+        _locationCtrl.text = '${picked.name} — ${picked.city}';
+        // Descarta esporte incompatível com o novo local.
+        if (_sport != null && !picked.allowedSports.contains(_sport)) {
+          _sport = null;
+          _sportCtrl.clear();
+        }
+      });
+    }
+  }
 
   Future<void> _pickSport() async {
+    final location = _location;
+    if (location == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.eventSelectLocationFirst)),
+      );
+      return;
+    }
     final picked = await showModalBottomSheet<Sport>(
       context: context,
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            for (final s in Sport.values)
+            // Apenas esportes praticáveis no local selecionado.
+            for (final s in location.allowedSports)
               ListTile(
                 leading: Icon(s.icon, color: s.color),
                 title: Text(s.label),
@@ -230,41 +249,47 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   Future<void> _submit() async {
     setState(() => _isLoading = true);
 
-    final dateTime = DateTime(
-      _date!.year,
-      _date!.month,
-      _date!.day,
-      _time!.hour,
-      _time!.minute,
-    );
-    final spots = int.parse(_spotsCtrl.text);
-
-    // Obtém o usuário real do Firebase Auth.
-    final firebaseUser = AuthService.instance.currentUser;
-    final creator = UserSummary(
-      id: firebaseUser?.uid ?? 'anon_${DateTime.now().millisecondsSinceEpoch}',
-      name: firebaseUser?.displayName ?? 'Usuário',
-      handle: '@${firebaseUser?.uid.substring(0, 8) ?? 'anon'}',
-      avatarUrl: AppAssets.avatar(firebaseUser?.displayName ?? 'U'),
-    );
-
-    final draft = Event(
-      id: '', // Firestore gerará o ID
-      title: 'Evento de ${_sport!.label}',
-      sport: _sport!,
-      location: 'Taquara',
-      coordinates: const LatLng(-29.6500, -50.7800),
-      dateTime: dateTime,
-      skillLevel: _skill!,
-      totalSpots: spots,
-      remainingSpots: spots,
-      bannerUrl: _sport!.banner,
-      creator: creator,
-      description: _participantsCtrl.text,
-    );
-
     try {
+      final authUser = ref.read(authStateProvider).valueOrNull;
+      if (authUser == null) {
+        throw StateError('Você precisa estar logado para criar um evento.');
+      }
+      // UserSummary real do usuário logado (users/{uid} no Firestore).
+      final creator = await ref.read(currentUserSummaryProvider.future);
+
+      final dateTime = DateTime(
+        _date!.year,
+        _date!.month,
+        _date!.day,
+        _time!.hour,
+        _time!.minute,
+      );
+      final location = _location!;
+      final sport = _sport!;
+      final totalSpots = int.parse(_participantsCtrl.text);
+
+      final draft = Event(
+        id: '', // Firestore gerará o ID
+        title: 'Partida de ${sport.label.toLowerCase()}',
+        sport: sport,
+        location: '${location.name}, ${location.city}',
+        coordinates: location.coordinates,
+        dateTime: dateTime,
+        skillLevel: _skill!,
+        totalSpots: totalSpots,
+        // O criador já ocupa uma vaga.
+        remainingSpots: totalSpots - 1,
+        bannerUrl: sport.banner,
+        creator: creator,
+        description:
+            'Partida de ${sport.label.toLowerCase()} no ${location.name}, '
+            'em ${location.city}.',
+        participants: <UserSummary>[creator],
+      );
+
       await ref.read(createEventProvider).call(draft);
+      // Recarrega a lista paginada para o novo evento aparecer.
+      ref.invalidate(paginatedEventsProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -284,5 +309,57 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+}
+
+/// Mapa com o pin fixo do local selecionado. Antes da seleção, mostra
+/// Taquara centralizada sem marcador.
+class _LocationMapPreview extends StatelessWidget {
+  const _LocationMapPreview({required this.location});
+
+  final EventLocation? location;
+
+  @override
+  Widget build(BuildContext context) {
+    final center = location?.coordinates ?? AppGeo.taquaraCenter;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        height: 140,
+        child: AbsorbPointer(
+          child: FlutterMap(
+            // Recria o mapa quando o local muda, recentralizando no pin.
+            key: ValueKey<String?>(location?.id),
+            options: MapOptions(
+              initialCenter: center,
+              initialZoom: location != null ? 15.5 : 13.5,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.none,
+              ),
+            ),
+            children: <Widget>[
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'br.com.compy.mvp',
+              ),
+              if (location != null)
+                MarkerLayer(
+                  markers: <Marker>[
+                    Marker(
+                      point: location!.coordinates,
+                      child: const Icon(
+                        Icons.location_on,
+                        color: AppColors.error,
+                        size: 36,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

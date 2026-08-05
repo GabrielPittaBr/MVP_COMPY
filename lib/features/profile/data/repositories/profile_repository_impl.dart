@@ -1,4 +1,6 @@
 import '../../../../core/constants/app_flags.dart';
+import '../../../../shared/models/user_summary.dart';
+import '../../domain/entities/rating_summary.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../datasources/mock_profile.dart';
@@ -6,13 +8,31 @@ import '../datasources/profile_remote_datasource.dart';
 
 class ProfileRepositoryImpl implements ProfileRepository {
   ProfileRepositoryImpl(this._remote);
-  // ignore: unused_field
   final ProfileRemoteDataSource? _remote;
 
   @override
-  Future<UserProfile> getCurrentProfile() async {
-    if (!kUseFirebaseRepos) return MockProfile.current;
-    // TODO(integração): mapear DocumentSnapshot -> UserProfile.
-    return MockProfile.current;
+  Future<UserProfile> getCurrentProfile(String uid) async {
+    if (!kUseFirebaseRepos || _remote == null) return MockProfile.current;
+
+    final doc = await _remote.fetchById(uid);
+    if (!doc.exists) return MockProfile.current;
+
+    final data = doc.data()!;
+    final summary = UserSummary(
+      id: uid,
+      name: (data['name'] as String?) ?? '',
+      handle: (data['handle'] as String?) ?? '',
+      avatarUrl: (data['avatarUrl'] as String?) ?? '',
+    );
+
+    return UserProfile(
+      summary: summary,
+      bio: (data['bio'] as String?) ?? '',
+      favoriteSports: const [],
+      badges: const [],
+      friends: const [],
+      rating: const RatingSummary(average: 0, count: 0, breakdown: {}),
+      gallery: const [],
+    );
   }
 }

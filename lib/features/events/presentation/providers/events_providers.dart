@@ -30,15 +30,59 @@ final createEventProvider = Provider<CreateEvent>(
   (ref) => CreateEvent(ref.watch(eventsRepositoryProvider)),
 );
 
-/// Stream da lista completa — observada pela tela "5 Eventos".
-final allEventsProvider = StreamProvider<List<Event>>(
-  (ref) => ref.watch(eventsRepositoryProvider).watchAll(),
+/// Lista paginada da aba "5 Eventos" — blocos de 10 documentos via
+/// `startAfterDocument`. Use `loadMore()` ao aproximar do fim do scroll e
+/// `ref.invalidate(paginatedEventsProvider)` para recarregar do zero
+/// (pull-to-refresh, após criar evento etc.).
+class PaginatedEventsController extends AsyncNotifier<List<Event>> {
+  static const int pageSize = 10;
+
+  Object? _cursor;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+
+  /// Se ainda há páginas para buscar — controla o footer de loading.
+  bool get hasMore => _hasMore;
+
+  @override
+  Future<List<Event>> build() async {
+    _cursor = null;
+    _hasMore = true;
+    _isLoadingMore = false;
+    final page = await ref
+        .watch(eventsRepositoryProvider)
+        .fetchPage(pageSize: pageSize);
+    _cursor = page.cursor;
+    _hasMore = page.hasMore;
+    return page.items;
+  }
+
+  /// Anexa a próxima página. No-op se já está carregando ou acabou.
+  Future<void> loadMore() async {
+    final current = state.valueOrNull;
+    if (current == null || _isLoadingMore || !_hasMore) return;
+    _isLoadingMore = true;
+    try {
+      final page = await ref
+          .read(eventsRepositoryProvider)
+          .fetchPage(cursor: _cursor, pageSize: pageSize);
+      _cursor = page.cursor;
+      _hasMore = page.hasMore;
+      state = AsyncData<List<Event>>(<Event>[...current, ...page.items]);
+    } finally {
+      _isLoadingMore = false;
+    }
+  }
+}
+
+final paginatedEventsProvider =
+    AsyncNotifierProvider<PaginatedEventsController, List<Event>>(
+  PaginatedEventsController.new,
 );
 
-/// Detalhe de um evento por id. `family` permite cachear por id.
+/// Detalhe de um evento por id. `family` permite cachear por id;
+/// invalidado explicitamente após join/create.
 final eventDetailProvider =
     FutureProvider.family<Event?, String>((ref, id) async {
-  // Re-emite quando a lista global mudar (após join/create).
-  ref.watch(allEventsProvider);
   return ref.watch(getEventDetailProvider).call(id);
 });

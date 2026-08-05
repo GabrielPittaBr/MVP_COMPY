@@ -1,12 +1,21 @@
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/paged_result.dart';
+import '../../../../shared/models/user_summary.dart';
 
 abstract interface class EventsRepository {
-  Stream<List<Event>> watchAll();
+  /// Página de eventos ordenada por data. Repassar o [cursor] da página
+  /// anterior busca a próxima (blocos de [pageSize] documentos).
+  Future<PagedResult<Event>> fetchPage({Object? cursor, int pageSize});
+
+  /// Busca eventos por nome (prefixo do título) ou modalidade esportiva.
+  Future<List<Event>> search(String query);
+
   Future<Event?> getById(String id);
 
-  /// Adiciona o usuário atual como participante e decrementa vagas.
+  /// Adiciona [user] (o usuário autenticado) como participante e
+  /// decrementa vagas. Idempotente para quem já participa.
   /// Lança [EventFullException] se o evento estiver lotado (RN-05).
-  Future<Event> joinEvent(String eventId);
+  Future<Event> joinEvent(String eventId, UserSummary user);
 
   /// Cria um novo evento com os dados informados.
   Future<Event> createEvent(Event draft);

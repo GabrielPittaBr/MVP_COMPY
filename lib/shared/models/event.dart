@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../core/utils/geohash.dart';
 import 'skill_level.dart';
 import 'sport.dart';
 import 'user_summary.dart';
@@ -51,9 +52,14 @@ class Event extends Equatable {
 
   Map<String, dynamic> toMap() => <String, dynamic>{
         'title': title,
+        // Índice de busca por prefixo (Firestore não faz busca
+        // case-insensitive; gravamos a versão minúscula para consultar).
+        'titleLower': title.toLowerCase(),
         'sport': sport.name,
         'location': location,
         'coordinates': GeoPoint(coordinates.latitude, coordinates.longitude),
+        // Índice geográfico para a busca por raio na Home (RF03).
+        'geohash': Geohash.encode(coordinates.latitude, coordinates.longitude),
         'dateTime': Timestamp.fromDate(dateTime),
         'skillLevel': skillLevel.name,
         'totalSpots': totalSpots,

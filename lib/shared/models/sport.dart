@@ -31,6 +31,30 @@ enum Sport {
     icon: Icons.sports_tennis,
     color: Color(0xFFE63946),
     banner: AppAssets.tableTennisBanner,
+  ),
+  futsal(
+    label: 'Futsal',
+    icon: Icons.sports_soccer,
+    color: Color(0xFF2A9D8F),
+    banner: AppAssets.soccerBanner,
+  ),
+  corrida(
+    label: 'Corrida',
+    icon: Icons.directions_run,
+    color: Color(0xFF457B9D),
+    banner: AppAssets.runningBanner,
+  ),
+  ciclismo(
+    label: 'Ciclismo',
+    icon: Icons.directions_bike,
+    color: Color(0xFF6D597A),
+    banner: AppAssets.cyclingBanner,
+  ),
+  caminhada(
+    label: 'Caminhada',
+    icon: Icons.directions_walk,
+    color: Color(0xFF588157),
+    banner: AppAssets.walkingBanner,
   );
 
   const Sport({

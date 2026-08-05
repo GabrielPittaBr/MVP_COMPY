@@ -8,6 +8,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/widgets/primary_button.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../providers/events_providers.dart';
 import '../widgets/participants_avatars.dart';
@@ -170,16 +171,22 @@ class _Body extends ConsumerWidget {
   Future<void> _join(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(joinEventProvider).call(event.id);
+      // UserSummary real do usuário autenticado (users/{uid} no Firestore).
+      final user = await ref.read(currentUserSummaryProvider.future);
+      await ref.read(joinEventProvider).call(event.id, user);
       // Re-emite o evento atualizado.
       ref.invalidate(eventDetailProvider(event.id));
-      ref.invalidate(allEventsProvider);
+      ref.invalidate(paginatedEventsProvider);
       messenger.showSnackBar(
         const SnackBar(content: Text('Você entrou no evento!')),
       );
     } on EventFullException {
       messenger.showSnackBar(
         const SnackBar(content: Text(AppStrings.eventFull)),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Erro ao entrar no evento: $e')),
       );
     }
   }

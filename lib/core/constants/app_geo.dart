@@ -10,4 +10,7 @@ abstract final class AppGeo {
 
   /// Zoom usado ao focar em um pin específico.
   static const double focusZoom = 16.5;
+
+  /// Raio (km) da busca de "Eventos Próximos" na Home (RF03).
+  static const double nearbyRadiusKm = 10.0;
 }

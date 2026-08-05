@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import '../../../../core/constants/app_assets.dart';
 import '../../../../features/home/data/datasources/mock_events.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/user_summary.dart';
@@ -27,6 +26,9 @@ class InMemoryEventsStore {
     yield List<Event>.unmodifiable(_events);
     yield* _controller.stream;
   }
+
+  /// Snapshot imutável da lista atual — usado pela paginação e busca mock.
+  List<Event> get snapshot => List<Event>.unmodifiable(_events);
 
   Event? getById(String id) {
     try {
@@ -65,13 +67,4 @@ class InMemoryEventsStore {
     _controller.add(List<Event>.unmodifiable(_events));
     return draft;
   }
-
-  /// Usuário "logado" mockado para o MVP. Quando RF02 estiver pronto,
-  /// substituir por leitura do AuthService.
-  static UserSummary get currentUser => UserSummary(
-        id: 'u_joao',
-        name: 'João Souza',
-        handle: '@joao.souza',
-        avatarUrl: AppAssets.avatar('João'),
-      );
 }
