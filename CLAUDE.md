@@ -51,7 +51,7 @@ features/<name>/
 
 Gitflow: `main` (stable) ← `develop` ← `feature/<name>` branches. PRs target `develop`; releases merge `develop` → `main`.
 
-Branch naming: `feature/`, `fix/`, `refactor/`, `chore/` prefixes.
+Branch naming: `feature/`, `fix/`, `refactor/`, `chore/`, `style/` prefixes.
 
 ## Key Files
 
