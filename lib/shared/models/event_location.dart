@@ -32,6 +32,7 @@ class EventLocation extends Equatable {
     city: 'Taquara',
     coordinates: LatLng(-29.656276729317323, -50.787726691670045),
     allowedSports: <Sport>[
+      Sport.futebol,
       Sport.basquete,
       Sport.futsal,
       Sport.volei,
