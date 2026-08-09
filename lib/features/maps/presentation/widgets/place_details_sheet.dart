@@ -23,6 +23,10 @@ class PlaceDetailsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
+      // Sem `expand: false` o sheet ocupa o Stack inteiro e o Scrollable
+      // interno engole os toques na área transparente acima do card —
+      // era isso que impedia de tocar no mapa para fechá-lo.
+      expand: false,
       initialChildSize: 0.55,
       minChildSize: 0.3,
       maxChildSize: 0.9,

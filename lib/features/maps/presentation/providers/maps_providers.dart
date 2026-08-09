@@ -20,7 +20,12 @@ final getPlacesBySportProvider = Provider<GetPlacesBySport>(
 final mapsSportFilterProvider = StateProvider<Sport?>((_) => null);
 
 /// Pin selecionado (mostra/esconde o bottom sheet).
-final selectedPlaceProvider = StateProvider<SportPlace?>((_) => null);
+///
+/// `autoDispose` para a seleção morrer junto com a tela: sem isso, sair
+/// do mapa com um local aberto faz a próxima visita já começar com o
+/// card na frente.
+final selectedPlaceProvider =
+    StateProvider.autoDispose<SportPlace?>((_) => null);
 
 final placesProvider = FutureProvider<List<SportPlace>>((ref) {
   final filter = ref.watch(mapsSportFilterProvider);

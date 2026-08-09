@@ -32,9 +32,14 @@ class _MapsPageState extends ConsumerState<MapsPage> {
         children: <Widget>[
           FlutterMap(
             mapController: _mapController,
-            options: const MapOptions(
+            options: MapOptions(
               initialCenter: AppGeo.taquaraCenter,
               initialZoom: AppGeo.defaultZoom,
+              // Tocar no mapa fora do card desfaz a seleção. A câmera
+              // fica onde está: mover sozinha depois de um toque solto
+              // desorienta mais do que ajuda.
+              onTap: (_, __) =>
+                  ref.read(selectedPlaceProvider.notifier).state = null,
             ),
             children: <Widget>[
               TileLayer(
@@ -104,15 +109,20 @@ class _MapsPageState extends ConsumerState<MapsPage> {
           ),
 
           // Bottom sheet de detalhes — surge quando há pin selecionado.
+          // O Align é o par obrigatório do `expand: false` do sheet: sem
+          // ele o card iria para o topo do Stack.
           if (selectedPlace != null)
-            PlaceDetailsSheet(
-              place: selectedPlace,
-              onCreateEvent: () {
-                ref.read(selectedPlaceProvider.notifier).state = null;
-                // TODO: levar ao create_event com place pré-preenchido.
-              },
-              onShare: () {},
-              onFavorite: () {},
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: PlaceDetailsSheet(
+                place: selectedPlace,
+                onCreateEvent: () {
+                  ref.read(selectedPlaceProvider.notifier).state = null;
+                  // TODO: levar ao create_event com place pré-preenchido.
+                },
+                onShare: () {},
+                onFavorite: () {},
+              ),
             ),
         ],
       ),
