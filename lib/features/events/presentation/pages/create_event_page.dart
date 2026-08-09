@@ -10,10 +10,11 @@ import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/duration_format.dart';
 import '../../../../shared/models/event.dart';
-import '../../../../shared/models/event_location.dart';
 import '../../../../shared/models/skill_level.dart';
 import '../../../../shared/models/sport.dart';
+import '../../../../shared/models/sport_place.dart';
 import '../../../../shared/models/user_summary.dart';
+import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
@@ -24,7 +25,7 @@ import '../widgets/event_form_field.dart';
 ///
 /// Ordem de preenchimento: depois do Título, o Local é a primeira
 /// informação selecionada, pois ele determina quais esportes estão
-/// disponíveis (pins curados pela equipe — ver [EventLocation]).
+/// disponíveis (pins curados pela equipe — ver [SportPlace]).
 class CreateEventPage extends ConsumerStatefulWidget {
   const CreateEventPage({super.key});
 
@@ -67,7 +68,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   static const int _minDurationMinutes = 15;
   static const int _maxDurationMinutes = 720;
 
-  EventLocation? _location;
+  SportPlace? _location;
   Sport? _sport;
   SkillLevel? _skill;
   DateTime? _date;
@@ -204,13 +205,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       (int.tryParse(_participantsCtrl.text) ?? 0) >= 2;
 
   Future<void> _pickLocation() async {
-    final picked = await showModalBottomSheet<EventLocation>(
+    final picked = await showModalBottomSheet<SportPlace>(
       context: context,
+      // Mesmo catálogo curado que alimenta os pins do mapa.
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            for (final loc in EventLocation.all)
+            for (final loc in SportPlace.all)
               ListTile(
                 leading: const Icon(Icons.location_on, color: AppColors.error),
                 title: Text(loc.name),
@@ -480,7 +482,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 class _LocationMapPreview extends StatelessWidget {
   const _LocationMapPreview({required this.location});
 
-  final EventLocation? location;
+  final SportPlace? location;
 
   @override
   Widget build(BuildContext context) {
@@ -511,10 +513,15 @@ class _LocationMapPreview extends StatelessWidget {
                   markers: <Marker>[
                     Marker(
                       point: location!.coordinates,
-                      child: const Icon(
-                        Icons.location_on,
-                        color: AppColors.error,
-                        size: 36,
+                      // Mesmas medidas e âncora do pin não selecionado do
+                      // mapa (RF04) — o local tem que ser reconhecível
+                      // igual nas duas telas.
+                      width: 40,
+                      height: 50,
+                      alignment: Alignment.topCenter,
+                      child: CustomSportMarker(
+                        sport: location!.primarySport,
+                        selected: false,
                       ),
                     ),
                   ],

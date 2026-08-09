@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/models/sport.dart';
+import '../../core/theme/app_colors.dart';
+import '../models/sport.dart';
 
 /// Marker no formato gota com ícone do esporte ao centro.
 ///
 /// Quando [selected] é `true`, é renderizado em escala maior e em vermelho
 /// — estilo "Pin selecionado" do mockup.
+///
+/// Compartilhado: o mapa (RF04) e o preview de local em "Criar evento"
+/// desenham o mesmo pin, para o usuário reconhecer o local nas duas telas.
 class CustomSportMarker extends StatelessWidget {
   const CustomSportMarker({
     required this.sport,
@@ -27,14 +30,16 @@ class CustomSportMarker extends StatelessWidget {
       child: SizedBox(
         width: size,
         height: size * 1.25,
-        child: Padding(
-          padding: EdgeInsets.only(top: size * 0.18),
-          child: Center(
-            child: CircleAvatar(
-              radius: size * 0.35,
-              backgroundColor: Colors.white,
-              child: Icon(sport.icon, color: pinColor, size: size * 0.45),
-            ),
+        // O círculo da gota é pintado no quadrado superior da caixa
+        // (centro em y = size/2, altura total 1.25 * size), então o
+        // ícone tem que subir junto: 0.5 / 0.625 - 1 = -0.2. Centralizar
+        // na caixa inteira deixaria o ícone caído sobre a ponta.
+        child: Align(
+          alignment: const Alignment(0, -0.2),
+          child: CircleAvatar(
+            radius: size * 0.35,
+            backgroundColor: Colors.white,
+            child: Icon(sport.icon, color: pinColor, size: size * 0.45),
           ),
         ),
       ),

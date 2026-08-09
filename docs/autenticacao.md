@@ -114,7 +114,8 @@ As regras usam a função auxiliar `signedIn()` que verifica `request.auth != nu
 
 - `users/{userId}`: leitura para qualquer autenticado; escrita só para o dono.
 - `usernames/{username}`: leitura livre; criação só se `request.resource.data.uid == request.auth.uid`.
-- `events`, `conversations`, `places`: leitura/escrita para qualquer autenticado.
+- `events`, `conversations`: escrita restrita por papel (criador do evento, membro da conversa) — ver os comentários no próprio `firestore.rules`.
+- `places`: não existe. O catálogo de locais é curado e vive em código (`SportPlace.all`).
 
 **Para publicar as regras:**
 

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../providers/maps_providers.dart';
-import '../widgets/custom_sport_marker.dart';
 import '../widgets/place_details_sheet.dart';
 
 /// Tela de mapa (RF04): exibe pins customizados para os locais
@@ -32,9 +34,14 @@ class _MapsPageState extends ConsumerState<MapsPage> {
         children: <Widget>[
           FlutterMap(
             mapController: _mapController,
-            options: const MapOptions(
+            options: MapOptions(
               initialCenter: AppGeo.taquaraCenter,
               initialZoom: AppGeo.defaultZoom,
+              // Tocar no mapa fora do card desfaz a seleção. A câmera
+              // fica onde está: mover sozinha depois de um toque solto
+              // desorienta mais do que ajuda.
+              onTap: (_, __) =>
+                  ref.read(selectedPlaceProvider.notifier).state = null,
             ),
             children: <Widget>[
               TileLayer(
@@ -49,6 +56,9 @@ class _MapsPageState extends ConsumerState<MapsPage> {
                         point: place.coordinates,
                         width: place.id == selectedPlace?.id ? 56 : 40,
                         height: place.id == selectedPlace?.id ? 70 : 50,
+                        // Pin em forma de gota: o widget fica acima do
+                        // ponto para a ponta tocar a coordenada exata.
+                        alignment: Alignment.topCenter,
                         child: GestureDetector(
                           onTap: () {
                             ref.read(selectedPlaceProvider.notifier).state = place;
@@ -58,7 +68,9 @@ class _MapsPageState extends ConsumerState<MapsPage> {
                             );
                           },
                           child: CustomSportMarker(
-                            sport: place.sport,
+                            // Locais aceitam vários esportes; o pin usa a
+                            // modalidade principal do local.
+                            sport: place.primarySport,
                             selected: place.id == selectedPlace?.id,
                           ),
                         ),
@@ -72,44 +84,88 @@ class _MapsPageState extends ConsumerState<MapsPage> {
           ),
 
           // Barra de busca flutuante (mockup "2 / 2.1 Pesquisa de pontos")
+          // com o botão de voltar ao lado — o mapa é full-bleed, uma
+          // AppBar cobriria o mapa e destoaria do mockup.
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Material(
-                elevation: 4,
-                borderRadius: BorderRadius.circular(28),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: AppStrings.mapsSearchHint,
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.more_vert),
-                      onPressed: () {},
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    border: OutlineInputBorder(
+              child: Row(
+                children: <Widget>[
+                  const _BackButton(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Material(
+                      elevation: 4,
                       borderRadius: BorderRadius.circular(28),
-                      borderSide: BorderSide.none,
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: AppStrings.mapsSearchHint,
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.more_vert),
+                            onPressed: () {},
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(28),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
 
           // Bottom sheet de detalhes — surge quando há pin selecionado.
+          // O Align é o par obrigatório do `expand: false` do sheet: sem
+          // ele o card iria para o topo do Stack.
           if (selectedPlace != null)
-            PlaceDetailsSheet(
-              place: selectedPlace,
-              onCreateEvent: () {
-                ref.read(selectedPlaceProvider.notifier).state = null;
-                // TODO: levar ao create_event com place pré-preenchido.
-              },
-              onShare: () {},
-              onFavorite: () {},
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: PlaceDetailsSheet(
+                place: selectedPlace,
+                onCreateEvent: () {
+                  ref.read(selectedPlaceProvider.notifier).state = null;
+                  // TODO: levar ao create_event com place pré-preenchido.
+                },
+                onShare: () {},
+                onFavorite: () {},
+              ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Botão flutuante de voltar, à esquerda da barra de busca. Mesma
+/// elevação do campo para os dois lerem como um par.
+class _BackButton extends StatelessWidget {
+  const _BackButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 4,
+      color: AppColors.surface,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        // A Home entra no mapa com `go`, que empilha /home/maps sobre
+        // /home — o pop volta para a Home com o bottom nav intacto. O
+        // fallback cobre quem chega direto por deep link.
+        onTap: () => context.canPop()
+            ? context.pop()
+            : context.go(AppRoutes.home),
+        child: const SizedBox(
+          width: 48,
+          height: 48,
+          child: Icon(Icons.arrow_back),
+        ),
       ),
     );
   }
