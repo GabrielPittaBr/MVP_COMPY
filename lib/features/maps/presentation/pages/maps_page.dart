@@ -7,6 +7,7 @@ import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/models/sport_place.dart';
 import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../providers/maps_providers.dart';
 import '../widgets/place_details_sheet.dart';
@@ -29,6 +30,23 @@ class _MapsPageState extends ConsumerState<MapsPage> {
     final placesAsync = ref.watch(placesProvider);
     final selectedPlace = ref.watch(selectedPlaceProvider);
 
+    // O card do local vive dentro do Stack, não no back-stack: sem isso o
+    // voltar do Android sairia do mapa com o card aberto na frente.
+    return PopScope(
+      canPop: selectedPlace == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        ref.read(selectedPlaceProvider.notifier).state = null;
+      },
+      child: _buildScaffold(context, placesAsync, selectedPlace),
+    );
+  }
+
+  Widget _buildScaffold(
+    BuildContext context,
+    AsyncValue<List<SportPlace>> placesAsync,
+    SportPlace? selectedPlace,
+  ) {
     return Scaffold(
       body: Stack(
         children: <Widget>[
@@ -128,12 +146,13 @@ class _MapsPageState extends ConsumerState<MapsPage> {
               alignment: Alignment.bottomCenter,
               child: PlaceDetailsSheet(
                 place: selectedPlace,
+                // Vai para o formulário com o local já escolhido. Viaja
+                // o id (estável no catálogo), não o objeto.
                 onCreateEvent: () {
+                  final placeId = selectedPlace.id;
                   ref.read(selectedPlaceProvider.notifier).state = null;
-                  // TODO: levar ao create_event com place pré-preenchido.
+                  context.go(AppRoutes.create, extra: placeId);
                 },
-                onShare: () {},
-                onFavorite: () {},
               ),
             ),
         ],
@@ -144,23 +163,29 @@ class _MapsPageState extends ConsumerState<MapsPage> {
 
 /// Botão flutuante de voltar, à esquerda da barra de busca. Mesma
 /// elevação do campo para os dois lerem como um par.
-class _BackButton extends StatelessWidget {
+class _BackButton extends ConsumerWidget {
   const _BackButton();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Material(
       elevation: 4,
       color: AppColors.surface,
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
+        // Mesma regra do voltar do Android (PopScope acima): com um local
+        // aberto, o primeiro voltar fecha o card; o segundo sai do mapa.
         // A Home entra no mapa com `go`, que empilha /home/maps sobre
         // /home — o pop volta para a Home com o bottom nav intacto. O
         // fallback cobre quem chega direto por deep link.
-        onTap: () => context.canPop()
-            ? context.pop()
-            : context.go(AppRoutes.home),
+        onTap: () {
+          if (ref.read(selectedPlaceProvider) != null) {
+            ref.read(selectedPlaceProvider.notifier).state = null;
+            return;
+          }
+          context.canPop() ? context.pop() : context.go(AppRoutes.home);
+        },
         child: const SizedBox(
           width: 48,
           height: 48,

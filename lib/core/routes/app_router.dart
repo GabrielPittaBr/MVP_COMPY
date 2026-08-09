@@ -180,7 +180,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: <RouteBase>[
               GoRoute(
                 path: AppRoutes.create,
-                builder: (context, state) => const CreateEventPage(),
+                // `extra` opcional: id do local vindo do pin do mapa
+                // (bottom sheet → "Criar evento"). Sem ele, formulário
+                // em branco como sempre.
+                builder: (context, state) =>
+                    CreateEventPage(initialPlaceId: state.extra as String?),
               ),
             ],
           ),
