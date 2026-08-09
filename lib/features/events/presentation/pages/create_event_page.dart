@@ -39,6 +39,12 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   final _dateCtrl = TextEditingController();
   final _timeCtrl = TextEditingController();
   final _durationCtrl = TextEditingController();
+
+  /// Input do "Outro". Vive junto da página (e não dentro do diálogo)
+  /// porque descartá-lo assim que o showDialog retorna estoura o
+  /// `_dependents.isEmpty`: a rota ainda está animando a saída com o
+  /// TextField escutando o controller.
+  final _customDurationCtrl = TextEditingController();
   final _skillCtrl = TextEditingController();
   final _participantsCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
@@ -91,6 +97,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     _dateCtrl.dispose();
     _timeCtrl.dispose();
     _durationCtrl.dispose();
+    _customDurationCtrl.dispose();
     _skillCtrl.dispose();
     _participantsCtrl.dispose();
     _descriptionCtrl.dispose();
@@ -329,13 +336,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   /// Input livre do "Outro". Devolve `null` quando o criador cancela ou
   /// digita um valor fora dos limites (aí o campo mantém o anterior).
   Future<int?> _askCustomDuration() async {
-    final controller = TextEditingController();
+    _customDurationCtrl.clear();
     final typed = await showDialog<int>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text(AppStrings.eventDurationCustomTitle),
         content: TextField(
-          controller: controller,
+          controller: _customDurationCtrl,
           autofocus: true,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(
@@ -349,13 +356,12 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext)
-                .pop(int.tryParse(controller.text.trim())),
+                .pop(int.tryParse(_customDurationCtrl.text.trim())),
             child: const Text(AppStrings.commonConfirm),
           ),
         ],
       ),
     );
-    controller.dispose();
 
     if (!mounted) return null;
     if (typed == null) return null;
