@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../providers/maps_providers.dart';
-import '../widgets/custom_sport_marker.dart';
 import '../widgets/place_details_sheet.dart';
 
 /// Tela de mapa (RF04): exibe pins customizados para os locais

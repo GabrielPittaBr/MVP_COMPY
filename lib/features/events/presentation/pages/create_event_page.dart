@@ -14,6 +14,7 @@ import '../../../../shared/models/skill_level.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/sport_place.dart';
 import '../../../../shared/models/user_summary.dart';
+import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
@@ -512,10 +513,15 @@ class _LocationMapPreview extends StatelessWidget {
                   markers: <Marker>[
                     Marker(
                       point: location!.coordinates,
-                      child: const Icon(
-                        Icons.location_on,
-                        color: AppColors.error,
-                        size: 36,
+                      // Mesmas medidas e âncora do pin não selecionado do
+                      // mapa (RF04) — o local tem que ser reconhecível
+                      // igual nas duas telas.
+                      width: 40,
+                      height: 50,
+                      alignment: Alignment.topCenter,
+                      child: CustomSportMarker(
+                        sport: location!.primarySport,
+                        selected: false,
                       ),
                     ),
                   ],

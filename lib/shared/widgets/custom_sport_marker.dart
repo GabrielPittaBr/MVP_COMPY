@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/models/sport.dart';
+import '../../core/theme/app_colors.dart';
+import '../models/sport.dart';
 
 /// Marker no formato gota com ícone do esporte ao centro.
 ///
 /// Quando [selected] é `true`, é renderizado em escala maior e em vermelho
 /// — estilo "Pin selecionado" do mockup.
+///
+/// Compartilhado: o mapa (RF04) e o preview de local em "Criar evento"
+/// desenham o mesmo pin, para o usuário reconhecer o local nas duas telas.
 class CustomSportMarker extends StatelessWidget {
   const CustomSportMarker({
     required this.sport,
