@@ -34,6 +34,7 @@ abstract final class AppStrings {
 
   // Maps
   static const String mapsSearchHint = 'Encontre esportes';
+  static const String mapsPlaceInfo = 'Informações';
 
   // Events
   static const String eventsTitle = 'Eventos';

@@ -1,24 +1,25 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/sport_place.dart';
 
 /// Bottom sheet exibido ao tocar em um pin (RF04 — informações do local +
-/// ações: criar evento / compartilhar / favoritar).
+/// ação de criar evento ali).
+///
+/// D11: "Favoritar" saiu — não existe modelo de local favorito e botão
+/// inerte é pior que botão ausente. "Compartilhar" volta na tarefa 9,
+/// junto com o chat, que é para onde um local compartilhado vai.
 class PlaceDetailsSheet extends StatelessWidget {
   const PlaceDetailsSheet({
     required this.place,
     required this.onCreateEvent,
-    required this.onShare,
-    required this.onFavorite,
     super.key,
   });
 
   final SportPlace place;
   final VoidCallback onCreateEvent;
-  final VoidCallback onShare;
-  final VoidCallback onFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -105,29 +106,16 @@ class PlaceDetailsSheet extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        _ActionButton(
-                          icon: Icons.add,
-                          label: 'Criar evento',
-                          onTap: onCreateEvent,
-                        ),
-                        _ActionButton(
-                          icon: Icons.share_outlined,
-                          label: 'Compartilhar',
-                          onTap: onShare,
-                        ),
-                        _ActionButton(
-                          icon: Icons.bookmark_outline,
-                          label: 'Favoritar',
-                          onTap: onFavorite,
-                        ),
-                      ],
+                    Center(
+                      child: _ActionButton(
+                        icon: Icons.add,
+                        label: AppStrings.eventCreate,
+                        onTap: onCreateEvent,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'Informações',
+                      AppStrings.mapsPlaceInfo,
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,

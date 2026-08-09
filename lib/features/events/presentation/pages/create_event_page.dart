@@ -27,7 +27,11 @@ import '../widgets/event_form_field.dart';
 /// informação selecionada, pois ele determina quais esportes estão
 /// disponíveis (pins curados pela equipe — ver [SportPlace]).
 class CreateEventPage extends ConsumerStatefulWidget {
-  const CreateEventPage({super.key});
+  const CreateEventPage({this.initialPlaceId, super.key});
+
+  /// Local já escolhido no mapa (id de [SportPlace]) — pula o primeiro
+  /// passo do formulário. Nulo quando a tela é aberta pela aba "Criar".
+  final String? initialPlaceId;
 
   @override
   ConsumerState<CreateEventPage> createState() => _CreateEventPageState();
@@ -86,6 +90,27 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     // O nº de participantes habilita/desabilita o botão "Criar evento";
     // sem isso o _canSubmit() só seria reavaliado nos setState dos pickers.
     _participantsCtrl.addListener(_onTypedFieldChanged);
+    _applyInitialPlace();
+  }
+
+  @override
+  void didUpdateWidget(CreateEventPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A aba "Criar" é um branch do shell: o State sobrevive à navegação,
+    // então chegar de novo pelo mapa reconstrói o widget sem passar pelo
+    // initState. Sem isto, o segundo local escolhido no mapa seria
+    // ignorado.
+    _applyInitialPlace();
+  }
+
+  /// Pré-seleciona o local quando a tela foi aberta a partir de um pin.
+  void _applyInitialPlace() {
+    final placeId = widget.initialPlaceId;
+    if (placeId == null || placeId == _location?.id) return;
+    final place = SportPlace.byId(placeId);
+    // Id desconhecido (local removido do catálogo): segue com o
+    // formulário em branco, o usuário escolhe na mão.
+    if (place != null) _selectLocation(place);
   }
 
   void _onTypedFieldChanged() => setState(() {});
@@ -223,17 +248,19 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         ),
       ),
     );
-    if (picked != null) {
-      setState(() {
-        _location = picked;
-        _locationCtrl.text = '${picked.name} — ${picked.city}';
-        // Descarta esporte incompatível com o novo local.
-        if (_sport != null && !picked.allowedSports.contains(_sport)) {
-          _sport = null;
-          _sportCtrl.clear();
-        }
-      });
-    }
+    if (picked != null) _selectLocation(picked);
+  }
+
+  void _selectLocation(SportPlace place) {
+    setState(() {
+      _location = place;
+      _locationCtrl.text = '${place.name} — ${place.city}';
+      // Descarta esporte incompatível com o novo local.
+      if (_sport != null && !place.allowedSports.contains(_sport)) {
+        _sport = null;
+        _sportCtrl.clear();
+      }
+    });
   }
 
   Future<void> _pickSport() async {
