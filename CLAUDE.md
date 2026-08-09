@@ -61,7 +61,7 @@ Branch naming: `feature/`, `fix/`, `refactor/`, `chore/`, `style/` prefixes.
 | `lib/core/routes/app_router.dart` | GoRouter config — all routes defined here |
 | `lib/core/theme/app_colors.dart` | Color palette (WCAG AA — do not change arbitrarily) |
 | `lib/core/constants/app_strings.dart` | All UI strings in PT-BR (single source of truth) |
-| `firestore.rules` | Currently `allow read, write: if false` — update before deploying |
+| `firestore.rules` | Per-collection rules scoped by role (profile owner, event creator, conversation member) — see the comments in the file |
 
 ## Conventions
 
