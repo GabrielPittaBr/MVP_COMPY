@@ -49,6 +49,9 @@ class _MapsPageState extends ConsumerState<MapsPage> {
                         point: place.coordinates,
                         width: place.id == selectedPlace?.id ? 56 : 40,
                         height: place.id == selectedPlace?.id ? 70 : 50,
+                        // Pin em forma de gota: o widget fica acima do
+                        // ponto para a ponta tocar a coordenada exata.
+                        alignment: Alignment.topCenter,
                         child: GestureDetector(
                           onTap: () {
                             ref.read(selectedPlaceProvider.notifier).state = place;
