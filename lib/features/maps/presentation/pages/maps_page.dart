@@ -58,7 +58,9 @@ class _MapsPageState extends ConsumerState<MapsPage> {
                             );
                           },
                           child: CustomSportMarker(
-                            sport: place.sport,
+                            // Locais aceitam vários esportes; o pin usa a
+                            // modalidade principal do local.
+                            sport: place.primarySport,
                             selected: place.id == selectedPlace?.id,
                           ),
                         ),

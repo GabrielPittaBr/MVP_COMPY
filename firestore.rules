@@ -191,19 +191,16 @@ service cloud.firestore {
       }
     }
 
-    // ── places ───────────────────────────────────────────────────────
+    // ── places (não existe) ──────────────────────────────────────────
     // Tarefa 6. O catálogo de locais é curado pela equipe (RN-04), é pequeno e
-    // muda raramente — a recomendação da tarefa 6 é mantê-lo **em código**, e
-    // nesse caso nada no app lê esta coleção.
+    // muda raramente: ele vive **em código**, em `lib/shared/models/
+    // sport_place.dart` (`SportPlace.all`), que alimenta tanto os pins do mapa
+    // quanto o seletor de "Criar evento".
     //
-    // A regra fica registrada como reserva para quando os locais forem
-    // cadastráveis pela equipe sem publicar app novo. Se você procurou o código
-    // que usa `places` e não achou: não existe, e é de propósito. Escrita é
-    // negada — o catálogo nunca vem do cliente.
-    match /places/{placeId} {
-      allow read: if signedIn();
-      allow write: if false;
-    }
+    // A regra de `places` foi removida junto com o `PlacesRemoteDataSource`:
+    // nada aponta mais para a coleção, e o deny-by-default cuida do resto. Se
+    // um dia a equipe precisar cadastrar locais sem publicar app novo, é aqui
+    // que a regra volta.
 
     // ── ratings ──────────────────────────────────────────────────────
     // Tarefa 14. Coleção nova — antes caía no deny-by-default.

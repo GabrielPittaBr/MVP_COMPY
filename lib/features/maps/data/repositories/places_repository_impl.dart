@@ -1,25 +1,21 @@
-import '../../../../core/constants/app_flags.dart';
 import '../../../../shared/models/sport.dart';
-import '../../domain/entities/sport_place.dart';
+import '../../../../shared/models/sport_place.dart';
 import '../../domain/repositories/places_repository.dart';
-import '../datasources/mock_places.dart';
-import '../datasources/places_remote_datasource.dart';
 
+/// Locais **não** vêm do Firestore: o catálogo é curado pela equipe
+/// (RN-04), é pequeno e muda raramente, então vive em código —
+/// [SportPlace.all] é a única fonte. Por isso este repositório ignora
+/// `kUseFirebaseRepos`: antes ele devolvia lista vazia com Firebase
+/// ligado e o mapa ficava sem nenhum pin.
 class PlacesRepositoryImpl implements PlacesRepository {
-  PlacesRepositoryImpl(this._remote);
-  // ignore: unused_field
-  final PlacesRemoteDataSource? _remote;
+  const PlacesRepositoryImpl();
 
   @override
-  Future<List<SportPlace>> getAll() async {
-    if (!kUseFirebaseRepos) return MockPlaces.all;
-    // TODO(integração): mapear QuerySnapshot -> List<SportPlace>.
-    return <SportPlace>[];
-  }
+  Future<List<SportPlace>> getAll() async => SportPlace.all;
 
   @override
   Future<List<SportPlace>> getBySport(Sport sport) async {
     final all = await getAll();
-    return all.where((p) => p.sport == sport).toList();
+    return all.where((p) => p.allowedSports.contains(sport)).toList();
   }
 }
