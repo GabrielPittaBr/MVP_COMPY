@@ -58,9 +58,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   @override
   void initState() {
     super.initState();
-    // Campos digitados também habilitam/desabilitam o botão "Criar evento";
+    // O nº de participantes habilita/desabilita o botão "Criar evento";
     // sem isso o _canSubmit() só seria reavaliado nos setState dos pickers.
-    _titleCtrl.addListener(_onTypedFieldChanged);
     _participantsCtrl.addListener(_onTypedFieldChanged);
   }
 
@@ -91,9 +90,10 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           child: Column(
             children: <Widget>[
-              // Título — nome do evento nas listas e na tela de detalhes.
-              // A primeira letra é garantida maiúscula no _submit(); o
-              // teclado já sobe em maiúscula via textCapitalization.
+              // Título opcional — nome do evento nas listas e na tela de
+              // detalhes. A primeira letra é garantida maiúscula no
+              // _submit(); o teclado já sobe em maiúscula via
+              // textCapitalization.
               EventFormField(
                 hint: AppStrings.eventTitleHint,
                 controller: _titleCtrl,
@@ -162,7 +162,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   }
 
   bool _canSubmit() =>
-      _titleCtrl.text.trim().isNotEmpty &&
       _location != null &&
       _sport != null &&
       _date != null &&
@@ -315,10 +314,15 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       final location = _location!;
       final sport = _sport!;
       final totalSpots = int.parse(_participantsCtrl.text);
+      final typedTitle = _titleCtrl.text.trim();
 
       final draft = Event(
         id: '', // Firestore gerará o ID
-        title: _capitalizeFirst(_titleCtrl.text.trim()),
+        // Título é opcional: em branco cai no nome padrão da modalidade,
+        // já que a lista e a AppBar de detalhes precisam de um rótulo.
+        title: typedTitle.isEmpty
+            ? 'Partida de ${sport.label.toLowerCase()}'
+            : _capitalizeFirst(typedTitle),
         sport: sport,
         location: '${location.name}, ${location.city}',
         coordinates: location.coordinates,
