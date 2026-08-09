@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/duration_format.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
@@ -47,7 +48,9 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dateFormat = DateFormat('EEEE, h:mm a', 'pt_BR');
+    // Dia da semana + intervalo início–fim ("Sábado, 15:00 – 16:00"):
+    // saber a que horas acaba é mais útil que só o horário de início.
+    final dayFormat = DateFormat('EEEE', 'pt_BR');
 
     return CustomScrollView(
       slivers: <Widget>[
@@ -90,7 +93,14 @@ class _Body extends ConsumerWidget {
               const SizedBox(height: 8),
               _IconRow(
                 icon: Icons.calendar_today_outlined,
-                label: _capitalize(dateFormat.format(event.dateTime)),
+                label: '${_capitalize(dayFormat.format(event.dateTime))}, '
+                    '${DurationFormat.timeRange(event.dateTime, event.durationMinutes)}',
+              ),
+              const SizedBox(height: 8),
+              _IconRow(
+                icon: Icons.schedule,
+                label: '${AppStrings.eventDuration}: '
+                    '${DurationFormat.short(event.durationMinutes)}',
               ),
               const SizedBox(height: 20),
 

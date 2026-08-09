@@ -128,6 +128,7 @@ class EventsRepositoryImpl implements EventsRepository {
       location: draft.location,
       coordinates: draft.coordinates,
       dateTime: draft.dateTime,
+      durationMinutes: draft.durationMinutes,
       skillLevel: draft.skillLevel,
       totalSpots: draft.totalSpots,
       remainingSpots: draft.remainingSpots,

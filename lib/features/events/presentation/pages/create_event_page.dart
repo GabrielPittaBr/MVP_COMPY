@@ -8,6 +8,7 @@ import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/duration_format.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_location.dart';
 import '../../../../shared/models/skill_level.dart';
@@ -37,6 +38,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   final _sportCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
   final _timeCtrl = TextEditingController();
+  final _durationCtrl = TextEditingController();
+
+  /// Input do "Outro". Vive junto da página (e não dentro do diálogo)
+  /// porque descartá-lo assim que o showDialog retorna estoura o
+  /// `_dependents.isEmpty`: a rota ainda está animando a saída com o
+  /// TextField escutando o controller.
+  final _customDurationCtrl = TextEditingController();
   final _skillCtrl = TextEditingController();
   final _participantsCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
@@ -48,16 +56,32 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   /// texto automático de fallback).
   static const int _descriptionMaxLength = 300;
 
+  /// Opções fixas do seletor de duração, em minutos.
+  static const List<int> _durationOptions = <int>[30, 60, 90, 120, 180];
+
+  /// Valor devolvido pelo bottom sheet quando o criador escolhe "Outro"
+  /// — não é uma duração, só sinaliza que o input deve abrir.
+  static const int _customDurationOption = -1;
+
+  /// Limites do input de "Outro" (15min a 12h).
+  static const int _minDurationMinutes = 15;
+  static const int _maxDurationMinutes = 720;
+
   EventLocation? _location;
   Sport? _sport;
   SkillLevel? _skill;
   DateTime? _date;
   TimeOfDay? _time;
+
+  /// Obrigatória, mas já vem preenchida (D8) — por isso fica fora do
+  /// _canSubmit() e nunca chega nula ao _submit().
+  int _durationMinutes = Event.defaultDurationMinutes;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _durationCtrl.text = DurationFormat.short(_durationMinutes);
     // O nº de participantes habilita/desabilita o botão "Criar evento";
     // sem isso o _canSubmit() só seria reavaliado nos setState dos pickers.
     _participantsCtrl.addListener(_onTypedFieldChanged);
@@ -72,6 +96,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     _sportCtrl.dispose();
     _dateCtrl.dispose();
     _timeCtrl.dispose();
+    _durationCtrl.dispose();
+    _customDurationCtrl.dispose();
     _skillCtrl.dispose();
     _participantsCtrl.dispose();
     _descriptionCtrl.dispose();
@@ -128,6 +154,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                 controller: _timeCtrl,
                 readOnly: true,
                 onTap: _pickTime,
+              ),
+              // Duração — pré-selecionada em 1h, trocável no seletor.
+              EventFormField(
+                hint: AppStrings.eventDuration,
+                controller: _durationCtrl,
+                readOnly: true,
+                onTap: _pickDuration,
+                suffix: const Icon(Icons.schedule),
               ),
               EventFormField(
                 hint: AppStrings.eventSkillLevel,
@@ -262,6 +296,84 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     }
   }
 
+  Future<void> _pickDuration() async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (final minutes in _durationOptions)
+              ListTile(
+                leading: const Icon(Icons.schedule),
+                title: Text(DurationFormat.short(minutes)),
+                trailing: minutes == _durationMinutes
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () => Navigator.of(context).pop(minutes),
+              ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text(AppStrings.eventDurationOther),
+              onTap: () => Navigator.of(context).pop(_customDurationOption),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null) return;
+
+    final minutes =
+        picked == _customDurationOption ? await _askCustomDuration() : picked;
+    if (minutes == null || !mounted) return;
+
+    setState(() {
+      _durationMinutes = minutes;
+      _durationCtrl.text = DurationFormat.short(minutes);
+    });
+  }
+
+  /// Input livre do "Outro". Devolve `null` quando o criador cancela ou
+  /// digita um valor fora dos limites (aí o campo mantém o anterior).
+  Future<int?> _askCustomDuration() async {
+    _customDurationCtrl.clear();
+    final typed = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(AppStrings.eventDurationCustomTitle),
+        content: TextField(
+          controller: _customDurationCtrl,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: AppStrings.eventDurationCustomHint,
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text(AppStrings.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext)
+                .pop(int.tryParse(_customDurationCtrl.text.trim())),
+            child: const Text(AppStrings.commonConfirm),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return null;
+    if (typed == null) return null;
+    if (typed < _minDurationMinutes || typed > _maxDurationMinutes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.eventDurationCustomInvalid)),
+      );
+      return null;
+    }
+    return typed;
+  }
+
   Future<void> _pickSkill() async {
     final picked = await showModalBottomSheet<SkillLevel>(
       context: context,
@@ -327,6 +439,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         location: '${location.name}, ${location.city}',
         coordinates: location.coordinates,
         dateTime: dateTime,
+        durationMinutes: _durationMinutes,
         skillLevel: _skill!,
         totalSpots: totalSpots,
         // O criador já ocupa uma vaga.

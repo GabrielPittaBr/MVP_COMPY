@@ -27,9 +27,15 @@ class Event extends Equatable {
     required this.remainingSpots,
     required this.bannerUrl,
     required this.creator,
+    this.durationMinutes = defaultDurationMinutes,
     this.description = '',
     this.participants = const <UserSummary>[],
   });
+
+  /// Duração assumida quando o criador não informou nada — vale tanto
+  /// para o pré-selecionado do formulário quanto para os eventos
+  /// gravados antes da tarefa 3 (documentos sem `durationMinutes`).
+  static const int defaultDurationMinutes = 60;
 
   final String id;
   final String title;
@@ -42,11 +48,17 @@ class Event extends Equatable {
   final int remainingSpots;
   final String bannerUrl;
   final UserSummary creator;
+
+  /// Duração informada pelo criador, em minutos.
+  final int durationMinutes;
   final String description;
   final List<UserSummary> participants;
 
   /// RN-05: evento sem vagas restantes deve ser ocultado / impedido de receber inscrições.
   bool get isFull => remainingSpots <= 0;
+
+  /// Fim previsto do evento (início + duração).
+  DateTime get endsAt => dateTime.add(Duration(minutes: durationMinutes));
 
   // ── Serialização Firestore ──────────────────────────────────────
 
@@ -61,6 +73,12 @@ class Event extends Equatable {
         // Índice geográfico para a busca por raio na Home (RF03).
         'geohash': Geohash.encode(coordinates.latitude, coordinates.longitude),
         'dateTime': Timestamp.fromDate(dateTime),
+        'durationMinutes': durationMinutes,
+        // Fim previsto desnormalizado: o Firestore não calcula nada em
+        // consulta, então "esconder eventos encerrados" e "acontecendo
+        // agora" (tarefa 14) precisam do campo gravado para filtrar no
+        // servidor sem quebrar a paginação.
+        'endsAt': Timestamp.fromDate(endsAt),
         'skillLevel': skillLevel.name,
         'totalSpots': totalSpots,
         'remainingSpots': remainingSpots,
@@ -73,6 +91,16 @@ class Event extends Equatable {
   factory Event.fromMap(String id, Map<String, dynamic> data) {
     final geoPoint = data['coordinates'] as GeoPoint?;
     final timestamp = data['dateTime'] as Timestamp?;
+    final startsAt = timestamp?.toDate() ?? DateTime.now();
+
+    // Eventos criados antes da tarefa 3 não têm `durationMinutes`. Se o
+    // documento tiver ao menos `endsAt`, a duração vem dele; senão cai
+    // no padrão de 1h.
+    final storedEndsAt = (data['endsAt'] as Timestamp?)?.toDate();
+    final durationMinutes = (data['durationMinutes'] as int?) ??
+        (storedEndsAt != null && storedEndsAt.isAfter(startsAt)
+            ? storedEndsAt.difference(startsAt).inMinutes
+            : defaultDurationMinutes);
 
     return Event(
       id: id,
@@ -85,7 +113,8 @@ class Event extends Equatable {
       coordinates: geoPoint != null
           ? LatLng(geoPoint.latitude, geoPoint.longitude)
           : const LatLng(0, 0),
-      dateTime: timestamp?.toDate() ?? DateTime.now(),
+      dateTime: startsAt,
+      durationMinutes: durationMinutes,
       skillLevel: SkillLevel.values.firstWhere(
         (l) => l.name == data['skillLevel'],
         orElse: () => SkillLevel.todos,
@@ -104,6 +133,7 @@ class Event extends Equatable {
   // ── copyWith ────────────────────────────────────────────────────
 
   Event copyWith({
+    int? durationMinutes,
     int? remainingSpots,
     List<UserSummary>? participants,
   }) {
@@ -114,6 +144,7 @@ class Event extends Equatable {
       location: location,
       coordinates: coordinates,
       dateTime: dateTime,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
       skillLevel: skillLevel,
       totalSpots: totalSpots,
       remainingSpots: remainingSpots ?? this.remainingSpots,
@@ -132,6 +163,7 @@ class Event extends Equatable {
         location,
         coordinates,
         dateTime,
+        durationMinutes,
         skillLevel,
         totalSpots,
         remainingSpots,
