@@ -8,6 +8,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/duration_format.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../domain/repositories/events_repository.dart';
@@ -160,10 +161,14 @@ class _Body extends ConsumerWidget {
                           markers: <Marker>[
                             Marker(
                               point: event.coordinates,
-                              child: const Icon(
-                                Icons.location_on,
-                                color: AppColors.error,
-                                size: 36,
+                              // Mesmo pin do mapa e do preview de criação,
+                              // aqui na modalidade do próprio evento.
+                              width: 40,
+                              height: 50,
+                              alignment: Alignment.topCenter,
+                              child: CustomSportMarker(
+                                sport: event.sport,
+                                selected: false,
                               ),
                             ),
                           ],
