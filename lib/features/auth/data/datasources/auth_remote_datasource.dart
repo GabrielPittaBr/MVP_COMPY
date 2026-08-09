@@ -35,9 +35,15 @@ class AuthRemoteDataSource {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Emite [AuthUser] quando autenticado, null quando deslogado.
+  ///
+  /// Usa `userChanges()` em vez de `authStateChanges()` para também reagir a
+  /// mudanças de perfil: `setUsername()` chama `updateDisplayName()`, e é essa
+  /// emissão que faz o nome corrigido chegar à saudação da Home sem exigir
+  /// reinício do app. O custo é uma leitura extra em `users/{uid}` por
+  /// emissão (inclui a renovação de token, ~1x/hora).
   Stream<AuthUser?> authState() {
-    return _auth.authStateChanges().asyncMap((User? firebaseUser) async {
-      debugPrint('[Auth] authStateChanges emitiu: ${firebaseUser?.uid ?? 'null'}');
+    return _auth.userChanges().asyncMap((User? firebaseUser) async {
+      debugPrint('[Auth] userChanges emitiu: ${firebaseUser?.uid ?? 'null'}');
       if (firebaseUser == null) return null;
       debugPrint('[Auth] chamando _toAuthUser...');
       final result = await _toAuthUser(firebaseUser);
@@ -155,6 +161,7 @@ class AuthRemoteDataSource {
     required String email,
   }) async {
     final String normalizedUsername = username.trim().toLowerCase();
+    final String trimmedName = name.trim();
 
     final bool available = await isUsernameAvailable(normalizedUsername);
     if (!available) {
@@ -163,10 +170,21 @@ class AuthRemoteDataSource {
 
     await _writeUserProfile(
       uid: uid,
-      name: name,
+      name: trimmedName,
       username: normalizedUsername,
       email: email,
     );
+
+    // O nome que a Home exibe (`greetingNameProvider`) vem de
+    // `AuthUser.displayName`, ou seja, do Firebase Auth — não do Firestore.
+    // Sem este passo, o nome corrigido nesta tela ficaria só em
+    // `users/{uid}.name` e a saudação continuaria mostrando o do Google.
+    final User? current = _auth.currentUser;
+    if (current != null &&
+        current.uid == uid &&
+        current.displayName != trimmedName) {
+      await current.updateDisplayName(trimmedName);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/username_rules.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../domain/entities/auth_user.dart';
 import '../providers/auth_providers.dart';
@@ -10,8 +11,11 @@ import '../widgets/auth_text_field.dart';
 
 /// Tela intermediária exibida após login com Google pela primeira vez.
 ///
-/// Mostra Nome e E-mail pré-preenchidos (read-only, vindos do provedor Google)
-/// e pede que o usuário escolha um username exclusivo.
+/// Nome e e-mail chegam pré-preenchidos pelo provedor Google. O **nome é
+/// editável** — quem configurou o Google como "joao123" precisa poder
+/// corrigir antes de o valor virar `users/{uid}.name`. O **e-mail é
+/// read-only**: é a chave da credencial Google, e mudá-lo aqui só criaria
+/// divergência entre o que o Firebase Auth sabe e o que o Firestore guarda.
 class UsernamePage extends ConsumerStatefulWidget {
   const UsernamePage({required this.user, super.key});
 
@@ -25,10 +29,13 @@ class UsernamePage extends ConsumerStatefulWidget {
 class _UsernamePageState extends ConsumerState<UsernamePage> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
+  late final TextEditingController _nameController =
+      TextEditingController(text: widget.user.displayName);
 
   @override
   void dispose() {
     _usernameController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -70,11 +77,16 @@ class _UsernamePageState extends ConsumerState<UsernamePage> {
                 ),
                 const SizedBox(height: 24),
 
-                // Nome (read-only, vindo do Google)
+                // Nome (editável, pré-preenchido pelo Google)
                 AuthTextField(
                   hint: AppStrings.authName,
-                  initialValue: widget.user.displayName,
-                  readOnly: true,
+                  controller: _nameController,
+                  keyboardType: TextInputType.name,
+                  textInputAction: TextInputAction.next,
+                  maxLength: kMaxDisplayNameLength,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? AppStrings.authErrorNameEmpty
+                      : null,
                 ),
                 const SizedBox(height: 12),
 
@@ -93,8 +105,9 @@ class _UsernamePageState extends ConsumerState<UsernamePage> {
                   controller: _usernameController,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _submit(),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? AppStrings.authErrorUsernameEmpty : null,
+                  maxLength: UsernameRules.maxLength,
+                  inputFormatters: UsernameRules.inputFormatters,
+                  validator: UsernameRules.validate,
                 ),
 
                 const SizedBox(height: 28),
@@ -116,7 +129,7 @@ class _UsernamePageState extends ConsumerState<UsernamePage> {
     await ref.read(authControllerProvider.notifier).setUsername(
           uid: widget.user.uid,
           username: _usernameController.text.trim(),
-          name: widget.user.displayName,
+          name: _nameController.text.trim(),
           email: widget.user.email,
         );
   }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/username_rules.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../providers/auth_providers.dart';
 import '../widgets/auth_text_field.dart';
@@ -74,6 +75,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                   controller: _nameController,
                   keyboardType: TextInputType.name,
                   textInputAction: TextInputAction.next,
+                  maxLength: kMaxDisplayNameLength,
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? AppStrings.authErrorNameEmpty : null,
                 ),
@@ -85,8 +87,9 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                   controller: _usernameController,
                   keyboardType: TextInputType.text,
                   textInputAction: TextInputAction.next,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? AppStrings.authErrorUsernameEmpty : null,
+                  maxLength: UsernameRules.maxLength,
+                  inputFormatters: UsernameRules.inputFormatters,
+                  validator: UsernameRules.validate,
                 ),
                 const SizedBox(height: 12),
 

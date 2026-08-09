@@ -91,6 +91,12 @@ abstract final class AppStrings {
   static const String authLoading = 'Aguarde...';
   static const String authErrorUsernameTaken = 'Este username já está em uso.';
   static const String authErrorUsernameEmpty = 'O username não pode ser vazio.';
+  static const String authErrorUsernameTooShort =
+      'O username precisa ter ao menos 3 caracteres.';
+  static const String authErrorUsernameTooLong =
+      'O username pode ter no máximo 20 caracteres.';
+  static const String authErrorUsernameInvalidChars =
+      'Use apenas letras, números, ponto e _ — sem começar ou terminar com ponto.';
   static const String authErrorEmailInvalid = 'Informe um e-mail válido.';
   static const String authErrorPasswordShort = 'A senha precisa ter ao menos 6 caracteres.';
   static const String authErrorNameEmpty = 'Informe seu nome.';
