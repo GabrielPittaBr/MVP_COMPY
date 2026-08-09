@@ -11,6 +11,9 @@ class EventFormField extends StatelessWidget {
     this.onTap,
     this.suffix,
     this.keyboardType,
+    this.maxLines = 1,
+    this.maxLength,
+    this.textCapitalization = TextCapitalization.none,
     super.key,
   });
 
@@ -20,6 +23,9 @@ class EventFormField extends StatelessWidget {
   final VoidCallback? onTap;
   final Widget? suffix;
   final TextInputType? keyboardType;
+  final int maxLines;
+  final int? maxLength;
+  final TextCapitalization textCapitalization;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +38,9 @@ class EventFormField extends StatelessWidget {
         onTap: onTap,
         suffix: suffix,
         keyboardType: keyboardType,
+        maxLines: maxLines,
+        maxLength: maxLength,
+        textCapitalization: textCapitalization,
       ),
     );
   }

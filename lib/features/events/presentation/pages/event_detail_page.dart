@@ -78,7 +78,7 @@ class _Body extends ConsumerWidget {
           sliver: SliverList(
             delegate: SliverChildListDelegate(<Widget>[
               Text(
-                'Partida de ${event.sport.label.toLowerCase()}',
+                event.title,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
@@ -102,8 +102,17 @@ class _Body extends ConsumerWidget {
               _CreatorTile(event: event),
               const SizedBox(height: 20),
 
-              Text(event.description, style: const TextStyle(height: 1.45)),
-              const SizedBox(height: 24),
+              // Descrição é opcional: sem texto, o bloco inteiro some
+              // (nada de espaçamento órfão no meio do layout).
+              if (event.description.isNotEmpty) ...<Widget>[
+                const Text(
+                  AppStrings.eventDescription,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Text(event.description, style: const TextStyle(height: 1.45)),
+                const SizedBox(height: 24),
+              ],
 
               Text(
                 'Participantes (${event.participants.length})',

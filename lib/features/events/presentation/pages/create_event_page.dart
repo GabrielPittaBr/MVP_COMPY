@@ -21,9 +21,9 @@ import '../widgets/event_form_field.dart';
 
 /// Tela "4 Criar evento" — formulário com campos obrigatórios (RF07).
 ///
-/// Ordem de preenchimento: o Local é a primeira informação selecionada,
-/// pois ele determina quais esportes estão disponíveis (pins curados
-/// pela equipe — ver [EventLocation]).
+/// Ordem de preenchimento: depois do Título, o Local é a primeira
+/// informação selecionada, pois ele determina quais esportes estão
+/// disponíveis (pins curados pela equipe — ver [EventLocation]).
 class CreateEventPage extends ConsumerStatefulWidget {
   const CreateEventPage({super.key});
 
@@ -32,12 +32,21 @@ class CreateEventPage extends ConsumerStatefulWidget {
 }
 
 class _CreateEventPageState extends ConsumerState<CreateEventPage> {
+  final _titleCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
   final _sportCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
   final _timeCtrl = TextEditingController();
   final _skillCtrl = TextEditingController();
   final _participantsCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
+
+  /// Teto do título — cabe na AppBar da tela de detalhes e no card da lista.
+  static const int _titleMaxLength = 50;
+
+  /// Teto da descrição escrita pelo criador (D2: campo opcional, sem
+  /// texto automático de fallback).
+  static const int _descriptionMaxLength = 300;
 
   EventLocation? _location;
   Sport? _sport;
@@ -47,13 +56,25 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    // O nº de participantes habilita/desabilita o botão "Criar evento";
+    // sem isso o _canSubmit() só seria reavaliado nos setState dos pickers.
+    _participantsCtrl.addListener(_onTypedFieldChanged);
+  }
+
+  void _onTypedFieldChanged() => setState(() {});
+
+  @override
   void dispose() {
+    _titleCtrl.dispose();
     _locationCtrl.dispose();
     _sportCtrl.dispose();
     _dateCtrl.dispose();
     _timeCtrl.dispose();
     _skillCtrl.dispose();
     _participantsCtrl.dispose();
+    _descriptionCtrl.dispose();
     super.dispose();
   }
 
@@ -69,7 +90,17 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           child: Column(
             children: <Widget>[
-              // 1) Local — primeira informação a ser selecionada.
+              // Título opcional — nome do evento nas listas e na tela de
+              // detalhes. A primeira letra é garantida maiúscula no
+              // _submit(); o teclado já sobe em maiúscula via
+              // textCapitalization.
+              EventFormField(
+                hint: AppStrings.eventTitleHint,
+                controller: _titleCtrl,
+                maxLength: _titleMaxLength,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              // 1) Local — primeira seleção do formulário.
               EventFormField(
                 hint: AppStrings.eventSelectLocation,
                 controller: _locationCtrl,
@@ -108,6 +139,15 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                 hint: AppStrings.eventParticipantsNumber,
                 controller: _participantsCtrl,
                 keyboardType: TextInputType.number,
+              ),
+              // Descrição opcional — o placeholder é quem ensina o que
+              // escrever, já que o campo não tem rótulo próprio.
+              EventFormField(
+                hint: AppStrings.eventDescriptionHint,
+                controller: _descriptionCtrl,
+                keyboardType: TextInputType.multiline,
+                maxLines: 4,
+                maxLength: _descriptionMaxLength,
               ),
               const SizedBox(height: 12),
               PrimaryButton(
@@ -246,6 +286,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     }
   }
 
+  /// Garante a inicial maiúscula mesmo em teclado físico, onde o
+  /// [TextCapitalization] do campo não tem efeito.
+  String _capitalizeFirst(String input) {
+    if (input.isEmpty) return input;
+    return input[0].toUpperCase() + input.substring(1);
+  }
+
   Future<void> _submit() async {
     setState(() => _isLoading = true);
 
@@ -267,10 +314,15 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       final location = _location!;
       final sport = _sport!;
       final totalSpots = int.parse(_participantsCtrl.text);
+      final typedTitle = _titleCtrl.text.trim();
 
       final draft = Event(
         id: '', // Firestore gerará o ID
-        title: 'Partida de ${sport.label.toLowerCase()}',
+        // Título é opcional: em branco cai no nome padrão da modalidade,
+        // já que a lista e a AppBar de detalhes precisam de um rótulo.
+        title: typedTitle.isEmpty
+            ? 'Partida de ${sport.label.toLowerCase()}'
+            : _capitalizeFirst(typedTitle),
         sport: sport,
         location: '${location.name}, ${location.city}',
         coordinates: location.coordinates,
@@ -281,9 +333,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         remainingSpots: totalSpots - 1,
         bannerUrl: sport.banner,
         creator: creator,
-        description:
-            'Partida de ${sport.label.toLowerCase()} no ${location.name}, '
-            'em ${location.city}.',
+        description: _descriptionCtrl.text.trim(),
         participants: <UserSummary>[creator],
       );
 

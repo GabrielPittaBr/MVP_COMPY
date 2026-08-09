@@ -34,6 +34,9 @@ abstract final class AppStrings {
   // Events
   static const String eventsTitle = 'Eventos';
   static const String eventCreateTitle = 'Criar evento';
+  static const String eventTitle = 'Título';
+  static const String eventTitleHint =
+      'Título (ex.: Pelada de quinta, Vôlei descontraído)';
   static const String eventSelectSport = 'Selecionar esporte';
   static const String eventSelectLocation = 'Selecionar local';
   static const String eventSelectLocationFirst =
@@ -43,6 +46,10 @@ abstract final class AppStrings {
   static const String eventSkillLevel = 'Nível de habilidade';
   static const String eventParticipants = 'Participantes';
   static const String eventParticipantsNumber = 'Número de participantes';
+  static const String eventDescription = 'Descrição';
+  static const String eventDescriptionHint =
+      'Conte como vai ser o jogo: leve bola? tem colete? '
+      'é competitivo ou de boa?';
   static const String eventLocation = 'Local';
   static const String eventCreate = 'Criar evento';
   static const String eventJoin = 'Participar';
