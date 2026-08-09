@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../providers/maps_providers.dart';
@@ -82,28 +84,38 @@ class _MapsPageState extends ConsumerState<MapsPage> {
           ),
 
           // Barra de busca flutuante (mockup "2 / 2.1 Pesquisa de pontos")
+          // com o botão de voltar ao lado — o mapa é full-bleed, uma
+          // AppBar cobriria o mapa e destoaria do mockup.
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Material(
-                elevation: 4,
-                borderRadius: BorderRadius.circular(28),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: AppStrings.mapsSearchHint,
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.more_vert),
-                      onPressed: () {},
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    border: OutlineInputBorder(
+              child: Row(
+                children: <Widget>[
+                  const _BackButton(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Material(
+                      elevation: 4,
                       borderRadius: BorderRadius.circular(28),
-                      borderSide: BorderSide.none,
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: AppStrings.mapsSearchHint,
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.more_vert),
+                            onPressed: () {},
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(28),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -125,6 +137,35 @@ class _MapsPageState extends ConsumerState<MapsPage> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Botão flutuante de voltar, à esquerda da barra de busca. Mesma
+/// elevação do campo para os dois lerem como um par.
+class _BackButton extends StatelessWidget {
+  const _BackButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 4,
+      color: AppColors.surface,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        // A Home entra no mapa com `go`, que empilha /home/maps sobre
+        // /home — o pop volta para a Home com o bottom nav intacto. O
+        // fallback cobre quem chega direto por deep link.
+        onTap: () => context.canPop()
+            ? context.pop()
+            : context.go(AppRoutes.home),
+        child: const SizedBox(
+          width: 48,
+          height: 48,
+          child: Icon(Icons.arrow_back),
+        ),
       ),
     );
   }
