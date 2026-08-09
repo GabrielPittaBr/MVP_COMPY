@@ -34,6 +34,9 @@ abstract final class AppStrings {
   // Events
   static const String eventsTitle = 'Eventos';
   static const String eventCreateTitle = 'Criar evento';
+  static const String eventTitle = 'Título';
+  static const String eventTitleHint =
+      'Título (ex.: Pelada de quinta, Vôlei descontraído)';
   static const String eventSelectSport = 'Selecionar esporte';
   static const String eventSelectLocation = 'Selecionar local';
   static const String eventSelectLocationFirst =

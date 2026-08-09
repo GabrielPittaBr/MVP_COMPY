@@ -13,6 +13,7 @@ class EventFormField extends StatelessWidget {
     this.keyboardType,
     this.maxLines = 1,
     this.maxLength,
+    this.textCapitalization = TextCapitalization.none,
     super.key,
   });
 
@@ -24,6 +25,7 @@ class EventFormField extends StatelessWidget {
   final TextInputType? keyboardType;
   final int maxLines;
   final int? maxLength;
+  final TextCapitalization textCapitalization;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +40,7 @@ class EventFormField extends StatelessWidget {
         keyboardType: keyboardType,
         maxLines: maxLines,
         maxLength: maxLength,
+        textCapitalization: textCapitalization,
       ),
     );
   }

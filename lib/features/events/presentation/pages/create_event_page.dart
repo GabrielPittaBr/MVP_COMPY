@@ -21,9 +21,9 @@ import '../widgets/event_form_field.dart';
 
 /// Tela "4 Criar evento" — formulário com campos obrigatórios (RF07).
 ///
-/// Ordem de preenchimento: o Local é a primeira informação selecionada,
-/// pois ele determina quais esportes estão disponíveis (pins curados
-/// pela equipe — ver [EventLocation]).
+/// Ordem de preenchimento: depois do Título, o Local é a primeira
+/// informação selecionada, pois ele determina quais esportes estão
+/// disponíveis (pins curados pela equipe — ver [EventLocation]).
 class CreateEventPage extends ConsumerStatefulWidget {
   const CreateEventPage({super.key});
 
@@ -32,6 +32,7 @@ class CreateEventPage extends ConsumerStatefulWidget {
 }
 
 class _CreateEventPageState extends ConsumerState<CreateEventPage> {
+  final _titleCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
   final _sportCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
@@ -39,6 +40,9 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   final _skillCtrl = TextEditingController();
   final _participantsCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
+
+  /// Teto do título — cabe na AppBar da tela de detalhes e no card da lista.
+  static const int _titleMaxLength = 50;
 
   /// Teto da descrição escrita pelo criador (D2: campo opcional, sem
   /// texto automático de fallback).
@@ -52,7 +56,19 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Campos digitados também habilitam/desabilitam o botão "Criar evento";
+    // sem isso o _canSubmit() só seria reavaliado nos setState dos pickers.
+    _titleCtrl.addListener(_onTypedFieldChanged);
+    _participantsCtrl.addListener(_onTypedFieldChanged);
+  }
+
+  void _onTypedFieldChanged() => setState(() {});
+
+  @override
   void dispose() {
+    _titleCtrl.dispose();
     _locationCtrl.dispose();
     _sportCtrl.dispose();
     _dateCtrl.dispose();
@@ -75,7 +91,16 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           child: Column(
             children: <Widget>[
-              // 1) Local — primeira informação a ser selecionada.
+              // Título — nome do evento nas listas e na tela de detalhes.
+              // A primeira letra é garantida maiúscula no _submit(); o
+              // teclado já sobe em maiúscula via textCapitalization.
+              EventFormField(
+                hint: AppStrings.eventTitleHint,
+                controller: _titleCtrl,
+                maxLength: _titleMaxLength,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              // 1) Local — primeira seleção do formulário.
               EventFormField(
                 hint: AppStrings.eventSelectLocation,
                 controller: _locationCtrl,
@@ -137,6 +162,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   }
 
   bool _canSubmit() =>
+      _titleCtrl.text.trim().isNotEmpty &&
       _location != null &&
       _sport != null &&
       _date != null &&
@@ -261,6 +287,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     }
   }
 
+  /// Garante a inicial maiúscula mesmo em teclado físico, onde o
+  /// [TextCapitalization] do campo não tem efeito.
+  String _capitalizeFirst(String input) {
+    if (input.isEmpty) return input;
+    return input[0].toUpperCase() + input.substring(1);
+  }
+
   Future<void> _submit() async {
     setState(() => _isLoading = true);
 
@@ -285,7 +318,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
       final draft = Event(
         id: '', // Firestore gerará o ID
-        title: 'Partida de ${sport.label.toLowerCase()}',
+        title: _capitalizeFirst(_titleCtrl.text.trim()),
         sport: sport,
         location: '${location.name}, ${location.city}',
         coordinates: location.coordinates,

@@ -78,7 +78,7 @@ class _Body extends ConsumerWidget {
           sliver: SliverList(
             delegate: SliverChildListDelegate(<Widget>[
               Text(
-                'Partida de ${event.sport.label.toLowerCase()}',
+                event.title,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
