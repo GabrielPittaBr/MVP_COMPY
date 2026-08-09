@@ -7,6 +7,10 @@ abstract final class AppStrings {
   // App
   static const String appName = 'COMPY';
 
+  // Comum
+  static const String commonCancel = 'Cancelar';
+  static const String commonConfirm = 'Confirmar';
+
   // Bottom nav
   static const String navHome = 'Início';
   static const String navEvents = 'Eventos';
@@ -43,6 +47,12 @@ abstract final class AppStrings {
       'Selecione o local do evento primeiro.';
   static const String eventDate = 'Data';
   static const String eventTime = 'Horário';
+  static const String eventDuration = 'Duração';
+  static const String eventDurationOther = 'Outro';
+  static const String eventDurationCustomTitle = 'Duração personalizada';
+  static const String eventDurationCustomHint = 'Duração em minutos';
+  static const String eventDurationCustomInvalid =
+      'Informe uma duração entre 15 e 720 minutos.';
   static const String eventSkillLevel = 'Nível de habilidade';
   static const String eventParticipants = 'Participantes';
   static const String eventParticipantsNumber = 'Número de participantes';
