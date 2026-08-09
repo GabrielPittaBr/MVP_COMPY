@@ -43,6 +43,10 @@ abstract final class AppStrings {
   static const String eventSkillLevel = 'Nível de habilidade';
   static const String eventParticipants = 'Participantes';
   static const String eventParticipantsNumber = 'Número de participantes';
+  static const String eventDescription = 'Descrição';
+  static const String eventDescriptionHint =
+      'Conte como vai ser o jogo: leve bola? tem colete? '
+      'é competitivo ou de boa?';
   static const String eventLocation = 'Local';
   static const String eventCreate = 'Criar evento';
   static const String eventJoin = 'Participar';

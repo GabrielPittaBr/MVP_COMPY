@@ -38,6 +38,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   final _timeCtrl = TextEditingController();
   final _skillCtrl = TextEditingController();
   final _participantsCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
+
+  /// Teto da descrição escrita pelo criador (D2: campo opcional, sem
+  /// texto automático de fallback).
+  static const int _descriptionMaxLength = 300;
 
   EventLocation? _location;
   Sport? _sport;
@@ -54,6 +59,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     _timeCtrl.dispose();
     _skillCtrl.dispose();
     _participantsCtrl.dispose();
+    _descriptionCtrl.dispose();
     super.dispose();
   }
 
@@ -108,6 +114,15 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                 hint: AppStrings.eventParticipantsNumber,
                 controller: _participantsCtrl,
                 keyboardType: TextInputType.number,
+              ),
+              // Descrição opcional — o placeholder é quem ensina o que
+              // escrever, já que o campo não tem rótulo próprio.
+              EventFormField(
+                hint: AppStrings.eventDescriptionHint,
+                controller: _descriptionCtrl,
+                keyboardType: TextInputType.multiline,
+                maxLines: 4,
+                maxLength: _descriptionMaxLength,
               ),
               const SizedBox(height: 12),
               PrimaryButton(
@@ -281,9 +296,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         remainingSpots: totalSpots - 1,
         bannerUrl: sport.banner,
         creator: creator,
-        description:
-            'Partida de ${sport.label.toLowerCase()} no ${location.name}, '
-            'em ${location.city}.',
+        description: _descriptionCtrl.text.trim(),
         participants: <UserSummary>[creator],
       );
 

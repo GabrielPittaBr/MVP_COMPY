@@ -13,6 +13,7 @@ class RoundedTextField extends StatelessWidget {
     this.onTap,
     this.keyboardType,
     this.maxLines = 1,
+    this.maxLength,
     this.suffix,
     super.key,
   });
@@ -23,6 +24,7 @@ class RoundedTextField extends StatelessWidget {
   final VoidCallback? onTap;
   final TextInputType? keyboardType;
   final int maxLines;
+  final int? maxLength;
   final Widget? suffix;
 
   @override
@@ -33,6 +35,7 @@ class RoundedTextField extends StatelessWidget {
       onTap: onTap,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      maxLength: maxLength,
       decoration: InputDecoration(
         hintText: hint,
         suffixIcon: suffix,
