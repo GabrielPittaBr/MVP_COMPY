@@ -2,12 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../core/constants/app_flags.dart';
 import '../../../../shared/models/paged_result.dart';
-import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../datasources/chat_remote_datasource.dart';
 import '../datasources/in_memory_chat_store.dart';
+import '../mappers/conversation_mapper.dart';
 import '../mappers/message_mapper.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
@@ -45,7 +45,7 @@ class ChatRepositoryImpl implements ChatRepository {
       limit: pageSize,
     );
     final items = snapshot.docs
-        .map((doc) => _conversationFromDoc(userId, doc))
+        .map((doc) => ConversationMapper.fromMap(doc.id, doc.data(), userId))
         .toList();
     return PagedResult<Conversation>(
       items: items,
@@ -54,46 +54,30 @@ class ChatRepositoryImpl implements ChatRepository {
     );
   }
 
-  /// Mapeia `conversations/{id}` para a entidade, resolvendo o peer
-  /// (o membro que não é o usuário corrente) via `memberSummaries`.
-  ///
-  /// Formato esperado do documento:
-  /// ```
-  /// members: [uidA, uidB]
-  /// memberSummaries: { uidA: {UserSummary}, uidB: {UserSummary} }
-  /// lastMessage: String, lastMessageAt: Timestamp
-  /// unreadCounts: { uid: int } (opcional)
-  /// ```
-  Conversation _conversationFromDoc(
+  @override
+  Future<Conversation?> fetchConversation(
+    String conversationId,
     String userId,
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
-    final data = doc.data();
-    final summaries =
-        (data['memberSummaries'] as Map<String, dynamic>?) ?? const {};
-
-    UserSummary peer = const UserSummary(
-      id: 'unknown',
-      name: 'Desconhecido',
-      handle: '@unknown',
-      avatarUrl: '',
-    );
-    for (final entry in summaries.entries) {
-      if (entry.key != userId) {
-        peer = UserSummary.fromMap(entry.value);
-        break;
+  ) async {
+    if (!kUseFirebaseRepos || _remote == null) {
+      for (final c in InMemoryChatStore.instance.conversationsSnapshot) {
+        if (c.id == conversationId) return c;
       }
+      return null;
     }
 
-    final unreadCounts = data['unreadCounts'] as Map<String, dynamic>?;
-    return Conversation(
-      id: doc.id,
-      peer: peer,
-      lastMessage: (data['lastMessage'] as String?) ?? '',
-      unreadCount: (unreadCounts?[userId] as int?) ?? 0,
-      lastMessageAt: (data['lastMessageAt'] as Timestamp?)?.toDate() ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-    );
+    try {
+      final doc = await _remote.fetchConversation(conversationId);
+      final data = doc.data();
+      if (!doc.exists || data == null) return null;
+      return ConversationMapper.fromMap(doc.id, data, userId);
+    } on FirebaseException catch (e) {
+      // Conversa alheia não é "erro do app": as regras recusam a leitura de
+      // quem não está em `members`, e para a sala isso é o mesmo que não
+      // existir. Qualquer outra falha (rede, indisponibilidade) sobe.
+      if (e.code == 'permission-denied') return null;
+      rethrow;
+    }
   }
 
   @override

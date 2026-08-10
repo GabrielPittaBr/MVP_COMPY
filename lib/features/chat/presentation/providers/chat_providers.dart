@@ -9,6 +9,7 @@ import '../../data/repositories/chat_repository_impl.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/repositories/chat_repository.dart';
+import '../../domain/usecases/get_conversation.dart';
 import '../../domain/usecases/get_conversations.dart';
 import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/watch_messages.dart';
@@ -39,6 +40,10 @@ final chatRepositoryProvider = Provider<ChatRepository>(
 
 final getConversationsProvider = Provider<GetConversations>(
   (ref) => GetConversations(ref.watch(chatRepositoryProvider)),
+);
+
+final getConversationProvider = Provider<GetConversation>(
+  (ref) => GetConversation(ref.watch(chatRepositoryProvider)),
 );
 
 final watchMessagesProvider = Provider<WatchMessages>(
@@ -113,3 +118,22 @@ final conversationMessagesProvider =
   (ref, conversationId) =>
       ref.watch(watchMessagesProvider).call(conversationId),
 );
+
+/// A conversa que a sala está exibindo.
+///
+/// Antes a sala garimpava o peer na lista paginada já carregada e estourava
+/// quando não achava — bastava abrir a sala com a lista ainda carregando.
+/// Aqui ela se resolve sozinha: aproveita a lista quando a conversa já está
+/// nela e, senão, lê o documento avulso. Devolve `null` quando a conversa não
+/// existe ou não é do usuário.
+final conversationProvider =
+    FutureProvider.family<Conversation?, String>((ref, conversationId) async {
+  final loaded = ref.watch(paginatedConversationsProvider).valueOrNull;
+  for (final c in loaded ?? const <Conversation>[]) {
+    if (c.id == conversationId) return c;
+  }
+
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return null;
+  return ref.watch(getConversationProvider).call(conversationId, userId);
+});

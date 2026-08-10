@@ -29,6 +29,18 @@ class ChatRemoteDataSource {
     return query.get();
   }
 
+  /// Uma conversa avulsa, pelo id.
+  ///
+  /// A sala usa isto quando a conversa não está na página já carregada da
+  /// lista — abrir por link direto, logo depois de criar, ou vindo de fora
+  /// do chat. As regras recusam a leitura de conversa alheia, então a falha
+  /// esperada aqui é `permission-denied`, não "documento inexistente".
+  Future<DocumentSnapshot<Map<String, dynamic>>> fetchConversation(
+    String conversationId,
+  ) {
+    return _firestore.collection('conversations').doc(conversationId).get();
+  }
+
   Stream<QuerySnapshot<Map<String, dynamic>>> watchMessages(String conversationId) {
     return _firestore
         .collection('conversations')
