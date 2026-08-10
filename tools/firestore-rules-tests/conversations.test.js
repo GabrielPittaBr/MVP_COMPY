@@ -23,9 +23,11 @@ import {
   doc,
   getDoc,
   getDocs,
+  increment,
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 
 const JOAO = 'uid_joao';
@@ -255,6 +257,50 @@ describe('conversations — atualização', () => {
 
   it('ninguém apaga conversa', async () => {
     await assertFails(deleteDoc(doc(as(JOAO), 'conversations', CONVERSA)));
+  });
+
+  it('incrementa a não-lida do peer por notação de ponto', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(JOAO), 'conversations', CONVERSA), {
+        [`unreadCounts.${DOUGLAS}`]: increment(1),
+      }),
+    );
+  });
+
+  it('zera a própria não-lida', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(JOAO), 'conversations', CONVERSA), {
+        [`unreadCounts.${JOAO}`]: 0,
+      }),
+    );
+  });
+
+  it('não-membro não mexe no contador de não-lidas', async () => {
+    await assertFails(
+      updateDoc(doc(as(ESTRANHO), 'conversations', CONVERSA), {
+        [`unreadCounts.${JOAO}`]: 99,
+      }),
+    );
+  });
+
+  it('o lote exato do envio de mensagem passa inteiro', async () => {
+    // Espelha ChatRemoteDataSource.sendMessage: a mensagem e o rodapé com o
+    // incremento da não-lida, num commit só.
+    const db = as(JOAO);
+    const batch = writeBatch(db);
+    const convRef = doc(db, 'conversations', CONVERSA);
+    batch.set(doc(collection(convRef, 'messages')), {
+      senderId: JOAO,
+      text: 'Bora!',
+      sentAt: serverTimestamp(),
+    });
+    batch.update(convRef, {
+      lastMessage: 'Bora!',
+      lastMessageAt: serverTimestamp(),
+      [`unreadCounts.${DOUGLAS}`]: increment(1),
+    });
+
+    await assertSucceeds(batch.commit());
   });
 });
 

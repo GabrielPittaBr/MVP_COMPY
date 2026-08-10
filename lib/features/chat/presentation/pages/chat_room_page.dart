@@ -65,14 +65,52 @@ class ChatRoomPage extends ConsumerWidget {
   }
 }
 
-class _ChatRoomBody extends ConsumerWidget {
+class _ChatRoomBody extends ConsumerStatefulWidget {
   const _ChatRoomBody({required this.conversation});
 
   final Conversation conversation;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ChatRoomBody> createState() => _ChatRoomBodyState();
+}
+
+class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
+  /// Quantas mensagens já foram marcadas como lidas. Serve para não gravar a
+  /// cada emissão do stream — só quando chega mensagem nova de fato.
+  int _readUpTo = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fora do build: marcar como lida é escrita, não pode sair de um método
+    // que o Flutter pode chamar várias vezes por quadro.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _markAsRead());
+  }
+
+  void _markAsRead() {
+    if (!mounted) return;
+    ref.read(markConversationAsReadProvider).call(widget.conversation.id);
+    // A lista já carregada não é refeita a cada volta da sala: sem espelhar o
+    // zero nela, o badge continuaria aceso na tela anterior.
+    ref
+        .read(paginatedConversationsProvider.notifier)
+        .markReadLocally(widget.conversation.id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final conversation = widget.conversation;
     final currentUserId = ref.watch(currentUserIdProvider);
+
+    // Mensagem que chega com a sala aberta já nasce lida.
+    ref.listen(conversationMessagesProvider(conversation.id), (_, next) {
+      final messages = next.valueOrNull;
+      if (messages == null || messages.length <= _readUpTo) return;
+      _readUpTo = messages.length;
+      if (messages.isNotEmpty && messages.last.senderId != currentUserId) {
+        _markAsRead();
+      }
+    });
 
     return Column(
       children: <Widget>[
@@ -104,6 +142,7 @@ class _ChatRoomBody extends ConsumerWidget {
         ChatInputBar(
           onSend: (text) => ref.read(sendMessageProvider).call(
                 conversationId: conversation.id,
+                peerId: conversation.peer.id,
                 text: text,
               ),
         ),
