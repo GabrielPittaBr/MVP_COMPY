@@ -32,6 +32,22 @@
         { "fieldPath": "skillLevel", "order": "ASCENDING" },
         { "fieldPath": "dateTime", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "creator.id", "order": "ASCENDING" },
+        { "fieldPath": "dateTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "participantIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "dateTime", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

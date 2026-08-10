@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_flags.dart';
 import '../../../../shared/models/event.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/events_remote_datasource.dart';
 import '../../data/repositories/events_repository_impl.dart';
 import '../../domain/entities/events_filter.dart';
@@ -97,6 +98,38 @@ final paginatedEventsProvider =
     AsyncNotifierProvider<PaginatedEventsController, List<Event>>(
   PaginatedEventsController.new,
 );
+
+/// Seção "Criados por mim" da aba Eventos — lista completa, sem cursor.
+///
+/// O uid vem do [currentUserSummaryProvider], e não direto do
+/// [authStateProvider], porque ele já resolve o modo mock (onde não existe
+/// uid do Firebase e a identidade vem de `MockProfile`).
+final myEventsProvider = FutureProvider<List<Event>>((ref) async {
+  final filter = ref.watch(eventsFilterProvider);
+  final repository = ref.watch(eventsRepositoryProvider);
+  final user = await ref.watch(currentUserSummaryProvider.future);
+  return repository.fetchCreatedBy(user.id, filter: filter);
+});
+
+/// Seção "Participando" — eventos em que o usuário está inscrito, inclusive
+/// os que ele mesmo criou (a duplicação entre as seções é intencional).
+final joinedEventsProvider = FutureProvider<List<Event>>((ref) async {
+  final filter = ref.watch(eventsFilterProvider);
+  final repository = ref.watch(eventsRepositoryProvider);
+  final user = await ref.watch(currentUserSummaryProvider.future);
+  return repository.fetchJoinedBy(user.id, filter: filter);
+});
+
+/// Recarrega as três seções da aba Eventos.
+///
+/// Sempre as três juntas: criar um evento mexe em "Criados por mim",
+/// "Participando" (o criador já entra como participante) e "Todos os
+/// eventos" ao mesmo tempo. Invalidar só uma deixa a tela mentindo.
+void invalidateEventLists(WidgetRef ref) {
+  ref.invalidate(paginatedEventsProvider);
+  ref.invalidate(myEventsProvider);
+  ref.invalidate(joinedEventsProvider);
+}
 
 /// Detalhe de um evento por id. `family` permite cachear por id;
 /// invalidado explicitamente após join/create.

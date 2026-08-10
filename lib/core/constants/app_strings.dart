@@ -49,6 +49,14 @@ abstract final class AppStrings {
   static String eventsEmptyForSport(String sportLabel) =>
       'Nenhum evento de $sportLabel por enquanto.';
 
+  // Seções da aba Eventos — cada uma some junto do seu título quando não
+  // tem nada para mostrar (D3).
+  static const String eventsSectionMine = 'Criados por mim';
+  static const String eventsSectionJoined = 'Participando';
+  static const String eventsSectionAll = 'Todos os eventos';
+  static const String eventsSectionError =
+      'Não foi possível carregar esta seção.';
+
   // Filtros da aba Eventos
   static const String eventsFilters = 'Filtros';
   static const String eventsFilterTitle = 'Filtrar eventos';
@@ -87,6 +95,9 @@ abstract final class AppStrings {
   static const String eventCreate = 'Criar evento';
   static const String eventJoin = 'Participar';
   static const String eventFull = 'Evento sem vagas';
+
+  /// Versão curta para o CTA do card, que é estreito.
+  static const String eventCardFull = 'Sem vagas';
   static const String eventCreatedBy = 'Criado por:';
   static const String eventSeeMore = 'Ver mais';
   static const String eventVacanciesLabel = 'vagas restantes';

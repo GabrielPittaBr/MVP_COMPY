@@ -198,9 +198,10 @@ class _Body extends ConsumerWidget {
       // UserSummary real do usuário autenticado (users/{uid} no Firestore).
       final user = await ref.read(currentUserSummaryProvider.future);
       await ref.read(joinEventProvider).call(event.id, user);
-      // Re-emite o evento atualizado.
+      // Re-emite o evento atualizado e recarrega as seções da aba Eventos —
+      // o evento passa a valer para "Participando".
       ref.invalidate(eventDetailProvider(event.id));
-      ref.invalidate(paginatedEventsProvider);
+      invalidateEventLists(ref);
       messenger.showSnackBar(
         const SnackBar(content: Text('Você entrou no evento!')),
       );

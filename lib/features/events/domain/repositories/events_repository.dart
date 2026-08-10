@@ -16,6 +16,17 @@ abstract interface class EventsRepository {
     EventsFilter filter,
   });
 
+  /// Eventos criados por [uid] — seção "Criados por mim" da aba Eventos.
+  ///
+  /// Vem inteira, sem cursor: o volume por usuário é baixo. Por isso, e ao
+  /// contrário de [fetchPage], aqui o [filter] pode ser aplicado no cliente
+  /// sem quebrar nada.
+  Future<List<Event>> fetchCreatedBy(String uid, {EventsFilter filter});
+
+  /// Eventos em que [uid] está inscrito — seção "Participando". Mesmas
+  /// características de [fetchCreatedBy].
+  Future<List<Event>> fetchJoinedBy(String uid, {EventsFilter filter});
+
   /// Busca eventos por nome (prefixo do título) ou modalidade esportiva.
   Future<List<Event>> search(String query);
 

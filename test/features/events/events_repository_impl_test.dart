@@ -1,8 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:mvp_compy/features/events/data/datasources/in_memory_events_store.dart';
 import 'package:mvp_compy/features/events/data/repositories/events_repository_impl.dart';
 import 'package:mvp_compy/features/events/domain/entities/events_filter.dart';
+import 'package:mvp_compy/shared/models/event.dart';
 import 'package:mvp_compy/shared/models/skill_level.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
+import 'package:mvp_compy/shared/models/user_summary.dart';
 
 void main() {
   // `_remote == null` força o ramo mock (InMemoryEventsStore), sem Firebase.
@@ -133,4 +137,141 @@ void main() {
       expect(filter.matchesSkillLevel(SkillLevel.avancado), isFalse);
     });
   });
+
+  group('Event.participantIds', () {
+    test('espelha os ids de participants', () {
+      final evento = _evento(
+        id: 'evt_ids',
+        criador: 'u_a',
+        participantes: <UserSummary>[_usuario('u_a'), _usuario('u_b')],
+      );
+      expect(evento.participantIds, <String>['u_a', 'u_b']);
+    });
+
+    test('é gravado no documento — é ele que o Firestore consegue consultar',
+        () {
+      final evento = _evento(
+        id: 'evt_ids',
+        criador: 'u_a',
+        participantes: <UserSummary>[_usuario('u_a'), _usuario('u_b')],
+      );
+      expect(evento.toMap()['participantIds'], <String>['u_a', 'u_b']);
+    });
+  });
+
+  // Este grupo escreve no InMemoryEventsStore (singleton), por isso vem
+  // depois dos testes de leitura acima.
+  group('EventsRepositoryImpl — seções da aba Eventos', () {
+    final store = InMemoryEventsStore.instance;
+
+    test('fetchCreatedBy devolve só os do uid, ordenados por data', () async {
+      const uid = 'u_criador_teste';
+      // Inseridos fora de ordem de propósito: `add` empilha no topo, então
+      // a ordenação por data tem que vir da consulta, não da inserção.
+      store.add(_evento(
+        id: 'evt_c_cedo',
+        criador: uid,
+        dateTime: DateTime(2026, 9, 1, 19),
+      ));
+      store.add(_evento(
+        id: 'evt_c_tarde',
+        criador: uid,
+        dateTime: DateTime(2026, 9, 8, 19),
+      ));
+      store.add(_evento(id: 'evt_c_alheio', criador: 'u_outro_qualquer'));
+
+      final criados = await repo.fetchCreatedBy(uid);
+
+      expect(
+        criados.map((e) => e.id),
+        <String>['evt_c_cedo', 'evt_c_tarde'],
+      );
+    });
+
+    test('fetchJoinedBy encontra o evento depois de entrar nele', () async {
+      const uid = 'u_participante_teste';
+      store.add(_evento(id: 'evt_p1', criador: 'u_dono_qualquer'));
+
+      expect(await repo.fetchJoinedBy(uid), isEmpty);
+      await repo.joinEvent('evt_p1', _usuario(uid));
+
+      expect(
+        (await repo.fetchJoinedBy(uid)).map((e) => e.id),
+        contains('evt_p1'),
+      );
+    });
+
+    test('trocar nome e avatar não tira o usuário da própria seção', () async {
+      const uid = 'u_troca_teste';
+      store.add(_evento(id: 'evt_troca', criador: 'u_dono_qualquer'));
+      await repo.joinEvent(
+        'evt_troca',
+        const UserSummary(
+          id: uid,
+          name: 'Ana',
+          handle: '@ana',
+          avatarUrl: 'antigo.png',
+        ),
+      );
+
+      // O evento guarda o UserSummary de quando a pessoa entrou. Se a
+      // consulta dependesse do mapa inteiro (`arrayContains` sobre
+      // `participants`, no Firestore), essa divergência a faria sumir da
+      // própria lista — daí a busca ser pelo id.
+      const identidadeNova = UserSummary(
+        id: uid,
+        name: 'Ana Paula',
+        handle: '@ana',
+        avatarUrl: 'novo.png',
+      );
+      expect(store.getById('evt_troca')!.participants.last,
+          isNot(identidadeNova));
+
+      expect(
+        (await repo.fetchJoinedBy(identidadeNova.id)).map((e) => e.id),
+        contains('evt_troca'),
+      );
+    });
+
+    test('o filtro da folha também vale para as seções', () async {
+      const uid = 'u_filtro_teste';
+      store.add(_evento(id: 'evt_f_futebol', criador: uid));
+      store.add(_evento(id: 'evt_f_volei', criador: uid, sport: Sport.volei));
+
+      final criados = await repo.fetchCreatedBy(
+        uid,
+        filter: const EventsFilter(sport: Sport.volei),
+      );
+
+      expect(criados.map((e) => e.id), <String>['evt_f_volei']);
+    });
+  });
+}
+
+UserSummary _usuario(String id) =>
+    UserSummary(id: id, name: id, handle: '@$id', avatarUrl: '');
+
+Event _evento({
+  required String id,
+  required String criador,
+  List<UserSummary>? participantes,
+  Sport sport = Sport.futebol,
+  DateTime? dateTime,
+}) {
+  final dono = _usuario(criador);
+  return Event(
+    id: id,
+    title: 'Evento $id',
+    sport: sport,
+    location: 'Taquara',
+    coordinates: const LatLng(-29.6485, -50.7820),
+    dateTime: dateTime ?? DateTime(2026, 9, 1, 19),
+    skillLevel: SkillLevel.todos,
+    totalSpots: 10,
+    // O criador já ocupa uma vaga, como no formulário de criação.
+    remainingSpots: 9,
+    bannerUrl: '',
+    creator: dono,
+    participants: participantes ?? <UserSummary>[dono],
+  );
 }
