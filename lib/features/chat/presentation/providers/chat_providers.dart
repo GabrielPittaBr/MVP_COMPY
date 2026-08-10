@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_flags.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../data/datasources/chat_remote_datasource.dart';
+import '../../data/datasources/in_memory_chat_store.dart';
 import '../../data/repositories/chat_repository_impl.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/entities/message.dart';
@@ -16,8 +17,24 @@ final chatRemoteDataSourceProvider = Provider<ChatRemoteDataSource?>(
   (ref) => kUseFirebaseRepos ? ChatRemoteDataSource(FirebaseFirestore.instance) : null,
 );
 
+/// Identidade de quem está usando o app: vai no `senderId` da mensagem e
+/// decide de que lado o balão cai.
+///
+/// Sem Firebase (`kUseFirebaseRepos = false`) cai no usuário mockado do
+/// `InMemoryChatStore`, que é quem assina as conversas de exemplo. Com Firebase
+/// ligado e ninguém logado devolve `null`: é melhor recusar o envio do que
+/// gravar identidade falsa — que é justamente o que as regras do Firestore
+/// rejeitam (`senderId == request.auth.uid`).
+final currentUserIdProvider = Provider<String?>((ref) {
+  if (!kUseFirebaseRepos) return InMemoryChatStore.currentUserId;
+  return ref.watch(authStateProvider).valueOrNull?.uid;
+});
+
 final chatRepositoryProvider = Provider<ChatRepository>(
-  (ref) => ChatRepositoryImpl(ref.watch(chatRemoteDataSourceProvider)),
+  (ref) => ChatRepositoryImpl(
+    ref.watch(chatRemoteDataSourceProvider),
+    currentUserId: ref.watch(currentUserIdProvider),
+  ),
 );
 
 final getConversationsProvider = Provider<GetConversations>(
