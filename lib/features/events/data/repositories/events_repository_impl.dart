@@ -15,10 +15,14 @@ class EventsRepositoryImpl implements EventsRepository {
   final EventsRemoteDataSource? _remote;
 
   @override
-  Future<PagedResult<Event>> fetchPage({Object? cursor, int pageSize = 10}) async {
+  Future<PagedResult<Event>> fetchPage({
+    Object? cursor,
+    int pageSize = 10,
+    Sport? sport,
+  }) async {
     if (!kUseFirebaseRepos || _remote == null) {
-      // Mock: o cursor é o offset na lista em memória.
-      final all = InMemoryEventsStore.instance.snapshot;
+      // Mock: o cursor é o offset na lista (já filtrada) em memória.
+      final all = InMemoryEventsStore.instance.snapshotBySport(sport);
       final offset = (cursor as int?) ?? 0;
       final items = all.skip(offset).take(pageSize).toList();
       final nextOffset = offset + items.length;
@@ -32,6 +36,7 @@ class EventsRepositoryImpl implements EventsRepository {
     final snapshot = await _remote.fetchPage(
       startAfter: cursor as DocumentSnapshot<Map<String, dynamic>>?,
       limit: pageSize,
+      sportName: sport?.name,
     );
     final items = snapshot.docs
         .map((doc) => Event.fromMap(doc.id, doc.data()))

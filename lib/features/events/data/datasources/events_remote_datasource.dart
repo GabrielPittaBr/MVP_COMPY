@@ -10,12 +10,20 @@ class EventsRemoteDataSource {
   /// Página de eventos ordenada por data. Passe o último documento da
   /// página anterior em [startAfter] para buscar a próxima (paginação
   /// com `startAfterDocument`).
+  ///
+  /// [sportName] (nome do enum `Sport`) filtra a modalidade. A combinação
+  /// `where('sport') + orderBy('dateTime')` exige o índice composto
+  /// declarado em `firestore.indexes.json`.
   Future<QuerySnapshot<Map<String, dynamic>>> fetchPage({
     DocumentSnapshot<Map<String, dynamic>>? startAfter,
     int limit = 10,
+    String? sportName,
   }) {
-    Query<Map<String, dynamic>> query =
-        _firestore.collection('events').orderBy('dateTime').limit(limit);
+    Query<Map<String, dynamic>> query = _firestore.collection('events');
+    if (sportName != null) {
+      query = query.where('sport', isEqualTo: sportName);
+    }
+    query = query.orderBy('dateTime').limit(limit);
     if (startAfter != null) {
       query = query.startAfterDocument(startAfter);
     }
