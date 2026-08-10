@@ -140,7 +140,8 @@ recadastrar quem já tem conta.
 
 As regras usam a função auxiliar `signedIn()` que verifica `request.auth != null` (cobre anônimo e contas reais). Destaques:
 
-- `users/{userId}`: leitura para qualquer autenticado; escrita só para o dono.
+- `users/{userId}`: leitura para qualquer autenticado; escrita só para o dono, com `hasOnly` limitando os campos.
+- `users/{userId}/private/contact`: e-mail e demais dados de contato. Só o dono lê e escreve — o perfil é público, o contato não (RN-06).
 - `usernames/{username}`: leitura livre (a checagem de disponibilidade roda **antes** do login); criação só se `request.resource.data.uid == request.auth.uid`; atualização só do documento que já pertence ao mesmo uid.
 - `events`, `conversations`: escrita restrita por papel (criador do evento, membro da conversa) — ver os comentários no próprio `firestore.rules`.
 - `places`: não existe. O catálogo de locais é curado e vive em código (`SportPlace.all`).

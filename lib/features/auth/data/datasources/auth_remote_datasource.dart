@@ -283,9 +283,20 @@ class AuthRemoteDataSource {
         'name': name,
         'handle': '@$username',
         'avatarUrl': AppAssets.avatar(name),
-        'email': email, // guardado para exibição interna; não exposto via UserSummary
         'createdAt': FieldValue.serverTimestamp(),
       },
+      SetOptions(merge: true),
+    );
+
+    // Contato privado (RN-06). `users/{uid}` é legível por qualquer
+    // autenticado, então o e-mail não pode morar lá — a entidade Dart nunca o
+    // expunha, mas a regra expunha. Mesmo batch: perfil e contato nascem
+    // juntos ou não nascem.
+    final DocumentReference<Map<String, dynamic>> contactRef =
+        userRef.collection('private').doc('contact');
+    batch.set(
+      contactRef,
+      <String, dynamic>{'email': email},
       SetOptions(merge: true),
     );
 

@@ -110,7 +110,7 @@ Stream<List<Message>> watchMessages(String conversationId) {
 | 6 | `places` | `read: if signedIn()` | Se o catálogo virar código, a regra vira letra morta — remover ou manter |
 | 9 | `conversations` + `messages` | `read, write: if signedIn()` | **Qualquer autenticado lê qualquer conversa alheia.** Restringir a membros |
 | 12 | `events` | `create, update: if signedIn()` | **Qualquer autenticado edita qualquer evento.** Restringir campos por papel |
-| 13 | `users` | Dono cria/edita o seu | Confirmar que `favoriteSports` passa; considerar validar o formato |
+| 13 | `users` | ✅ Feito | `favoriteSports` no `hasOnly` com limite de 8; e-mail movido para `users/{uid}/private/contact`, legível só pelo dono (RN-06) |
 | 14 | `ratings` (nova) | Não existe → negado por padrão | Escrever do zero: quem pode criar, editar, ler |
 
 Regra prática para as três coleções abertas: `signedIn()` autoriza **o app**, não **o usuário certo**. Como o app já tem uid real em todo lugar, dá para apertar sem perder funcionalidade.

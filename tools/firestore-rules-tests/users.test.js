@@ -57,11 +57,12 @@ function writeUserProfile(db, { uid, username, name = 'Gabriel Pitta', email = '
       name,
       handle: `@${username}`,
       avatarUrl: 'https://ui-avatars.com/api/?name=Gabriel',
-      email,
       createdAt: serverTimestamp(),
     },
     { merge: true },
   );
+  // RN-06: o e-mail vive fora do documento público.
+  batch.set(doc(db, 'users', uid, 'private', 'contact'), { email }, { merge: true });
   // Merge espelha a tarefa 5: no re-cadastro o documento já existe, e `set`
   // sem merge sobrescreveria o documento inteiro.
   batch.set(doc(db, 'usernames', username), { uid }, { merge: true });
@@ -93,7 +94,6 @@ describe('login com Google — usuario que ja tem perfil', () => {
         name: 'Gabriel Pitta',
         handle: `@${USERNAME}`,
         avatarUrl: 'https://ui-avatars.com/api/?name=Gabriel',
-        email: 'g@example.com',
         createdAt: new Date(),
       });
       await setDoc(doc(db, 'usernames', USERNAME), { uid: UID });
@@ -165,7 +165,6 @@ describe('esportes favoritos (tarefa 13)', () => {
         name: 'Gabriel Pitta',
         handle: `@${USERNAME}`,
         avatarUrl: 'https://ui-avatars.com/api/?name=Gabriel',
-        email: 'g@example.com',
         createdAt: new Date(),
       });
     });
@@ -218,6 +217,64 @@ describe('esportes favoritos (tarefa 13)', () => {
       setDoc(
         doc(as(UID), 'users', UID),
         { favoriteSports: ['futebol'], ratingAverage: 5 },
+        { merge: true },
+      ),
+    );
+  });
+});
+
+describe('contato privado — RN-06 (tarefa 13)', () => {
+  const contato = (db, uid) => doc(db, 'users', uid, 'private', 'contact');
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users', UID), {
+        id: UID,
+        name: 'Gabriel Pitta',
+        handle: `@${USERNAME}`,
+        avatarUrl: 'https://ui-avatars.com/api/?name=Gabriel',
+        createdAt: new Date(),
+      });
+      await setDoc(contato(db, UID), { email: 'g@example.com' });
+    });
+  });
+
+  it('o dono le o proprio e-mail', async () => {
+    await assertSucceeds(getDoc(contato(as(UID), UID)));
+  });
+
+  it('o dono grava o proprio e-mail', async () => {
+    await assertSucceeds(
+      setDoc(contato(as(UID), UID), { email: 'novo@example.com' }, { merge: true }),
+    );
+  });
+
+  // O ponto da tarefa: antes disso qualquer autenticado lia o e-mail de todo
+  // mundo, porque ele morava no documento publico.
+  it('outro autenticado NAO le o e-mail alheio', async () => {
+    await assertFails(getDoc(contato(as('uid_outro'), UID)));
+  });
+
+  it('deslogado NAO le e-mail nenhum', async () => {
+    await assertFails(getDoc(contato(anonimo(), UID)));
+  });
+
+  it('ninguem escreve no contato alheio', async () => {
+    await assertFails(
+      setDoc(contato(as('uid_outro'), UID), { email: 'x@example.com' }),
+    );
+  });
+
+  it('o perfil publico continua legivel — so o contato e que nao', async () => {
+    await assertSucceeds(getDoc(doc(as('uid_outro'), 'users', UID)));
+  });
+
+  it('gravar e-mail de volta no documento publico e recusado', async () => {
+    await assertFails(
+      setDoc(
+        doc(as(UID), 'users', UID),
+        { email: 'g@example.com' },
         { merge: true },
       ),
     );
