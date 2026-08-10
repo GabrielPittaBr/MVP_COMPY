@@ -60,6 +60,20 @@ class Event extends Equatable {
   /// Fim previsto do evento (início + duração).
   DateTime get endsAt => dateTime.add(Duration(minutes: durationMinutes));
 
+  /// Ids dos participantes — projeção consultável de [participants].
+  ///
+  /// O Firestore não enxerga dentro de mapas: `arrayContains` sobre
+  /// `participants` exigiria o mapa **inteiro** idêntico, então trocar de
+  /// avatar ou de nome faria o usuário sumir da própria seção
+  /// "Participando". Por isso a seção consulta este campo, não o outro.
+  ///
+  /// Derivado em vez de armazenado, como `titleLower`, `geohash` e `endsAt`:
+  /// o valor existe no documento (via [toMap]) só para o servidor poder
+  /// filtrar; no cliente `participants` continua sendo a única fonte de
+  /// verdade, e os dois não têm como sair de sincronia.
+  List<String> get participantIds =>
+      <String>[for (final p in participants) p.id];
+
   // ── Serialização Firestore ──────────────────────────────────────
 
   Map<String, dynamic> toMap() => <String, dynamic>{
@@ -86,6 +100,10 @@ class Event extends Equatable {
         'creator': creator.toMap(),
         'description': description,
         'participants': participants.map((p) => p.toMap()).toList(),
+        // Espelho consultável de `participants` — ver [participantIds].
+        // A transação de `join()` mantém os dois em `arrayUnion` no mesmo
+        // update, e as regras exigem que cresçam juntos.
+        'participantIds': participantIds,
       };
 
   factory Event.fromMap(String id, Map<String, dynamic> data) {

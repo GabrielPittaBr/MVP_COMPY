@@ -480,8 +480,9 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       );
 
       await ref.read(createEventProvider).call(draft);
-      // Recarrega a lista paginada para o novo evento aparecer.
-      ref.invalidate(paginatedEventsProvider);
+      // Recarrega as seções para o novo evento já aparecer em "Criados por
+      // mim" (e em "Participando", já que o criador ocupa uma vaga).
+      invalidateEventLists(ref);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

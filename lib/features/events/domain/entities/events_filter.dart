@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../../shared/models/event.dart';
 import '../../../../shared/models/skill_level.dart';
 import '../../../../shared/models/sport.dart';
 
@@ -47,6 +48,14 @@ class EventsFilter extends Equatable {
   bool matchesDay(DateTime candidate) =>
       day == null ||
       (!candidate.isBefore(dayStart!) && candidate.isBefore(dayEnd!));
+
+  /// Um evento satisfaz **todos** os critérios? Usado onde o filtro roda no
+  /// cliente: o modo mock e as seções "Criados por mim" / "Participando",
+  /// que não são paginadas (ver `EventsRepositoryImpl.fetchCreatedBy`).
+  bool matches(Event event) =>
+      matchesSport(event.sport) &&
+      matchesSkillLevel(event.skillLevel) &&
+      matchesDay(event.dateTime);
 
   /// Cada `with*` aceita `null` para limpar aquele critério — é assim que
   /// o "x" de cada chip da lista funciona.

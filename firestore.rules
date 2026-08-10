@@ -11,8 +11,8 @@ rules_version = '2';
 //
 // Convenção deste arquivo:
 //   - `delete` é sempre negado explicitamente (nenhuma tela apaga documentos).
-//   - Campos ainda não implementados (`participantIds`, `endsAt`, `endedAt`)
-//     estão marcados com TODO e a tarefa correspondente.
+//   - Campos ainda não implementados (`endedAt`) estão marcados com TODO e a
+//     tarefa correspondente.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -94,11 +94,11 @@ service cloud.firestore {
     //
     //   1. Criador edita os dados do evento (não pode trocar o dono).
     //   2. Qualquer autenticado entra no evento — e apenas isso: mexe só em
-    //      `participants` + `remainingSpots`, adiciona **a si mesmo** no fim do
-    //      array (o `arrayUnion` do `join()` sempre acrescenta ao fim) e
-    //      decrementa exatamente uma vaga. Isso fecha a fraude do join apontada
-    //      em proximos-passos.md: não dá para aumentar `remainingSpots` sem
-    //      remover participante, nem vice-versa.
+    //      `participants` + `participantIds` + `remainingSpots`, adiciona **a si
+    //      mesmo** no fim dos dois arrays (o `arrayUnion` do `join()` sempre
+    //      acrescenta ao fim) e decrementa exatamente uma vaga. Isso fecha a
+    //      fraude do join apontada em proximos-passos.md: não dá para aumentar
+    //      `remainingSpots` sem remover participante, nem vice-versa.
     match /events/{eventId} {
       function isCreator() {
         return signedIn() && resource.data.creator.id == request.auth.uid;
@@ -114,27 +114,48 @@ service cloud.firestore {
                <= request.resource.data.totalSpots;
       }
 
-      // TODO(tarefa 12): quando `participantIds` existir, incluí-lo no
-      // `hasOnly` e exigir que ele cresça junto, com o próprio uid.
+      // `participantIds` é o array de uids que a seção "Participando"
+      // consulta (`arrayContains`) — `participants`, sendo array de mapas, não
+      // é consultável. Por isso ele entra na regra: se pudesse crescer sozinho,
+      // qualquer um se enfiaria na lista de qualquer evento sem ocupar vaga, e
+      // o app mostraria eventos alheios como "meus".
+      //
+      // O `get(..., [])` cobre documentos anteriores à tarefa 12, que não têm
+      // o campo: sem o default a expressão estouraria e eles ficariam
+      // impossíveis de participar. O primeiro join cria o array.
+      function joinedIdsBefore() {
+        return resource.data.get('participantIds', []);
+      }
+
       // TODO(tarefa 14): abrir a exceção do encerramento automático —
       // qualquer participante pode gravar `endedAt`/`endedAutomatically`
       // desde que `endsAt` + 1h já tenha passado e `endedAt` ainda seja nulo.
       function isJoin() {
         return signedIn()
-            && changed().hasOnly(['participants', 'remainingSpots'])
+            && changed().hasOnly(
+                 ['participants', 'participantIds', 'remainingSpots'])
             && request.resource.data.participants.size()
                == resource.data.participants.size() + 1
             && request.resource.data
                  .participants[resource.data.participants.size()].id
                == request.auth.uid
+            && request.resource.data.participantIds.size()
+               == joinedIdsBefore().size() + 1
+            && request.resource.data
+                 .participantIds[joinedIdsBefore().size()] == request.auth.uid
             && request.resource.data.remainingSpots
                == resource.data.remainingSpots - 1
             && request.resource.data.remainingSpots >= 0;
       }
 
       allow read: if signedIn();
+      // Criar evento em nome de outro é negado duas vezes: pelo `creator.id` e
+      // pelo `participantIds`, que na criação só pode conter o próprio uid —
+      // ninguém inscreve terceiros num evento que acabou de inventar.
       allow create: if signedIn()
                     && request.resource.data.creator.id == request.auth.uid
+                    && request.resource.data.participantIds
+                       == [request.auth.uid]
                     && request.resource.data.totalSpots is int
                     && request.resource.data.totalSpots > 0
                     && spotsCoherent();
@@ -246,8 +267,8 @@ service cloud.firestore {
 
       // TODO(tarefa 14): avaliar se vale o custo de dois `get()` para exigir
       // que o evento esteja encerrado (`endedAt != null`) e que o autor tenha
-      // participado dele (`request.auth.uid in participantIds`). Os dois campos
-      // só existem depois das tarefas 12 e 14.
+      // participado dele (`request.auth.uid in participantIds`). O
+      // `participantIds` já existe desde a tarefa 12; falta o `endedAt`.
       allow read: if false;
       allow create: if signedIn()
                     && request.resource.data.fromUid == request.auth.uid

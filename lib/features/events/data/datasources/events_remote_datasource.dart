@@ -43,6 +43,46 @@ class EventsRemoteDataSource {
     return query.get();
   }
 
+  /// Eventos criados por [uid] — seção "Criados por mim".
+  ///
+  /// Sem paginação de propósito: o volume por usuário é baixo e o [limit]
+  /// serve só de teto. Os critérios da folha de filtros também ficam de
+  /// fora da consulta e são aplicados no cliente pelo repositório —
+  /// combiná-los aqui exigiria um índice composto por combinação
+  /// (`creator.id + sport + dateTime`, `+ skillLevel`, `+ dia`…), e o
+  /// motivo de filtrar no servidor na lista principal (não estragar a
+  /// paginação) não existe numa lista que vem inteira.
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchCreatedBy(
+    String uid, {
+    int limit = 50,
+  }) {
+    return _firestore
+        .collection('events')
+        .where('creator.id', isEqualTo: uid)
+        .orderBy('dateTime')
+        .limit(limit)
+        .get();
+  }
+
+  /// Eventos em que [uid] está inscrito — seção "Participando".
+  ///
+  /// Consulta `participantIds` (array de strings) e não `participants`
+  /// (array de mapas): `arrayContains` sobre mapas exigiria o mapa inteiro
+  /// idêntico, então bastaria o usuário trocar de avatar para sumir da
+  /// própria lista. Mesmas ressalvas de paginação e filtro do
+  /// [fetchCreatedBy].
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchJoinedBy(
+    String uid, {
+    int limit = 50,
+  }) {
+    return _firestore
+        .collection('events')
+        .where('participantIds', arrayContains: uid)
+        .orderBy('dateTime')
+        .limit(limit)
+        .get();
+  }
+
   /// Busca por prefixo do título (campo `titleLower`, minúsculo).
   Future<QuerySnapshot<Map<String, dynamic>>> searchByTitlePrefix(
     String prefixLower, {
@@ -87,9 +127,13 @@ class EventsRemoteDataSource {
         throw StateError('Evento $eventId não encontrado');
       }
 
-      final participants = (data['participants'] as List<dynamic>? ?? <dynamic>[]);
-      final alreadyJoined = participants
-          .any((p) => p is Map && p['id'] == user['id']);
+      // Basta olhar o array de ids — a varredura dos mapas fica só como
+      // rede para documentos anteriores à tarefa 12, que ainda não têm
+      // `participantIds` e aceitariam o mesmo usuário duas vezes.
+      final ids = (data['participantIds'] as List<dynamic>? ?? <dynamic>[]);
+      final alreadyJoined = ids.contains(user['id']) ||
+          (data['participants'] as List<dynamic>? ?? <dynamic>[])
+              .any((p) => p is Map && p['id'] == user['id']);
       if (alreadyJoined) return;
 
       final remaining = (data['remainingSpots'] as int?) ?? 0;
@@ -97,6 +141,11 @@ class EventsRemoteDataSource {
 
       tx.update(docRef, <String, Object?>{
         'participants': FieldValue.arrayUnion(<Map<String, dynamic>>[user]),
+        // Os dois arrays crescem no mesmo update, atomicamente — é o que a
+        // regra `isJoin()` de firestore.rules exige para autorizar a
+        // escrita, e o que impede a lista de ids de atrasar em relação aos
+        // participantes.
+        'participantIds': FieldValue.arrayUnion(<Object?>[user['id']]),
         'remainingSpots': remaining - 1,
       });
     });

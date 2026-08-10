@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Testes das regras do Firestore do COMPY, contra o emulador. Nada aqui vai para o app Flutter.",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore --project demo-compy \"node --test conversations.test.js\""
+    "test": "firebase emulators:exec --only firestore --project demo-compy \"node --test --test-concurrency=1\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",

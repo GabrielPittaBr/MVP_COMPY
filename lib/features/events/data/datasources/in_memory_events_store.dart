@@ -36,12 +36,25 @@ class InMemoryEventsStore {
   /// percorreria. Filtro vazio devolve tudo.
   List<Event> snapshotMatching(EventsFilter filter) {
     if (filter.isEmpty) return snapshot;
-    return List<Event>.unmodifiable(
-      _events.where((e) =>
-          filter.matchesSport(e.sport) &&
-          filter.matchesSkillLevel(e.skillLevel) &&
-          filter.matchesDay(e.dateTime)),
-    );
+    return List<Event>.unmodifiable(_events.where(filter.matches));
+  }
+
+  /// Eventos criados por [uid] — espelha
+  /// `where('creator.id', isEqualTo: uid).orderBy('dateTime')`.
+  List<Event> createdBy(String uid, EventsFilter filter) =>
+      _sortedByDate((e) => e.creator.id == uid, filter);
+
+  /// Eventos em que [uid] está inscrito — espelha
+  /// `where('participantIds', arrayContains: uid).orderBy('dateTime')`.
+  List<Event> joinedBy(String uid, EventsFilter filter) =>
+      _sortedByDate((e) => e.participantIds.contains(uid), filter);
+
+  /// As duas seções não são paginadas, então (ao contrário da lista
+  /// principal) podem ordenar em memória sem risco de cursor inconsistente.
+  List<Event> _sortedByDate(bool Function(Event) test, EventsFilter filter) {
+    final result = _events.where((e) => test(e) && filter.matches(e)).toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    return List<Event>.unmodifiable(result);
   }
 
   Event? getById(String id) {

@@ -56,6 +56,41 @@ class EventsRepositoryImpl implements EventsRepository {
   }
 
   @override
+  Future<List<Event>> fetchCreatedBy(
+    String uid, {
+    EventsFilter filter = const EventsFilter(),
+  }) async {
+    if (!kUseFirebaseRepos || _remote == null) {
+      return InMemoryEventsStore.instance.createdBy(uid, filter);
+    }
+    return _matching(await _remote.fetchCreatedBy(uid), filter);
+  }
+
+  @override
+  Future<List<Event>> fetchJoinedBy(
+    String uid, {
+    EventsFilter filter = const EventsFilter(),
+  }) async {
+    if (!kUseFirebaseRepos || _remote == null) {
+      return InMemoryEventsStore.instance.joinedBy(uid, filter);
+    }
+    return _matching(await _remote.fetchJoinedBy(uid), filter);
+  }
+
+  /// Aplica o filtro depois de buscar — legítimo aqui porque as duas seções
+  /// vêm inteiras (ver `EventsRemoteDataSource.fetchCreatedBy`); na lista
+  /// paginada isso produziria páginas quase vazias.
+  List<Event> _matching(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+    EventsFilter filter,
+  ) {
+    return snapshot.docs
+        .map((doc) => Event.fromMap(doc.id, doc.data()))
+        .where(filter.matches)
+        .toList();
+  }
+
+  @override
   Future<List<Event>> search(String query) async {
     final normalized = TextNormalizer.normalize(query);
     if (normalized.isEmpty) return const <Event>[];
