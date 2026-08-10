@@ -94,6 +94,7 @@ class ChatRemoteDataSource {
     required String senderId,
     required String peerId,
     required String text,
+    String? placeId,
   }) {
     final batch = _firestore.batch();
     final convRef = _firestore.collection('conversations').doc(conversationId);
@@ -102,6 +103,9 @@ class ChatRemoteDataSource {
       'senderId': senderId,
       'text': text,
       'sentAt': FieldValue.serverTimestamp(),
+      // Só entra no documento quando existe: mensagem de texto não carrega
+      // a chave, e o mapper decide o formato do balão pela presença dela.
+      if (placeId != null) 'placeId': placeId,
     });
     batch.update(convRef, <String, Object?>{
       'lastMessage': text,

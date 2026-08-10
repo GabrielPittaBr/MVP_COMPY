@@ -151,7 +151,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 routes: <RouteBase>[
                   GoRoute(
                     path: 'maps',
-                    builder: (context, state) => const MapsPage(),
+                    // `extra` traz o id do local a abrir selecionado — é por
+                    // aqui que o local encaminhado no chat volta ao pin.
+                    builder: (context, state) =>
+                        MapsPage(initialPlaceId: state.extra as String?),
                   ),
                   GoRoute(
                     path: 'search',

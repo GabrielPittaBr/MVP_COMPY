@@ -8,6 +8,7 @@ class SendMessage {
     required String conversationId,
     required String peerId,
     required String text,
+    String? placeId,
   }) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Future<void>.value();
@@ -15,6 +16,7 @@ class SendMessage {
       conversationId: conversationId,
       peerId: peerId,
       text: trimmed,
+      placeId: placeId,
     );
   }
 }

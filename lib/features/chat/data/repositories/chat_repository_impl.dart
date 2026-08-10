@@ -134,11 +134,13 @@ class ChatRepositoryImpl implements ChatRepository {
     required String conversationId,
     required String peerId,
     required String text,
+    String? placeId,
   }) async {
     if (!kUseFirebaseRepos || _remote == null) {
       InMemoryChatStore.instance.sendMessage(
         conversationId: conversationId,
         text: text,
+        placeId: placeId,
       );
       return;
     }
@@ -153,6 +155,7 @@ class ChatRepositoryImpl implements ChatRepository {
       senderId: senderId,
       peerId: peerId,
       text: text,
+      placeId: placeId,
     );
   }
 

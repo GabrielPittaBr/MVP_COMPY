@@ -9,17 +9,19 @@ import '../../../../shared/models/sport_place.dart';
 /// ação de criar evento ali).
 ///
 /// D11: "Favoritar" saiu — não existe modelo de local favorito e botão
-/// inerte é pior que botão ausente. "Compartilhar" volta na tarefa 9,
-/// junto com o chat, que é para onde um local compartilhado vai.
+/// inerte é pior que botão ausente. "Compartilhar" voltou junto com o chat
+/// funcional, que é para onde um local compartilhado vai.
 class PlaceDetailsSheet extends StatelessWidget {
   const PlaceDetailsSheet({
     required this.place,
     required this.onCreateEvent,
+    required this.onShare,
     super.key,
   });
 
   final SportPlace place;
   final VoidCallback onCreateEvent;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -106,12 +108,21 @@ class PlaceDetailsSheet extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 24),
-                    Center(
-                      child: _ActionButton(
-                        icon: Icons.add,
-                        label: AppStrings.eventCreate,
-                        onTap: onCreateEvent,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        _ActionButton(
+                          icon: Icons.add,
+                          label: AppStrings.eventCreate,
+                          onTap: onCreateEvent,
+                        ),
+                        const SizedBox(width: 40),
+                        _ActionButton(
+                          icon: Icons.share_outlined,
+                          label: AppStrings.mapsShare,
+                          onTap: onShare,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                     const Text(

@@ -27,10 +27,14 @@ abstract interface class ChatRepository {
   Stream<List<Message>> watchMessages(String conversationId);
 
   /// Envia [text] e incrementa o contador de não-lidas de [peerId].
+  ///
+  /// Com [placeId], a mensagem é um local encaminhado: a sala a desenha como
+  /// card e [text] vira o resumo que aparece no preview da lista.
   Future<void> sendMessage({
     required String conversationId,
     required String peerId,
     required String text,
+    String? placeId,
   });
 
   /// Zera o contador de não-lidas do usuário corrente nesta conversa.

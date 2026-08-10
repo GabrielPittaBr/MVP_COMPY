@@ -12,6 +12,7 @@ import '../../domain/entities/message.dart';
 /// senderId: String
 /// text: String
 /// sentAt: Timestamp (nulo enquanto o servidor não confirma)
+/// placeId: String (só em mensagem de local compartilhado)
 /// ```
 abstract final class MessageMapper {
   static Message fromMap(
@@ -29,6 +30,9 @@ abstract final class MessageMapper {
       // mantém a mensagem recém-enviada visível e no fim da lista; cair na
       // época zero a jogaria para o topo do histórico até o servidor responder.
       sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      placeId: (data['placeId'] as String?)?.trim().isEmpty ?? true
+          ? null
+          : (data['placeId'] as String).trim(),
     );
   }
 

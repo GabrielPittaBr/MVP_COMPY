@@ -96,6 +96,13 @@ abstract final class AppStrings {
   static const String chatSearchError = 'Não foi possível buscar agora.';
   static const String chatOpenConversationError =
       'Não foi possível abrir a conversa.';
+  static const String chatForwardedPlace = 'Encaminhou um local...';
+  static const String chatShareTo = 'Enviar para';
+  static const String chatShareNoConversations =
+      'Você ainda não tem conversas. Comece uma para compartilhar o local.';
+  static const String chatShareError =
+      'Não foi possível compartilhar o local.';
+  static const String mapsShare = 'Compartilhar';
 
   // Auth — login / cadastro / username
   static const String authTagline = 'Ache seu próximo jogo em Taquara';
