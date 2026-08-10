@@ -1,10 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/message.dart';
+import 'peer_avatar.dart';
 
 /// Balão de mensagem alinhado conforme [isMine].
 class MessageBubble extends StatelessWidget {
@@ -17,7 +17,10 @@ class MessageBubble extends StatelessWidget {
 
   final Message message;
   final bool isMine;
-  final UserSummary peer;
+
+  /// Pode ser nulo enquanto a conversa ainda está sendo resolvida — o balão
+  /// desenha o avatar genérico em vez de derrubar a tela.
+  final UserSummary? peer;
 
   @override
   Widget build(BuildContext context) {
@@ -29,10 +32,7 @@ class MessageBubble extends StatelessWidget {
         mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: <Widget>[
           if (!isMine) ...<Widget>[
-            CircleAvatar(
-              radius: 14,
-              backgroundImage: CachedNetworkImageProvider(peer.avatarUrl),
-            ),
+            PeerAvatar(peer: peer, radius: 14),
             const SizedBox(width: 8),
           ],
           Flexible(

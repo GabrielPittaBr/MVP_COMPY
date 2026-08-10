@@ -84,6 +84,10 @@ abstract final class AppStrings {
   static const String chatFindMore = 'Encontre mais companheiros...';
   static const String chatHint = 'Digite uma mensagem...';
   static const String chatToday = 'Hoje';
+  static const String chatYesterday = 'Ontem';
+  static const String chatConversationUnavailable =
+      'Esta conversa não está disponível.';
+  static const String chatFallbackTitle = 'Conversa';
 
   // Auth — login / cadastro / username
   static const String authTagline = 'Ache seu próximo jogo em Taquara';

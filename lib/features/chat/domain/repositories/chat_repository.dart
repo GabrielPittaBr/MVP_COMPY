@@ -11,6 +11,11 @@ abstract interface class ChatRepository {
     int pageSize,
   });
 
+  /// Uma conversa avulsa, ou `null` quando ela não existe ou [userId] não
+  /// participa dela. Usada pela sala quando a conversa não veio na página
+  /// já carregada da lista.
+  Future<Conversation?> fetchConversation(String conversationId, String userId);
+
   Stream<List<Message>> watchMessages(String conversationId);
 
   Future<void> sendMessage({
