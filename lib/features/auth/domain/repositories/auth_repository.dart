@@ -29,7 +29,10 @@ abstract interface class AuthRepository {
   Future<AuthUser> signInWithGoogle();
 
   /// Verifica se o [username] ainda está disponível no Firestore.
-  Future<bool> isUsernameAvailable(String username);
+  ///
+  /// [forUid] é o dono esperado: um username já registrado para esse uid
+  /// continua disponível **para ele**.
+  Future<bool> isUsernameAvailable(String username, {String? forUid});
 
   /// Grava o username escolhido (fluxo pós-Google para novos usuários).
   /// Cria/atualiza `users/{uid}` e `usernames/{username}` no Firestore.

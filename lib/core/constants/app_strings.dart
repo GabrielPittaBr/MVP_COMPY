@@ -172,6 +172,9 @@ abstract final class AppStrings {
   static const String authErrorPasswordShort = 'A senha precisa ter ao menos 6 caracteres.';
   static const String authErrorNameEmpty = 'Informe seu nome.';
   static const String authErrorGeneric = 'Ocorreu um erro. Tente novamente.';
+  static const String authErrorProfileLookup =
+      'Não foi possível carregar seu perfil. Verifique a conexão e tente novamente.';
+  static const String authRetry = 'Tentar novamente';
   static const String authErrorInvalidCredential = 'E-mail ou senha incorretos.';
   static const String authErrorEmailAlreadyInUse = 'Este e-mail já está cadastrado.';
 }

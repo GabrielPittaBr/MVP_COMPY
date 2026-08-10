@@ -108,12 +108,40 @@ usernames/{username_minusculo}
 
 ---
 
+## O que o login com Google cria, e quando (tarefa 5)
+
+**Conta sim, perfil não.** `signInWithCredential` cria a conta no Firebase Auth
+automaticamente no primeiro login — não existe passo de "cadastro". O documento
+`users/{uid}` **não** nasce ali: ele só é gravado em `setUsername()`, depois de
+o usuário escolher o username. É por isso que o guard usa `hasUsername` e não a
+mera existência da conta.
+
+Esse descompasso gerava três problemas. Os três foram corrigidos:
+
+| # | Problema | Correção |
+|---|---|---|
+| 1 | **Conta órfã.** Fechar o app em `/username` deixa conta no Auth sem documento em `users/`. | Aceito. No próximo login ele volta para `/username` e completa — não quebra nada, só suja a base. |
+| 2 | **Falso negativo em rede ruim.** `_userHasProfile()` devolvia `false` no catch, então um usuário **já cadastrado** com internet lenta era mandado para `/username` — e ao confirmar o próprio username levava `UsernameAlreadyTakenException` no username dele mesmo, sem saída. | Duas frentes: a leitura agora estoura `ProfileLookupFailedException` em vez de mentir `false`, e a splash oferece "Tentar novamente"; e `isUsernameAvailable()` passou a aceitar o username cujo documento já aponta para o **mesmo uid**. |
+| 3 | **`batch.set` sem merge no índice.** Se `usernames/{username}` já existia, a escrita virava *update* e sobrescrevia o documento inteiro. | `SetOptions(merge: true)`, casando com a regra que permite o update do dono. |
+
+O erro de leitura tem tratamento próprio no guard: com o estado de auth em erro
+e nenhum usuário utilizável em mãos, o router segura o usuário na splash. Cair
+para `/login` deslogaria quem está autenticado; cair para `/username` faria
+recadastrar quem já tem conta.
+
+> **Pendente de verificação no console.** As conclusões acima vêm da leitura do
+> código e da suíte de regras no emulador. Falta rodar o fluxo com uma conta
+> Google nova e conferir em Authentication → Users e Firestore → `users` em que
+> momento cada registro aparece, anexando a evidência aqui.
+
+---
+
 ## Regras de Segurança (firestore.rules)
 
 As regras usam a função auxiliar `signedIn()` que verifica `request.auth != null` (cobre anônimo e contas reais). Destaques:
 
 - `users/{userId}`: leitura para qualquer autenticado; escrita só para o dono.
-- `usernames/{username}`: leitura livre; criação só se `request.resource.data.uid == request.auth.uid`.
+- `usernames/{username}`: leitura livre (a checagem de disponibilidade roda **antes** do login); criação só se `request.resource.data.uid == request.auth.uid`; atualização só do documento que já pertence ao mesmo uid.
 - `events`, `conversations`: escrita restrita por papel (criador do evento, membro da conversa) — ver os comentários no próprio `firestore.rules`.
 - `places`: não existe. O catálogo de locais é curado e vive em código (`SportPlace.all`).
 
@@ -196,6 +224,5 @@ Checklist manual:
 
 ## Próximos Passos Recomendados
 
-- Mapear `users/{uid}` → `UserProfile` em `ProfileRepositoryImpl.getCurrentProfile()` (TODO pré-existente).
 - Adicionar botão de logout na tela de Perfil.
 - Índice composto para a query de chat (`members arrayContains + orderBy lastMessageAt`) — o Firestore mostra o link para criar quando rodar pela primeira vez.

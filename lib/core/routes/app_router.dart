@@ -85,6 +85,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final AuthUser? user =
           controllerAsync.valueOrNull ?? authAsync.valueOrNull;
 
+      // Leitura de `users/{uid}` falhou: há alguém logado, mas não dá para
+      // saber em que ponto do cadastro ele está. Fica na splash, que oferece
+      // nova tentativa — mandar para /login deslogaria quem está autenticado,
+      // e mandar para /username faria recadastrar quem já tem conta.
+      // `authAsync` só entra em erro com usuário logado: deslogado emite null.
+      if (user == null && authAsync.hasError) {
+        return location == AppRoutes.splash ? null : AppRoutes.splash;
+      }
+
       final bool onAuthRoute = location == AppRoutes.login ||
           location == AppRoutes.signup ||
           location == AppRoutes.username;

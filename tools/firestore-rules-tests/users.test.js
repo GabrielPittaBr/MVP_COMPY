@@ -62,7 +62,9 @@ function writeUserProfile(db, { uid, username, name = 'Gabriel Pitta', email = '
     },
     { merge: true },
   );
-  batch.set(doc(db, 'usernames', username), { uid });
+  // Merge espelha a tarefa 5: no re-cadastro o documento já existe, e `set`
+  // sem merge sobrescreveria o documento inteiro.
+  batch.set(doc(db, 'usernames', username), { uid }, { merge: true });
   return batch.commit();
 }
 
@@ -116,6 +118,40 @@ describe('login com Google — usuario que ja tem perfil', () => {
   it('ninguem escreve no perfil alheio', async () => {
     await assertFails(
       writeUserProfile(as('uid_outro'), { uid: UID, username: USERNAME }),
+    );
+  });
+});
+
+describe('indice de usernames — re-cadastro (tarefa 5)', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'usernames', USERNAME), { uid: UID });
+    });
+  });
+
+  it('o dono regrava o proprio indice', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(UID), 'usernames', USERNAME), { uid: UID }, { merge: true }),
+    );
+  });
+
+  it('ninguem toma o username de outro', async () => {
+    await assertFails(
+      setDoc(
+        doc(as('uid_outro'), 'usernames', USERNAME),
+        { uid: 'uid_outro' },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('o dono nao repassa o proprio indice para outro uid', async () => {
+    await assertFails(
+      setDoc(
+        doc(as(UID), 'usernames', USERNAME),
+        { uid: 'uid_outro' },
+        { merge: true },
+      ),
     );
   });
 });

@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/auth_user.dart';
@@ -122,6 +123,9 @@ final authControllerProvider =
 String firebaseAuthErrorMessage(Object error) {
   if (error is UsernameAlreadyTakenException) {
     return 'Este username já está em uso.';
+  }
+  if (error is ProfileLookupFailedException) {
+    return AppStrings.authErrorProfileLookup;
   }
   if (error is GoogleSignInCancelledException) {
     return 'Login com Google cancelado.';
