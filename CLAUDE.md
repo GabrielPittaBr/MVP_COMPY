@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **COMPY** is a Flutter mobile app (TCC project) that connects sports practitioners in Taquara/RS, Brazil. It supports event discovery, map browsing, real-time chat, and user profiles.
 
-- **Languages:** Dart / Flutter 3.22+ (not a Node project — the Firebase CLI used for `firebase.json`/`flutterfire configure` runs from a global `firebase-tools` install, not from any local `node_modules/`)
+- **Languages:** Dart / Flutter 3.22+. The app itself has no Node dependency — the Firebase CLI used for `firebase.json`/`flutterfire configure` runs from a global `firebase-tools` install. The one exception is `tools/firestore-rules-tests/`, a small Node package that exercises `firestore.rules` against the emulator; Firestore security rules cannot be tested from Dart. It never ships with the app.
 - **State management:** Flutter Riverpod 2.5.1
 - **Routing:** GoRouter 14.2.0 (5-tab `StatefulShellRoute.indexedStack`)
 - **Backend:** Firebase Auth + Firestore (`compy-tcc` project, region `southamerica-east1`)
@@ -20,6 +20,10 @@ flutter test                  # Run tests
 flutter pub get               # Install Dart dependencies
 flutterfire configure         # Regenerate lib/firebase_options.dart (required after cloning or changing Firebase project)
 dart analyze                  # Run the Dart analyzer (uses analysis_options.yaml)
+
+# Firestore security rules (needs JDK 21+ on PATH — see tools/firestore-rules-tests/README.md)
+npm install --prefix tools/firestore-rules-tests   # once
+npm test --prefix tools/firestore-rules-tests      # runs the rules suite against the emulator
 ```
 
 ## Firebase Setup (Required Before Running)
@@ -62,6 +66,7 @@ Branch naming: `feature/`, `fix/`, `refactor/`, `chore/`, `style/` prefixes.
 | `lib/core/theme/app_colors.dart` | Color palette (WCAG AA — do not change arbitrarily) |
 | `lib/core/constants/app_strings.dart` | All UI strings in PT-BR (single source of truth) |
 | `firestore.rules` | Per-collection rules scoped by role (profile owner, event creator, conversation member) — see the comments in the file |
+| `docs/checklist-publicacao.md` | Blockers that must be handled before shipping — the app still uses the `com.example.*` template package, and changing it invalidates the Google Sign-In OAuth clients |
 
 ## Conventions
 

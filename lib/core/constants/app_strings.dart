@@ -91,6 +91,26 @@ abstract final class AppStrings {
   static const String chatFindMore = 'Encontre mais companheiros...';
   static const String chatHint = 'Digite uma mensagem...';
   static const String chatToday = 'Hoje';
+  static const String chatYesterday = 'Ontem';
+  static const String chatConversationUnavailable =
+      'Esta conversa não está disponível.';
+  static const String chatFallbackTitle = 'Conversa';
+  static const String chatUnknownPeer = 'Desconhecido';
+  static const String chatNewConversation = 'Nova conversa';
+  static const String chatSearchHandleHint = 'Buscar por @handle';
+  static const String chatSearchPrompt =
+      'Digite ao menos 2 letras do handle para buscar.';
+  static const String chatSearchEmpty = 'Ninguém encontrado com esse handle.';
+  static const String chatSearchError = 'Não foi possível buscar agora.';
+  static const String chatOpenConversationError =
+      'Não foi possível abrir a conversa.';
+  static const String chatForwardedPlace = 'Encaminhou um local...';
+  static const String chatShareTo = 'Enviar para';
+  static const String chatShareNoConversations =
+      'Você ainda não tem conversas. Comece uma para compartilhar o local.';
+  static const String chatShareError =
+      'Não foi possível compartilhar o local.';
+  static const String mapsShare = 'Compartilhar';
 
   // Auth — login / cadastro / username
   static const String authTagline = 'Ache seu próximo jogo em Taquara';

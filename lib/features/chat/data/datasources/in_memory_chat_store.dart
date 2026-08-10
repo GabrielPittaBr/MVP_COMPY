@@ -50,23 +50,30 @@ class InMemoryChatStore {
       _peers[p.id] = p;
     }
 
+    // Os ids seguem a mesma regra determinística do Firestore. Se fossem
+    // apelidos ('c_douglas'), buscar Douglas na "nova conversa" não acharia a
+    // conversa semeada e criaria uma segunda, vazia, com a mesma pessoa.
+    final idDouglas = Conversation.idBetween(currentUserId, douglas.id);
+    final idHercules = Conversation.idBetween(currentUserId, hercules.id);
+    final idRipelson = Conversation.idBetween(currentUserId, ripelson.id);
+
     _conversations.addAll(<Conversation>[
       Conversation(
-        id: 'c_douglas',
+        id: idDouglas,
         peer: douglas,
         lastMessage: 'Encaminhou um local...',
         unreadCount: 2,
         lastMessageAt: DateTime.now().subtract(const Duration(minutes: 10)),
       ),
       Conversation(
-        id: 'c_hercules',
+        id: idHercules,
         peer: hercules,
         lastMessage: 'Encaminhou um local...',
         unreadCount: 2,
         lastMessageAt: DateTime.now().subtract(const Duration(hours: 1)),
       ),
       Conversation(
-        id: 'c_ripelson',
+        id: idRipelson,
         peer: ripelson,
         lastMessage: 'Encaminhou um local...',
         unreadCount: 2,
@@ -74,31 +81,31 @@ class InMemoryChatStore {
       ),
     ]);
 
-    _messages['c_douglas'] = <Message>[
+    _messages[idDouglas] = <Message>[
       Message(
         id: 'm1',
-        conversationId: 'c_douglas',
+        conversationId: idDouglas,
         senderId: douglas.id,
         text: 'Iae mano! Bora treinar nesse campo interessante aqui no centro?',
         sentAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 30)),
       ),
       Message(
         id: 'm2',
-        conversationId: 'c_douglas',
+        conversationId: idDouglas,
         senderId: currentUserId,
         text: 'Bora mano! Em qual horário consegue marcar pra nós? Já vou chamar os guri!',
         sentAt: DateTime.now().subtract(const Duration(hours: 2)),
       ),
       Message(
         id: 'm3',
-        conversationId: 'c_douglas',
+        conversationId: idDouglas,
         senderId: douglas.id,
         text: '👍',
         sentAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 50)),
       ),
     ];
-    _messages['c_hercules'] = <Message>[];
-    _messages['c_ripelson'] = <Message>[];
+    _messages[idHercules] = <Message>[];
+    _messages[idRipelson] = <Message>[];
 
     _conversationsCtl.add(List<Conversation>.unmodifiable(_conversations));
   }
@@ -121,7 +128,41 @@ class InMemoryChatStore {
     yield* ctl.stream;
   }
 
-  void sendMessage({required String conversationId, required String text}) {
+  /// Cria a conversa com [peer] se ela ainda não existir — o equivalente
+  /// mockado do `createConversation` do Firestore, para o fluxo de "nova
+  /// conversa" funcionar sem backend.
+  void ensureConversation({required String id, required UserSummary peer}) {
+    if (_conversations.any((c) => c.id == id)) return;
+
+    _peers[peer.id] = peer;
+    _conversations.insert(
+      0,
+      Conversation(
+        id: id,
+        peer: peer,
+        lastMessage: '',
+        unreadCount: 0,
+        lastMessageAt: DateTime.now(),
+      ),
+    );
+    _messages.putIfAbsent(id, () => <Message>[]);
+    _conversationsCtl.add(List<Conversation>.unmodifiable(_conversations));
+  }
+
+  /// Zera as não-lidas da conversa — equivalente mockado do `markAsRead`.
+  void markAsRead(String conversationId) {
+    final idx = _conversations.indexWhere((c) => c.id == conversationId);
+    if (idx == -1 || _conversations[idx].unreadCount == 0) return;
+
+    _conversations[idx] = _conversations[idx].copyWith(unreadCount: 0);
+    _conversationsCtl.add(List<Conversation>.unmodifiable(_conversations));
+  }
+
+  void sendMessage({
+    required String conversationId,
+    required String text,
+    String? placeId,
+  }) {
     final list = _messages.putIfAbsent(conversationId, () => <Message>[]);
     final newMsg = Message(
       id: 'm_${DateTime.now().millisecondsSinceEpoch}',
@@ -129,6 +170,7 @@ class InMemoryChatStore {
       senderId: currentUserId,
       text: text,
       sentAt: DateTime.now(),
+      placeId: placeId,
     );
     list.add(newMsg);
     _messagesCtls[conversationId]?.add(List<Message>.unmodifiable(list));
@@ -136,10 +178,7 @@ class InMemoryChatStore {
     // Atualiza preview da conversa
     final idx = _conversations.indexWhere((c) => c.id == conversationId);
     if (idx != -1) {
-      final old = _conversations[idx];
-      _conversations[idx] = Conversation(
-        id: old.id,
-        peer: old.peer,
+      _conversations[idx] = _conversations[idx].copyWith(
         lastMessage: text,
         unreadCount: 0,
         lastMessageAt: newMsg.sentAt,

@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/auth_remote_datasource.dart';
@@ -124,6 +125,18 @@ String firebaseAuthErrorMessage(Object error) {
   }
   if (error is GoogleSignInCancelledException) {
     return 'Login com Google cancelado.';
+  }
+  if (error is GoogleSignInMisconfiguredException) {
+    // A pista técnica vai para o log; a tela não fala de SHA-1 com o usuário.
+    if (kDebugMode) {
+      debugPrint(
+        '[Auth] Login com Google recusado com DEVELOPER_ERROR (ApiException: 10).\n'
+        '       A SHA-1 deste keystore não está registrada no projeto Firebase,\n'
+        '       e android/app/google-services.json está com "oauth_client" vazio.\n'
+        '       Cadastre a SHA-1 no console, rebaixe o google-services.json e recompile.',
+      );
+    }
+    return 'Login com Google indisponível nesta versão do app.';
   }
   if (error is FirebaseAuthException) {
     switch (error.code) {

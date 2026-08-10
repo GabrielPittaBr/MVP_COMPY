@@ -9,6 +9,7 @@ import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/sport_place.dart';
 import '../../../../shared/widgets/custom_sport_marker.dart';
+import '../../../chat/presentation/widgets/share_place_sheet.dart';
 import '../providers/maps_providers.dart';
 import '../widgets/place_details_sheet.dart';
 
@@ -16,7 +17,12 @@ import '../widgets/place_details_sheet.dart';
 /// esportivos cadastrados em Taquara/RS. Tocar num pin abre um bottom
 /// sheet com detalhes do local.
 class MapsPage extends ConsumerStatefulWidget {
-  const MapsPage({super.key});
+  const MapsPage({this.initialPlaceId, super.key});
+
+  /// Local a abrir já selecionado — é assim que o card de local encaminhado
+  /// no chat traz o usuário de volta ao pin. Mesmo padrão do
+  /// `initialPlaceId` da criação de evento: viaja o id, não o objeto.
+  final String? initialPlaceId;
 
   @override
   ConsumerState<MapsPage> createState() => _MapsPageState();
@@ -24,6 +30,37 @@ class MapsPage extends ConsumerStatefulWidget {
 
 class _MapsPageState extends ConsumerState<MapsPage> {
   final MapController _mapController = MapController();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusInitialPlace();
+  }
+
+  @override
+  void didUpdateWidget(MapsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Chegar aqui pelo card de local no chat nem sempre constrói a tela do
+    // zero: se o mapa já estiver na pilha da aba Início, o GoRouter reaproveita
+    // o elemento e só o `initialPlaceId` muda — o `initState` não roda de novo.
+    if (oldWidget.initialPlaceId != widget.initialPlaceId) {
+      _focusInitialPlace();
+    }
+  }
+
+  void _focusInitialPlace() {
+    final place = widget.initialPlaceId == null
+        ? null
+        : SportPlace.byId(widget.initialPlaceId!);
+    if (place == null) return;
+    // Depois do quadro: `selectedPlaceProvider` não pode ser escrito durante
+    // a construção da árvore.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(selectedPlaceProvider.notifier).state = place;
+      _mapController.move(place.coordinates, AppGeo.focusZoom);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -153,6 +190,9 @@ class _MapsPageState extends ConsumerState<MapsPage> {
                   ref.read(selectedPlaceProvider.notifier).state = null;
                   context.go(AppRoutes.create, extra: placeId);
                 },
+                // O card segue aberto atrás do seletor: quem desiste de
+                // compartilhar volta para o local onde estava.
+                onShare: () => SharePlaceSheet.show(context, selectedPlace.id),
               ),
             ),
         ],
