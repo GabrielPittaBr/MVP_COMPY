@@ -142,6 +142,22 @@ class InMemoryChatStore {
     _conversationsCtl.add(List<Conversation>.unmodifiable(_conversations));
   }
 
+  /// Zera as não-lidas da conversa — equivalente mockado do `markAsRead`.
+  void markAsRead(String conversationId) {
+    final idx = _conversations.indexWhere((c) => c.id == conversationId);
+    if (idx == -1 || _conversations[idx].unreadCount == 0) return;
+
+    final old = _conversations[idx];
+    _conversations[idx] = Conversation(
+      id: old.id,
+      peer: old.peer,
+      lastMessage: old.lastMessage,
+      unreadCount: 0,
+      lastMessageAt: old.lastMessageAt,
+    );
+    _conversationsCtl.add(List<Conversation>.unmodifiable(_conversations));
+  }
+
   void sendMessage({required String conversationId, required String text}) {
     final list = _messages.putIfAbsent(conversationId, () => <Message>[]);
     final newMsg = Message(

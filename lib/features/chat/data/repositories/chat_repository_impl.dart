@@ -132,6 +132,7 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<void> sendMessage({
     required String conversationId,
+    required String peerId,
     required String text,
   }) async {
     if (!kUseFirebaseRepos || _remote == null) {
@@ -150,7 +151,19 @@ class ChatRepositoryImpl implements ChatRepository {
     return _remote.sendMessage(
       conversationId: conversationId,
       senderId: senderId,
+      peerId: peerId,
       text: text,
     );
+  }
+
+  @override
+  Future<void> markAsRead(String conversationId) async {
+    if (!kUseFirebaseRepos || _remote == null) {
+      InMemoryChatStore.instance.markAsRead(conversationId);
+      return;
+    }
+    final userId = _currentUserId;
+    if (userId == null) return;
+    await _remote.markAsRead(conversationId: conversationId, userId: userId);
   }
 }

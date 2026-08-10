@@ -26,8 +26,13 @@ abstract interface class ChatRepository {
 
   Stream<List<Message>> watchMessages(String conversationId);
 
+  /// Envia [text] e incrementa o contador de não-lidas de [peerId].
   Future<void> sendMessage({
     required String conversationId,
+    required String peerId,
     required String text,
   });
+
+  /// Zera o contador de não-lidas do usuário corrente nesta conversa.
+  Future<void> markAsRead(String conversationId);
 }

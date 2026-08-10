@@ -83,9 +83,16 @@ class ChatRemoteDataSource {
     }
   }
 
+  /// Grava a mensagem e o rodapé da conversa no mesmo lote.
+  ///
+  /// [peerId] recebe +1 em `unreadCounts`. Vai junto no lote de propósito:
+  /// sem Cloud Function é o remetente quem incrementa, e separar as duas
+  /// escritas deixaria o contador desalinhado da mensagem se a segunda
+  /// falhasse.
   Future<void> sendMessage({
     required String conversationId,
     required String senderId,
+    required String peerId,
     required String text,
   }) {
     final batch = _firestore.batch();
@@ -99,7 +106,22 @@ class ChatRemoteDataSource {
     batch.update(convRef, <String, Object?>{
       'lastMessage': text,
       'lastMessageAt': FieldValue.serverTimestamp(),
+      // Notação de ponto: mexe só na chave do peer e preserva a do remetente.
+      // As regras enxergam `unreadCounts` como campo alterado, que está na
+      // lista permitida do update.
+      'unreadCounts.$peerId': FieldValue.increment(1),
     });
     return batch.commit();
+  }
+
+  /// Zera o contador de não-lidas de [userId] na conversa.
+  Future<void> markAsRead({
+    required String conversationId,
+    required String userId,
+  }) {
+    return _firestore
+        .collection('conversations')
+        .doc(conversationId)
+        .update(<String, Object?>{'unreadCounts.$userId': 0});
   }
 }

@@ -11,6 +11,7 @@ import '../../domain/entities/message.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/usecases/get_conversation.dart';
 import '../../domain/usecases/get_conversations.dart';
+import '../../domain/usecases/mark_conversation_as_read.dart';
 import '../../domain/usecases/open_conversation.dart';
 import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/watch_messages.dart';
@@ -59,6 +60,10 @@ final openConversationProvider = Provider<OpenConversation>(
   (ref) => OpenConversation(ref.watch(chatRepositoryProvider)),
 );
 
+final markConversationAsReadProvider = Provider<MarkConversationAsRead>(
+  (ref) => MarkConversationAsRead(ref.watch(chatRepositoryProvider)),
+);
+
 /// Lista paginada de conversas — blocos de 10 via `startAfterDocument`.
 /// Use `loadMore()` no scroll e `ref.invalidate` para recarregar.
 class PaginatedConversationsController extends AsyncNotifier<List<Conversation>> {
@@ -89,6 +94,35 @@ class PaginatedConversationsController extends AsyncNotifier<List<Conversation>>
     _cursor = page.cursor;
     _hasMore = page.hasMore;
     return page.items;
+  }
+
+  /// Zera as não-lidas de uma conversa na lista já carregada.
+  ///
+  /// Espelha localmente a escrita que a sala acabou de fazer. Recarregar a
+  /// lista inteira só para apagar um badge custaria uma página de leituras e
+  /// jogaria o usuário de volta ao topo da paginação.
+  void markReadLocally(String conversationId) {
+    final current = state.valueOrNull;
+    if (current == null) return;
+
+    var changed = false;
+    final updated = <Conversation>[
+      for (final c in current)
+        if (c.id == conversationId && c.unreadCount != 0)
+          () {
+            changed = true;
+            return Conversation(
+              id: c.id,
+              peer: c.peer,
+              lastMessage: c.lastMessage,
+              unreadCount: 0,
+              lastMessageAt: c.lastMessageAt,
+            );
+          }()
+        else
+          c,
+    ];
+    if (changed) state = AsyncData<List<Conversation>>(updated);
   }
 
   Future<void> loadMore() async {
