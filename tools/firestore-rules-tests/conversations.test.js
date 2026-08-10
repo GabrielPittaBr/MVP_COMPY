@@ -8,6 +8,7 @@
  * deixava qualquer usuário autenticado ler e escrever qualquer conversa
  * privada de qualquer pessoa.
  */
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import {
@@ -146,6 +147,66 @@ describe('conversations — criação', () => {
     await assertFails(
       setDoc(doc(as(JOAO), 'conversations', 'so_eu'), conversationDoc([JOAO])),
     );
+  });
+
+  it('aceita o documento exatamente como o app o cria', async () => {
+    // Espelha o payload de ChatRemoteDataSource.createConversation.
+    await assertSucceeds(
+      setDoc(doc(as(JOAO), 'conversations', 'uid_joao_uid_novo'), {
+        members: [JOAO, 'uid_novo'],
+        memberSummaries: {
+          [JOAO]: { id: JOAO, name: 'João', handle: '@joao', avatarUrl: '' },
+          uid_novo: {
+            id: 'uid_novo',
+            name: 'Novo',
+            handle: '@novo',
+            avatarUrl: '',
+          },
+        },
+        lastMessage: '',
+        lastMessageAt: serverTimestamp(),
+        unreadCounts: { [JOAO]: 0, uid_novo: 0 },
+      }),
+    );
+  });
+
+  it('recriar conversa existente com os MESMOS membros passa — e é destrutivo', async () => {
+    // Armadilha: `diff().affectedKeys()` só acusa campo cujo valor mudou.
+    // Reescrever `members` e `memberSummaries` iguais não aparece no diff, o
+    // `hasOnly` do update passa, e o payload de criação zera o rodapé.
+    //
+    // É por isso que o app lê a conversa ANTES de tentar criar, em vez de
+    // criar e tratar a recusa como "já existe".
+    await assertSucceeds(
+      setDoc(doc(as(JOAO), 'conversations', CONVERSA), {
+        ...conversationDoc(),
+        lastMessage: '',
+        unreadCounts: { [JOAO]: 0, [DOUGLAS]: 0 },
+      }),
+    );
+
+    let depois;
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      depois = await getDoc(doc(ctx.firestore(), 'conversations', CONVERSA));
+    });
+    assert.equal(
+      depois.data().lastMessage,
+      '',
+      'o rodapé da conversa foi sobrescrito pela recriação',
+    );
+  });
+
+  it('recriar conversa existente trocando os membros é recusado', async () => {
+    await assertFails(
+      setDoc(
+        doc(as(JOAO), 'conversations', CONVERSA),
+        conversationDoc([JOAO, ESTRANHO]),
+      ),
+    );
+  });
+
+  it('ler conversa inexistente falha como se fosse alheia', async () => {
+    await assertFails(getDoc(doc(as(JOAO), 'conversations', 'nao_existe')));
   });
 });
 

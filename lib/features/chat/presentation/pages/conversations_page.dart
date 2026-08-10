@@ -19,6 +19,11 @@ class ConversationsPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.chatTitle)),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.go(AppRoutes.chatNew),
+        tooltip: AppStrings.chatNewConversation,
+        child: const Icon(Icons.chat_bubble_outline),
+      ),
       body: conversationsAsync.when(
         data: (conversations) {
           final hasMore =

@@ -11,6 +11,7 @@ import '../../domain/entities/message.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/usecases/get_conversation.dart';
 import '../../domain/usecases/get_conversations.dart';
+import '../../domain/usecases/open_conversation.dart';
 import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/watch_messages.dart';
 
@@ -52,6 +53,10 @@ final watchMessagesProvider = Provider<WatchMessages>(
 
 final sendMessageProvider = Provider<SendMessage>(
   (ref) => SendMessage(ref.watch(chatRepositoryProvider)),
+);
+
+final openConversationProvider = Provider<OpenConversation>(
+  (ref) => OpenConversation(ref.watch(chatRepositoryProvider)),
 );
 
 /// Lista paginada de conversas — blocos de 10 via `startAfterDocument`.

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../core/constants/app_flags.dart';
 import '../../../../shared/models/paged_result.dart';
+import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/repositories/chat_repository.dart';
@@ -78,6 +79,41 @@ class ChatRepositoryImpl implements ChatRepository {
       if (e.code == 'permission-denied') return null;
       rethrow;
     }
+  }
+
+  @override
+  Future<String> openConversationWith({
+    required UserSummary me,
+    required UserSummary peer,
+  }) async {
+    final conversationId = Conversation.idBetween(me.id, peer.id);
+
+    if (!kUseFirebaseRepos || _remote == null) {
+      InMemoryChatStore.instance.ensureConversation(
+        id: conversationId,
+        peer: peer,
+      );
+      return conversationId;
+    }
+
+    // Confirmar a ausência antes de criar não é zelo: o `set` de criação
+    // sobre uma conversa que já existe **passa** pelas regras quando membros e
+    // resumos chegam idênticos (o `diff()` não acusa campo cujo valor não
+    // mudou) e zeraria `lastMessage` e `unreadCounts` da conversa em uso.
+    //
+    // Como o id vem dos dois uids, uma conversa existente nesse id é
+    // necessariamente minha — logo, ler devolve a conversa em vez de null.
+    final existing = await fetchConversation(conversationId, me.id);
+    if (existing != null) return conversationId;
+
+    await _remote.createConversation(
+      conversationId: conversationId,
+      memberSummaries: <String, dynamic>{
+        me.id: me.toMap(),
+        peer.id: peer.toMap(),
+      },
+    );
+    return conversationId;
   }
 
   @override

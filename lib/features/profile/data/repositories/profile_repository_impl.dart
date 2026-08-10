@@ -35,4 +35,34 @@ class ProfileRepositoryImpl implements ProfileRepository {
       gallery: const [],
     );
   }
+
+  @override
+  Future<List<UserSummary>> searchByHandle(
+    String handlePrefix, {
+    String? excludeUid,
+    int limit = 20,
+  }) async {
+    final prefix = handlePrefix.trim().toLowerCase().replaceFirst('@', '');
+    if (prefix.isEmpty) return const <UserSummary>[];
+
+    if (!kUseFirebaseRepos || _remote == null) {
+      return MockProfile.searchable
+          .where((u) =>
+              u.id != excludeUid &&
+              u.handle.toLowerCase().startsWith('@$prefix'))
+          .take(limit)
+          .toList();
+    }
+
+    final snapshot = await _remote.searchByHandlePrefix(prefix, limit: limit);
+    return snapshot.docs
+        .where((doc) => doc.id != excludeUid)
+        .map((doc) => UserSummary.fromMap(<String, dynamic>{
+              ...doc.data(),
+              // O perfil grava `id`, mas quem manda é o doc id: é ele que a
+              // conversa vai usar como membro.
+              'id': doc.id,
+            }))
+        .toList();
+  }
 }

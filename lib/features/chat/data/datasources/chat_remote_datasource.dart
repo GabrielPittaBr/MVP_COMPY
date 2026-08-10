@@ -50,6 +50,39 @@ class ChatRemoteDataSource {
         .snapshots();
   }
 
+  /// Cria `conversations/{conversationId}`.
+  ///
+  /// **Só chamar depois de confirmar que a conversa não existe** — quem faz
+  /// isso é o repositório. Este `set` não é inofensivo sobre documento
+  /// existente: quando membros e resumos chegam iguais, as regras deixam
+  /// passar como update e o payload aqui zera `lastMessage` e `unreadCounts`.
+  ///
+  /// `memberSummaries` precisa nascer aqui: a regra de update proíbe alterá-lo
+  /// depois, então não há segunda chance de preencher nome e avatar.
+  Future<void> createConversation({
+    required String conversationId,
+    required Map<String, dynamic> memberSummaries,
+  }) async {
+    final members = memberSummaries.keys.toList();
+    try {
+      await _firestore.collection('conversations').doc(conversationId).set(
+        <String, Object?>{
+          'members': members,
+          'memberSummaries': memberSummaries,
+          'lastMessage': '',
+          'lastMessageAt': FieldValue.serverTimestamp(),
+          'unreadCounts': <String, Object?>{for (final uid in members) uid: 0},
+        },
+      );
+    } on FirebaseException catch (e) {
+      // Os dois lados criando ao mesmo tempo: o perdedor da corrida tenta
+      // gravar membros diferentes dos que já estão lá e é recusado. O
+      // documento existe, que é o que importa para seguir.
+      if (e.code == 'permission-denied' || e.code == 'already-exists') return;
+      rethrow;
+    }
+  }
+
   Future<void> sendMessage({
     required String conversationId,
     required String senderId,
