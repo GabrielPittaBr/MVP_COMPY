@@ -183,6 +183,10 @@ abstract final class AppStrings {
       'Escolha os esportes que você mais curte. É por eles que o COMPY monta o que você vê primeiro.';
   static const String onboardingSportsContinue = 'Continuar';
   static const String onboardingSportsSkip = 'Pular por agora';
+  static const String onboardingSportsSave = 'Salvar';
+  static const String onboardingSportsEditTitle = 'Esportes favoritos';
+  static const String onboardingSportsEditHint =
+      'Marque ou desmarque à vontade — dá para mudar quando quiser.';
   static const String onboardingSportsSaveError =
       'Não foi possível salvar seus esportes. Tente novamente.';
   static const String authErrorInvalidCredential = 'E-mail ou senha incorretos.';

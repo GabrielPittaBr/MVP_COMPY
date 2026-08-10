@@ -21,8 +21,26 @@ import '../providers/profile_providers.dart';
 /// onboarding como concluído é o campo passar a existir em `users/{uid}`, não
 /// a lista ter itens. Se o "pular" não gravasse nada, o guard do router
 /// devolveria o usuário para cá na abertura seguinte, para sempre.
+/// Os dois contextos em que a tela aparece.
+enum FavoriteSportsMode {
+  /// Último passo do cadastro: pede ao menos um esporte, oferece pular e
+  /// segue para a Home.
+  onboarding,
+
+  /// Aberta pela aba Perfil: já dá para voltar atrás, então não há o que
+  /// pular, e limpar tudo é uma edição legítima.
+  edit,
+}
+
 class FavoriteSportsPage extends ConsumerStatefulWidget {
-  const FavoriteSportsPage({super.key});
+  const FavoriteSportsPage({
+    this.mode = FavoriteSportsMode.onboarding,
+    super.key,
+  });
+
+  final FavoriteSportsMode mode;
+
+  bool get _isOnboarding => mode == FavoriteSportsMode.onboarding;
 
   @override
   ConsumerState<FavoriteSportsPage> createState() => _FavoriteSportsPageState();
@@ -63,24 +81,33 @@ class _FavoriteSportsPageState extends ConsumerState<FavoriteSportsPage> {
   Widget build(BuildContext context) {
     final bool isSaving = ref.watch(favoriteSportsControllerProvider).isLoading;
 
+    final bool isOnboarding = widget._isOnboarding;
+
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: isOnboarding
+          ? null
+          : AppBar(title: const Text(AppStrings.onboardingSportsEditTitle)),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          padding: EdgeInsets.fromLTRB(24, isOnboarding ? 32 : 16, 24, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
+              if (isOnboarding) ...<Widget>[
+                Text(
+                  AppStrings.onboardingSportsTitle,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface,
+                      ),
+                ),
+                const SizedBox(height: 10),
+              ],
               Text(
-                AppStrings.onboardingSportsTitle,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.onSurface,
-                    ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                AppStrings.onboardingSportsHint,
+                isOnboarding
+                    ? AppStrings.onboardingSportsHint
+                    : AppStrings.onboardingSportsEditHint,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.onSurfaceMuted,
                     ),
@@ -110,20 +137,26 @@ class _FavoriteSportsPageState extends ConsumerState<FavoriteSportsPage> {
               PrimaryButton(
                 label: isSaving
                     ? AppStrings.authLoading
-                    : AppStrings.onboardingSportsContinue,
-                // Continuar exige ao menos um esporte; quem não quer escolher
-                // usa "pular", que é um caminho explícito e não um atalho.
-                onPressed: isSaving || _selected.isEmpty
+                    : isOnboarding
+                        ? AppStrings.onboardingSportsContinue
+                        : AppStrings.onboardingSportsSave,
+                // No cadastro, continuar exige ao menos um esporte: quem não
+                // quer escolher usa "pular", que é um caminho explícito e não
+                // um atalho. Na edição, deixar sem nenhum é uma escolha
+                // legítima — e não desfaz o onboarding, porque o que o guard
+                // olha é o campo existir.
+                onPressed: isSaving || (isOnboarding && _selected.isEmpty)
                     ? null
                     : () => _save(_selected.toList()),
               ),
-              TextButton(
-                onPressed: isSaving ? null : () => _save(const <Sport>[]),
-                child: const Text(
-                  AppStrings.onboardingSportsSkip,
-                  style: TextStyle(color: AppColors.onSurfaceMuted),
+              if (isOnboarding)
+                TextButton(
+                  onPressed: isSaving ? null : () => _save(const <Sport>[]),
+                  child: const Text(
+                    AppStrings.onboardingSportsSkip,
+                    style: TextStyle(color: AppColors.onSurfaceMuted),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -152,6 +185,12 @@ class _FavoriteSportsPageState extends ConsumerState<FavoriteSportsPage> {
       );
       return;
     }
-    context.go(AppRoutes.home);
+
+    // No cadastro o destino é a Home; na edição, de volta ao perfil.
+    if (widget._isOnboarding) {
+      context.go(AppRoutes.home);
+    } else {
+      context.pop();
+    }
   }
 }

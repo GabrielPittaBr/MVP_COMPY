@@ -44,25 +44,12 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  Future<GoRouter> pumpPage(
-    WidgetTester tester, {
+  Future<GoRouter> pumpRouter(
+    WidgetTester tester,
+    GoRouter router, {
     List<Sport> saved = const <Sport>[],
   }) async {
     useTallViewport(tester);
-
-    final router = GoRouter(
-      initialLocation: AppRoutes.onboardingSports,
-      routes: <RouteBase>[
-        GoRoute(
-          path: AppRoutes.onboardingSports,
-          builder: (_, __) => const FavoriteSportsPage(),
-        ),
-        GoRoute(
-          path: AppRoutes.home,
-          builder: (_, __) => const Scaffold(body: Text('home')),
-        ),
-      ],
-    );
     addTearDown(router.dispose);
 
     await tester.pumpWidget(
@@ -88,6 +75,60 @@ void main() {
         child: MaterialApp.router(routerConfig: router),
       ),
     );
+    await tester.pumpAndSettle();
+    return router;
+  }
+
+  Future<GoRouter> pumpPage(
+    WidgetTester tester, {
+    List<Sport> saved = const <Sport>[],
+  }) =>
+      pumpRouter(
+        tester,
+        GoRouter(
+          initialLocation: AppRoutes.onboardingSports,
+          routes: <RouteBase>[
+            GoRoute(
+              path: AppRoutes.onboardingSports,
+              builder: (_, __) => const FavoriteSportsPage(),
+            ),
+            GoRoute(
+              path: AppRoutes.home,
+              builder: (_, __) => const Scaffold(body: Text('home')),
+            ),
+          ],
+        ),
+        saved: saved,
+      );
+
+  /// A edição é empilhada sobre o perfil, como no app: o retorno esperado do
+  /// "Salvar" é um pop, não uma navegação.
+  Future<GoRouter> pumpEditPage(
+    WidgetTester tester, {
+    List<Sport> saved = const <Sport>[],
+  }) async {
+    final router = await pumpRouter(
+      tester,
+      GoRouter(
+        initialLocation: AppRoutes.profile,
+        routes: <RouteBase>[
+          GoRoute(
+            path: AppRoutes.profile,
+            builder: (_, __) => const Scaffold(body: Text('perfil')),
+            routes: <RouteBase>[
+              GoRoute(
+                path: 'esportes',
+                builder: (_, __) => const FavoriteSportsPage(
+                  mode: FavoriteSportsMode.edit,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      saved: saved,
+    );
+    router.push(AppRoutes.profileFavoriteSports);
     await tester.pumpAndSettle();
     return router;
   }
@@ -180,6 +221,74 @@ void main() {
       await tester.tap(find.text(AppStrings.onboardingSportsContinue));
       await tester.pumpAndSettle();
       expect(MockProfile.favoriteSportsOverride, <Sport>[Sport.futsal]);
+    });
+  });
+
+  group('FavoriteSportsPage — edição pelo perfil', () {
+    testWidgets('abre com as escolhas atuais marcadas', (tester) async {
+      await pumpEditPage(tester, saved: const <Sport>[Sport.volei]);
+
+      await tester.tap(find.text(AppStrings.onboardingSportsSave));
+      await tester.pumpAndSettle();
+      expect(MockProfile.favoriteSportsOverride, <Sport>[Sport.volei]);
+    });
+
+    testWidgets('não oferece "pular" — já dá para voltar atrás',
+        (tester) async {
+      await pumpEditPage(tester, saved: const <Sport>[Sport.volei]);
+      expect(find.text(AppStrings.onboardingSportsSkip), findsNothing);
+    });
+
+    testWidgets('salvar volta para o perfil', (tester) async {
+      final router = await pumpEditPage(tester, saved: const <Sport>[Sport.volei]);
+
+      await tester.tap(find.text(AppStrings.onboardingSportsSave));
+      await tester.pumpAndSettle();
+
+      expect(location(router), AppRoutes.profile);
+      expect(find.text('perfil'), findsOneWidget);
+    });
+
+    testWidgets('a edição substitui a escolha anterior', (tester) async {
+      await pumpEditPage(tester, saved: const <Sport>[Sport.volei]);
+
+      await tester.tap(tileFor(Sport.volei)); // desmarca
+      await tester.tap(tileFor(Sport.corrida)); // marca
+      await tester.pump();
+      await tester.tap(find.text(AppStrings.onboardingSportsSave));
+      await tester.pumpAndSettle();
+
+      expect(MockProfile.favoriteSportsOverride, <Sport>[Sport.corrida]);
+    });
+
+    // Limpar tudo é edição legítima e não desfaz o onboarding: o que o guard
+    // olha é o campo existir, não a lista ter itens.
+    testWidgets('dá para limpar tudo — "Salvar" continua habilitado',
+        (tester) async {
+      await pumpEditPage(tester, saved: const <Sport>[Sport.volei]);
+
+      await tester.tap(tileFor(Sport.volei));
+      await tester.pump();
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNotNull,
+      );
+
+      await tester.tap(find.text(AppStrings.onboardingSportsSave));
+      await tester.pumpAndSettle();
+      expect(MockProfile.favoriteSportsOverride, isEmpty);
+    });
+
+    testWidgets('sair sem salvar não altera nada', (tester) async {
+      final router = await pumpEditPage(tester, saved: const <Sport>[Sport.volei]);
+
+      await tester.tap(tileFor(Sport.corrida));
+      await tester.pump();
+      router.pop();
+      await tester.pumpAndSettle();
+
+      expect(MockProfile.favoriteSportsOverride, isNull);
+      expect(location(router), AppRoutes.profile);
     });
   });
 }

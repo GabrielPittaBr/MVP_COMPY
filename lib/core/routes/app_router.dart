@@ -42,6 +42,11 @@ abstract final class AppRoutes {
   static const String chatNew = '/chat/nova';
   static const String profile = '/profile';
 
+  /// Edição dos esportes favoritos — sub-rota do perfil, dentro do shell.
+  /// Separada de [onboardingSports] porque o guard manda quem já concluiu o
+  /// cadastro para longe das rotas de onboarding: quem edita já concluiu.
+  static const String profileFavoriteSports = '/profile/esportes';
+
   /// Mapa fica como sub-rota da home para preservar o bottom nav (mockup).
   static const String maps = '/home/maps';
 
@@ -283,6 +288,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.profile,
                 builder: (context, state) => const ProfilePage(),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: 'esportes',
+                    builder: (context, state) => const FavoriteSportsPage(
+                      mode: FavoriteSportsMode.edit,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
