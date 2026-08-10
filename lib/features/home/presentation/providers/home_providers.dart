@@ -30,6 +30,9 @@ final getNearbyEventsProvider = Provider<GetNearbyEvents>(
   (ref) => GetNearbyEvents(ref.watch(homeRepositoryProvider)),
 );
 
+/// Categorias do carrossel. Hoje o trio padrão; quando a tarefa 13
+/// entregar os esportes favoritos editáveis, passar a lista do perfil em
+/// `favoriteSports` aqui é o único ponto a mudar.
 final categoriesProvider = Provider<List<SportCategory>>(
   (ref) => ref.watch(getCategoriesProvider).call(),
 );

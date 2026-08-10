@@ -2,8 +2,8 @@ import 'dart:async';
 
 import '../../../../features/home/data/datasources/mock_events.dart';
 import '../../../../shared/models/event.dart';
-import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
+import '../../domain/entities/events_filter.dart';
 
 /// Repositório em memória que mantém o estado dos eventos para o MVP em
 /// modo mock — emite uma nova snapshot via stream sempre que algo muda
@@ -31,13 +31,16 @@ class InMemoryEventsStore {
   /// Snapshot imutável da lista atual — usado pela paginação e busca mock.
   List<Event> get snapshot => List<Event>.unmodifiable(_events);
 
-  /// Snapshot filtrada por modalidade — espelha o `where('sport')` do
-  /// Firestore para que a paginação mock pagine o mesmo conjunto que a
-  /// consulta real paginaria. [sport] nulo devolve tudo.
-  List<Event> snapshotBySport(Sport? sport) {
-    if (sport == null) return snapshot;
+  /// Snapshot já filtrada — espelha os `where` do Firestore para que a
+  /// paginação mock percorra o mesmo conjunto que a consulta real
+  /// percorreria. Filtro vazio devolve tudo.
+  List<Event> snapshotMatching(EventsFilter filter) {
+    if (filter.isEmpty) return snapshot;
     return List<Event>.unmodifiable(
-      _events.where((e) => e.sport == sport),
+      _events.where((e) =>
+          filter.matchesSport(e.sport) &&
+          filter.matchesSkillLevel(e.skillLevel) &&
+          filter.matchesDay(e.dateTime)),
     );
   }
 

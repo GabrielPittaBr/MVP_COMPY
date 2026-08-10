@@ -1,19 +1,19 @@
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/paged_result.dart';
-import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
+import '../entities/events_filter.dart';
 
 abstract interface class EventsRepository {
   /// Página de eventos ordenada por data. Repassar o [cursor] da página
   /// anterior busca a próxima (blocos de [pageSize] documentos).
   ///
-  /// [sport] filtra a consulta na origem (`where` no Firestore). Filtrar
-  /// depois de buscar quebraria a paginação: páginas quase vazias e scroll
-  /// infinito que não carrega nada. `null` lista todas as modalidades.
+  /// [filter] entra na consulta (`where` no Firestore). Filtrar depois de
+  /// buscar quebraria a paginação: páginas quase vazias e scroll infinito
+  /// que não carrega nada. O filtro vazio lista tudo.
   Future<PagedResult<Event>> fetchPage({
     Object? cursor,
     int pageSize,
-    Sport? sport,
+    EventsFilter filter,
   });
 
   /// Busca eventos por nome (prefixo do título) ou modalidade esportiva.
