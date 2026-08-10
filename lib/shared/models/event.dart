@@ -123,10 +123,7 @@ class Event extends Equatable {
     return Event(
       id: id,
       title: (data['title'] as String?) ?? '',
-      sport: Sport.values.firstWhere(
-        (s) => s.name == data['sport'],
-        orElse: () => Sport.futebol,
-      ),
+      sport: Sport.tryParse(data['sport']) ?? Sport.futebol,
       location: (data['location'] as String?) ?? '',
       coordinates: geoPoint != null
           ? LatLng(geoPoint.latitude, geoPoint.longitude)

@@ -120,6 +120,74 @@ describe('login com Google — usuario que ja tem perfil', () => {
   });
 });
 
+describe('esportes favoritos (tarefa 13)', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users', UID), {
+        id: UID,
+        name: 'Gabriel Pitta',
+        handle: `@${USERNAME}`,
+        avatarUrl: 'https://ui-avatars.com/api/?name=Gabriel',
+        email: 'g@example.com',
+        createdAt: new Date(),
+      });
+    });
+  });
+
+  /** Espelha `ProfileRemoteDataSource.updateFavoriteSports`. */
+  const gravarEsportes = (db, uid, favoriteSports) =>
+    setDoc(doc(db, 'users', uid), { favoriteSports }, { merge: true });
+
+  it('o dono grava a propria escolha', async () => {
+    await assertSucceeds(gravarEsportes(as(UID), UID, ['futebol', 'volei']));
+  });
+
+  it('lista vazia e escolha valida — e o que o "pular" grava', async () => {
+    await assertSucceeds(gravarEsportes(as(UID), UID, []));
+  });
+
+  it('o enum inteiro cabe no limite', async () => {
+    await assertSucceeds(
+      gravarEsportes(as(UID), UID, [
+        'futebol', 'basquete', 'volei', 'tenisDeMesa',
+        'futsal', 'corrida', 'ciclismo', 'caminhada',
+      ]),
+    );
+  });
+
+  it('mais de 8 esportes e recusado', async () => {
+    await assertFails(
+      gravarEsportes(as(UID), UID, [
+        'futebol', 'basquete', 'volei', 'tenisDeMesa',
+        'futsal', 'corrida', 'ciclismo', 'caminhada', 'futebol',
+      ]),
+    );
+  });
+
+  it('favoriteSports precisa ser lista', async () => {
+    await assertFails(gravarEsportes(as(UID), UID, 'futebol'));
+  });
+
+  it('ninguem escolhe os esportes de outro', async () => {
+    await assertFails(gravarEsportes(as('uid_outro'), UID, ['futebol']));
+  });
+
+  it('deslogado nao grava esporte nenhum', async () => {
+    await assertFails(gravarEsportes(anonimo(), UID, ['futebol']));
+  });
+
+  it('campo desconhecido continua barrado junto com os esportes', async () => {
+    await assertFails(
+      setDoc(
+        doc(as(UID), 'users', UID),
+        { favoriteSports: ['futebol'], ratingAverage: 5 },
+        { merge: true },
+      ),
+    );
+  });
+});
+
 function assertHandle(snap) {
   if (!snap.exists() || !snap.data().handle) {
     throw new Error('perfil sem handle — _userHasProfile devolveria false');

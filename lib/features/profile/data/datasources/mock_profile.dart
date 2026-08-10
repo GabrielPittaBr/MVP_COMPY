@@ -8,6 +8,13 @@ import '../../domain/entities/rating_summary.dart';
 import '../../domain/entities/user_profile.dart';
 
 abstract final class MockProfile {
+  /// Escolha de esportes feita em tempo de execução no modo sem Firebase.
+  ///
+  /// `null` = o usuário mockado ainda está com a lista de fábrica. Mesmo
+  /// papel que o [InMemoryEventsStore] cumpre para eventos: sem isso, salvar
+  /// o onboarding com `kUseFirebaseRepos = false` não teria efeito nenhum.
+  static List<Sport>? favoriteSportsOverride;
+
   static UserProfile get current => UserProfile(
         summary: UserSummary(
           id: 'u_joao',
@@ -16,7 +23,8 @@ abstract final class MockProfile {
           avatarUrl: AppAssets.avatar('João', size: 200),
         ),
         bio: 'Apaixonado por esportes coletivos. Busca parceiros para treinar em Taquara.',
-        favoriteSports: const <Sport>[Sport.futebol, Sport.volei, Sport.basquete],
+        favoriteSports: favoriteSportsOverride ??
+            const <Sport>[Sport.futebol, Sport.volei, Sport.basquete],
         badges: const <SportBadge>[
           SportBadge(
             id: 'b1',

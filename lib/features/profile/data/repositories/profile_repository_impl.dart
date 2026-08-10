@@ -1,4 +1,5 @@
 import '../../../../core/constants/app_flags.dart';
+import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/rating_summary.dart';
 import '../../domain/entities/user_profile.dart';
@@ -28,12 +29,21 @@ class ProfileRepositoryImpl implements ProfileRepository {
     return UserProfile(
       summary: summary,
       bio: (data['bio'] as String?) ?? '',
-      favoriteSports: const [],
+      favoriteSports: Sport.parseList(data[Sport.favoriteSportsField]),
       badges: const [],
       friends: const [],
       rating: const RatingSummary(average: 0, count: 0, breakdown: {}),
       gallery: const [],
     );
+  }
+
+  @override
+  Future<void> updateFavoriteSports(String uid, List<Sport> sports) async {
+    if (!kUseFirebaseRepos || _remote == null) {
+      MockProfile.favoriteSportsOverride = List<Sport>.unmodifiable(sports);
+      return;
+    }
+    await _remote.updateFavoriteSports(uid, Sport.toStorage(sports));
   }
 
   @override
