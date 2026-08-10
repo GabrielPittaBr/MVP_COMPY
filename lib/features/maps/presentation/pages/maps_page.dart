@@ -34,12 +34,27 @@ class _MapsPageState extends ConsumerState<MapsPage> {
   @override
   void initState() {
     super.initState();
+    _focusInitialPlace();
+  }
+
+  @override
+  void didUpdateWidget(MapsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Chegar aqui pelo card de local no chat nem sempre constrói a tela do
+    // zero: se o mapa já estiver na pilha da aba Início, o GoRouter reaproveita
+    // o elemento e só o `initialPlaceId` muda — o `initState` não roda de novo.
+    if (oldWidget.initialPlaceId != widget.initialPlaceId) {
+      _focusInitialPlace();
+    }
+  }
+
+  void _focusInitialPlace() {
     final place = widget.initialPlaceId == null
         ? null
         : SportPlace.byId(widget.initialPlaceId!);
     if (place == null) return;
-    // Depois do primeiro quadro: `selectedPlaceProvider` não pode ser
-    // escrito durante a construção da árvore.
+    // Depois do quadro: `selectedPlaceProvider` não pode ser escrito durante
+    // a construção da árvore.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(selectedPlaceProvider.notifier).state = place;

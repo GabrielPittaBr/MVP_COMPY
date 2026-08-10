@@ -13,6 +13,7 @@ import '../../domain/usecases/get_conversation.dart';
 import '../../domain/usecases/get_conversations.dart';
 import '../../domain/usecases/mark_conversation_as_read.dart';
 import '../../domain/usecases/open_conversation.dart';
+import '../../domain/usecases/watch_conversations.dart';
 import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/watch_messages.dart';
 
@@ -42,6 +43,10 @@ final chatRepositoryProvider = Provider<ChatRepository>(
 
 final getConversationsProvider = Provider<GetConversations>(
   (ref) => GetConversations(ref.watch(chatRepositoryProvider)),
+);
+
+final watchConversationsProvider = Provider<WatchConversations>(
+  (ref) => WatchConversations(ref.watch(chatRepositoryProvider)),
 );
 
 final getConversationProvider = Provider<GetConversation>(
@@ -81,8 +86,10 @@ class PaginatedConversationsController extends AsyncNotifier<List<Conversation>>
     _cursor = null;
     _hasMore = true;
     _isLoadingMore = false;
-    // Reage a login/logout: trocar de usuário refaz a primeira página.
-    _userId = ref.watch(authStateProvider).valueOrNull?.uid;
+    // Reage a login/logout: trocar de usuário refaz a primeira página. Passa
+    // pelo `currentUserIdProvider` para o modo sem Firebase também ter
+    // identidade — com o uid cru a lista mockada vinha sempre vazia.
+    _userId = ref.watch(currentUserIdProvider);
     final userId = _userId;
     if (userId == null) {
       _hasMore = false;
@@ -93,7 +100,33 @@ class PaginatedConversationsController extends AsyncNotifier<List<Conversation>>
         .call(userId, pageSize: pageSize);
     _cursor = page.cursor;
     _hasMore = page.hasMore;
+
+    // Só o topo da lista fica ao vivo. É dele que saem o preview da última
+    // mensagem e o contador de não-lidas, que mudam sozinhos quando chega
+    // mensagem — antes o badge só aparecia depois de puxar para atualizar.
+    // As páginas seguintes seguem pontuais: histórico antigo não se mexe.
+    final subscription = ref
+        .watch(watchConversationsProvider)
+        .call(userId, limit: pageSize)
+        .listen(_mergeFirstPage);
+    ref.onDispose(subscription.cancel);
+
     return page.items;
+  }
+
+  /// Troca a primeira página pela versão ao vivo, preservando o que o scroll
+  /// já trouxe abaixo dela.
+  void _mergeFirstPage(List<Conversation> live) {
+    final loaded = state.valueOrNull;
+    // Ainda construindo: a primeira página vem do `build`, não daqui.
+    if (loaded == null) return;
+
+    final liveIds = <String>{for (final c in live) c.id};
+    state = AsyncData<List<Conversation>>(<Conversation>[
+      ...live,
+      for (final c in loaded)
+        if (!liveIds.contains(c.id)) c,
+    ]);
   }
 
   /// Zera as não-lidas de uma conversa na lista já carregada.
@@ -106,22 +139,15 @@ class PaginatedConversationsController extends AsyncNotifier<List<Conversation>>
     if (current == null) return;
 
     var changed = false;
-    final updated = <Conversation>[
-      for (final c in current)
-        if (c.id == conversationId && c.unreadCount != 0)
-          () {
-            changed = true;
-            return Conversation(
-              id: c.id,
-              peer: c.peer,
-              lastMessage: c.lastMessage,
-              unreadCount: 0,
-              lastMessageAt: c.lastMessageAt,
-            );
-          }()
-        else
-          c,
-    ];
+    final updated = <Conversation>[];
+    for (final c in current) {
+      if (c.id == conversationId && c.unreadCount != 0) {
+        changed = true;
+        updated.add(c.copyWith(unreadCount: 0));
+      } else {
+        updated.add(c);
+      }
+    }
     if (changed) state = AsyncData<List<Conversation>>(updated);
   }
 

@@ -12,6 +12,13 @@ abstract interface class ChatRepository {
     int pageSize,
   });
 
+  /// Primeira página de conversas, ao vivo — o preview e o contador de
+  /// não-lidas mudam sozinhos quando chega mensagem nova.
+  Stream<List<Conversation>> watchConversationsFirstPage(
+    String userId, {
+    int limit,
+  });
+
   /// Uma conversa avulsa, ou `null` quando ela não existe ou [userId] não
   /// participa dela. Usada pela sala quando a conversa não veio na página
   /// já carregada da lista.

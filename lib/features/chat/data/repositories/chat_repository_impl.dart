@@ -56,6 +56,23 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Stream<List<Conversation>> watchConversationsFirstPage(
+    String userId, {
+    int limit = 10,
+  }) {
+    if (!kUseFirebaseRepos || _remote == null) {
+      return InMemoryChatStore.instance
+          .watchConversations()
+          .map((all) => all.take(limit).toList());
+    }
+    return _remote
+        .watchConversationsFirstPage(userId, limit: limit)
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ConversationMapper.fromMap(doc.id, doc.data(), userId))
+            .toList());
+  }
+
+  @override
   Future<Conversation?> fetchConversation(
     String conversationId,
     String userId,
