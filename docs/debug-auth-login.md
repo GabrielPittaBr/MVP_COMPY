@@ -183,3 +183,49 @@ EMAIL LOGIN
             └─ Firestore: users/{uid}.get()
                  └─ regras nunca deployadas → PERMISSION_DENIED ← bloqueio aqui
 ```
+
+---
+
+## Reincidência — 2026-08-09
+
+**Sintoma:** só o login com Google falhava. Seletor de conta abria, fechava, e
+nada acontecia. Suspeita inicial: o `firebase deploy --only firestore:rules`
+feito minutos antes.
+
+**Não era o deploy.** O log mostrou que nenhuma chamada ao Firestore chega a
+acontecer — a falha é anterior. A suíte `tools/firestore-rules-tests/` confirmou
+que as regras publicadas aceitam todas as operações do fluxo (ler `users/{uid}`
+inexistente, ler `usernames/{nome}` deslogado, gravar o batch de perfil).
+
+**Causa real:** o mesmo `DEVELOPER_ERROR` da primeira vez, com uma pegada nova:
+
+```
+PlatformException(sign_in_failed,
+  com.google.android.gms.common.api.ApiException: 10: , null, null)
+```
+
+`android/app/google-services.json` estava com **`oauth_client: []`**. O
+`flutterfire configure` gera o arquivo sem nenhum cliente OAuth quando a SHA-1
+não está cadastrada no console no momento da geração — e o arquivo é gitignored,
+então nada no repositório denuncia isso.
+
+**Conserto:** cadastrar a SHA-1 do keystore no Firebase Console (Configurações
+do projeto → app Android → Adicionar impressão digital), baixar o
+`google-services.json` de novo e recompilar.
+
+```bash
+keytool -J-Duser.language=en -list -v -alias androiddebugkey \
+  -keystore ~/.android/debug.keystore -storepass android
+```
+
+**O que ficou no código para não repetir:**
+
+- `test/android_google_services_test.dart` falha quando `oauth_client` está
+  vazio, com a instrução do conserto na mensagem. Pula quando o arquivo não
+  existe, já que é gitignored.
+- `GoogleSignInMisconfiguredException` separa DEVELOPER_ERROR de falha
+  transitória. Antes, `ApiException: 10` caía no genérico "Ocorreu um erro.
+  Tente novamente." — e tentar de novo nunca resolve um erro de configuração.
+
+**Nota:** o keytool do Temurin 25 quebra com locale pt-BR
+(`MissingFormatArgumentException`); o `-J-Duser.language=en` acima contorna.

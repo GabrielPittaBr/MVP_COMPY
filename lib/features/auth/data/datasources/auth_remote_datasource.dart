@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/constants/app_assets.dart';
@@ -113,7 +114,20 @@ class AuthRemoteDataSource {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<AuthUser> signInWithGoogle() async {
-    final GoogleSignInAccount? googleAccount = await _googleSignIn.signIn();
+    final GoogleSignInAccount? googleAccount;
+    try {
+      googleAccount = await _googleSignIn.signIn();
+    } on PlatformException catch (e) {
+      // `sign_in_failed` com `ApiException: 10` (DEVELOPER_ERROR) não é falha
+      // de rede nem de credencial: é o app não estar registrado no projeto
+      // Firebase para este certificado. Sem distinguir aqui, o usuário via
+      // "Ocorreu um erro. Tente novamente." e tentar de novo nunca resolvia.
+      if (e.code == 'sign_in_failed' && '${e.message}'.contains('10')) {
+        throw const GoogleSignInMisconfiguredException();
+      }
+      rethrow;
+    }
+
     if (googleAccount == null) {
       throw const GoogleSignInCancelledException();
     }
@@ -269,6 +283,19 @@ class UsernameAlreadyTakenException implements Exception {
   const UsernameAlreadyTakenException();
   @override
   String toString() => 'UsernameAlreadyTakenException';
+}
+
+/// O app não está registrado no projeto Firebase para o certificado que
+/// assinou este build (`ApiException: 10` / DEVELOPER_ERROR).
+///
+/// Causa quase sempre a mesma: a SHA-1 do keystore não está cadastrada no
+/// Firebase Console, e por isso o `google-services.json` volta do
+/// `flutterfire configure` com `oauth_client` **vazio**. Tentar de novo nunca
+/// resolve — é configuração, não falha transitória.
+class GoogleSignInMisconfiguredException implements Exception {
+  const GoogleSignInMisconfiguredException();
+  @override
+  String toString() => 'GoogleSignInMisconfiguredException';
 }
 
 class GoogleSignInCancelledException implements Exception {
