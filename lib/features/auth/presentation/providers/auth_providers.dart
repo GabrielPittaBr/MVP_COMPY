@@ -95,10 +95,28 @@ class AuthController extends AsyncNotifier<AuthUser?> {
           name: name,
           email: email,
         );
-        // Retorna o usuário atualizado com hasUsername = true.
-        return ref.read(authStateProvider).valueOrNull?.copyWith(hasUsername: true);
+        // Retorna o usuário atualizado com hasUsername = true. O estado do
+        // controller tem prioridade no guard, então é ele que faz o
+        // redirecionamento acontecer sem esperar o stream reemitir.
+        final AuthUser? current =
+            state.valueOrNull ?? ref.read(authStateProvider).valueOrNull;
+        return current?.copyWith(hasUsername: true);
       },
     );
+  }
+
+  /// Reflete no estado de auth a escolha de esportes recém-gravada.
+  ///
+  /// Sem isto o guard continuaria lendo `hasFavoriteSports: false` — nem o
+  /// stream reemite (gravar no Firestore não dispara `userChanges()`) nem o
+  /// controller sabe sozinho — e mandaria o usuário de volta para o
+  /// onboarding que ele acabou de concluir. É o loop que esta fatia existe
+  /// para não criar.
+  void markFavoriteSportsChosen() {
+    final AuthUser? current =
+        state.valueOrNull ?? ref.read(authStateProvider).valueOrNull;
+    if (current == null || current.hasFavoriteSports) return;
+    state = AsyncData<AuthUser?>(current.copyWith(hasFavoriteSports: true));
   }
 
   /// Logout.

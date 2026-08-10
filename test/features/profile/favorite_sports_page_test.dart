@@ -75,6 +75,7 @@ void main() {
                 email: 'g@example.com',
                 displayName: 'Gabriel',
                 hasUsername: true,
+                hasFavoriteSports: false,
               ),
             ),
           ),

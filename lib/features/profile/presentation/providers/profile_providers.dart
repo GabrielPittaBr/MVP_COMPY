@@ -94,6 +94,9 @@ class FavoriteSportsController extends AutoDisposeAsyncNotifier<void> {
       // O perfil (e o carrossel da Home, que bebe dele) precisa refletir a
       // escolha sem esperar o app reabrir.
       ref.invalidate(currentProfileProvider);
+      // E o guard do router precisa saber que o onboarding acabou, senão
+      // devolve o usuário para a tela que ele acabou de concluir.
+      ref.read(authControllerProvider.notifier).markFavoriteSportsChosen();
     });
     return !state.hasError;
   }

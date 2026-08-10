@@ -8,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/services/firebase_service.dart';
+import '../../../../shared/models/sport.dart';
 import '../../domain/entities/auth_user.dart';
 
 /// Datasource remoto de autenticação.
@@ -104,6 +105,9 @@ class AuthRemoteDataSource {
       email: email.trim(),
       displayName: name.trim(),
       hasUsername: true,
+      // Conta recém-criada: o perfil nasce sem o campo de esportes, então o
+      // guard leva este usuário para o onboarding antes da Home.
+      hasFavoriteSports: false,
     );
   }
 
@@ -140,17 +144,8 @@ class AuthRemoteDataSource {
 
     final UserCredential userCredential =
         await _auth.signInWithCredential(credential);
-    final User firebaseUser = userCredential.user!;
 
-    // Verificar se o usuário já tem perfil no Firestore.
-    final bool hasProfile = await _userHasProfile(firebaseUser.uid);
-
-    return AuthUser(
-      uid: firebaseUser.uid,
-      email: firebaseUser.email ?? '',
-      displayName: firebaseUser.displayName ?? '',
-      hasUsername: hasProfile,
-    );
+    return _toAuthUser(userCredential.user!);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -235,29 +230,31 @@ class AuthRemoteDataSource {
   // Helpers privados
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// Uma leitura de `users/{uid}` alimenta os dois sinais do guard.
   Future<AuthUser> _toAuthUser(User firebaseUser) async {
-    final bool hasProfile = await _userHasProfile(firebaseUser.uid);
+    final Map<String, dynamic>? data = await _fetchUserData(firebaseUser.uid);
     return AuthUser(
       uid: firebaseUser.uid,
       email: firebaseUser.email ?? '',
       displayName: firebaseUser.displayName ?? '',
-      hasUsername: hasProfile,
+      hasUsername: (data?['handle'] as String?)?.isNotEmpty == true,
+      hasFavoriteSports: Sport.hasStoredFavorites(data),
     );
   }
 
-  /// Lê `users/{uid}` para descobrir se o usuário já tem perfil.
+  /// Lê `users/{uid}`. `null` quando o documento ainda não existe.
   ///
-  /// Falha de leitura **estoura** em vez de devolver `false`. Devolver `false`
+  /// Falha de leitura **estoura** em vez de devolver "não tem perfil". Mentir
   /// era o bug: um usuário já cadastrado com internet lenta batia no timeout,
   /// era tratado como novo e mandado para `/username` — onde confirmar o
   /// próprio username dava "username já em uso". Um erro explícito na tela é
   /// pior de ver e melhor de viver do que um cadastro fantasma.
-  Future<bool> _userHasProfile(String uid) async {
+  Future<Map<String, dynamic>?> _fetchUserData(String uid) async {
     try {
       final DocumentSnapshot<Map<String, dynamic>> doc =
           await _firestore.collection('users').doc(uid).get()
               .timeout(_profileLookupTimeout);
-      return doc.exists && (doc.data()?['handle'] as String?)?.isNotEmpty == true;
+      return doc.exists ? (doc.data() ?? <String, dynamic>{}) : null;
     } catch (error) {
       debugPrint('[Auth] leitura de users/$uid falhou: $error');
       throw ProfileLookupFailedException(error);

@@ -15,10 +15,21 @@ FirebaseService.ensureInitialized()
     ↓
 GoRouter.redirect() avalia authStateProvider
     ↓
-Usuario não autenticado → /login
-Usuario autenticado sem username → /username  (só Google: 1ª vez)
-Usuario autenticado com username → /home
+Usuario não autenticado           → /login
+Usuario sem username              → /username             (só Google: 1ª vez)
+Usuario sem esportes escolhidos   → /onboarding/esportes  (e-mail e Google)
+Cadastro completo                 → /home
 ```
+
+A ordem dos degraus é o contrato, e cada um só é avaliado quando o anterior
+está satisfeito. A decisão vive em `authRedirect()` — função pura, separada do
+`GoRouter` justamente por ser o ponto onde um erro tranca o usuário fora ou em
+loop. `test/core/routes/auth_redirect_test.dart` percorre cada estado a partir
+de cada rota e prova que todo caminho estabiliza.
+
+**Concluir o onboarding é ter passado pela tela, não ter escolhido algo.** Quem
+pula grava lista vazia em `users/{uid}.favoriteSports`, e é o campo existir que
+conta. Se o sinal exigisse ao menos um esporte, o "pular" viraria um loop.
 
 ---
 
@@ -104,7 +115,20 @@ usernames/{username_minusculo}
 2. `GoRouter.redirect` detecta `!hasUsername` → vai para `/username`.
 3. Usuário escolhe username na `UsernamePage` (nome e e-mail pré-preenchidos read-only).
 4. `AuthController.setUsername()` grava Firestore.
-5. `authStateProvider` emite → redirect `/home`.
+5. Redirect para `/onboarding/esportes` — o degrau seguinte.
+6. Escolha (ou "pular") gravada → redirect `/home`.
+
+### E — Onboarding de esportes (fecha C, D e B)
+
+1. Chega aqui quem tem username e ainda não passou pela tela.
+2. `FavoriteSportsController.save()` grava `users/{uid}.favoriteSports`.
+3. Depois de gravar, avisa `AuthController.markFavoriteSportsChosen()`.
+
+O passo 3 não é enfeite: gravar no Firestore **não** dispara `userChanges()`,
+então nem o stream nem o controller descobririam sozinhos que o onboarding
+acabou — e o guard devolveria o usuário para a tela que ele acabou de
+concluir. Como o estado do controller tem prioridade sobre o stream no guard,
+é ele que faz a passagem valer na hora.
 
 ---
 
@@ -215,8 +239,11 @@ Checklist manual:
 - [ ] Cadastro manual cria conta + perfil no Firestore
 - [ ] Username duplicado → mensagem de erro
 - [ ] Login com e-mail/senha funciona
-- [ ] Login com Google (1ª vez) → tela de username
+- [ ] Login com Google (1ª vez) → tela de username → tela de esportes
 - [ ] Login com Google (conta existente) → vai direto para /home
+- [ ] Cadastro por e-mail → tela de esportes antes da Home
+- [ ] "Pular" na tela de esportes entra no app e não reaparece ao reabrir
+- [ ] Esportes escolhidos aparecem no Perfil
 - [ ] Logout volta para /login
 - [ ] Eventos carregam sem "permission denied"
 - [ ] Criar evento funciona (participante salvo no Firestore)
