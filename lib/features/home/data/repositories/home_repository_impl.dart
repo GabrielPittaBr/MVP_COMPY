@@ -1,6 +1,5 @@
 import 'package:latlong2/latlong.dart';
 
-import '../../../../core/constants/app_assets.dart';
 import '../../../../core/constants/app_flags.dart';
 import '../../../../core/constants/app_geo.dart';
 import '../../../../shared/models/event.dart';
@@ -20,21 +19,26 @@ class HomeRepositoryImpl implements HomeRepository {
 
   static const Distance _distance = Distance();
 
+  /// Trio exibido enquanto não há favoritos do usuário.
+  static const List<Sport> _defaultCategorySports = <Sport>[
+    Sport.futebol,
+    Sport.basquete,
+    Sport.volei,
+  ];
+
   @override
-  List<SportCategory> getCategories() {
+  List<SportCategory> getCategories({
+    List<Sport> favoriteSports = const <Sport>[],
+  }) {
+    // O carrossel mostra um punhado de modalidades; as demais ficam no
+    // "Ver mais" (folha de filtros). Quando a tarefa 13 entregar os
+    // esportes favoritos editáveis, basta o provider repassar a lista do
+    // perfil aqui — a Home passa a refletir o usuário sem mais mudanças.
+    final sports =
+        favoriteSports.isNotEmpty ? favoriteSports : _defaultCategorySports;
     return <SportCategory>[
-      const SportCategory(
-        sport: Sport.futebol,
-        imageUrl: AppAssets.soccerBanner,
-      ),
-      const SportCategory(
-        sport: Sport.basquete,
-        imageUrl: AppAssets.basketballBanner,
-      ),
-      const SportCategory(
-        sport: Sport.volei,
-        imageUrl: AppAssets.volleyballBanner,
-      ),
+      for (final sport in sports)
+        SportCategory(sport: sport, imageUrl: sport.banner),
     ];
   }
 

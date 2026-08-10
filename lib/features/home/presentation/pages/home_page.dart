@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../features/events/domain/entities/events_filter.dart';
 import '../../../../features/events/presentation/providers/events_providers.dart';
+import '../../../../features/events/presentation/widgets/events_filter_sheet.dart';
 import '../../../../shared/widgets/event_card.dart';
 import '../providers/home_providers.dart';
 import '../widgets/category_circle.dart';
@@ -42,19 +44,30 @@ class HomePage extends ConsumerWidget {
                 height: 96,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: categories.length,
+                  // +1 para o "Ver mais" no fim da fileira.
+                  itemCount: categories.length + 1,
                   separatorBuilder: (_, __) => const SizedBox(width: 16),
-                  itemBuilder: (context, i) => CategoryCircle(
-                    category: categories[i],
-                    // Seta o filtro antes de trocar de aba: o
-                    // PaginatedEventsController observa esse provider e
-                    // já reconstrói a lista filtrada.
-                    onTap: () {
-                      ref.read(eventsSportFilterProvider.notifier).state =
-                          categories[i].sport;
-                      context.go(AppRoutes.events);
-                    },
-                  ),
+                  itemBuilder: (context, i) {
+                    if (i == categories.length) {
+                      return MoreCategoriesCircle(
+                        onTap: () => showEventsFilterSheet(
+                          context,
+                          navigateToEventsOnApply: true,
+                        ),
+                      );
+                    }
+                    return CategoryCircle(
+                      category: categories[i],
+                      // Seta o filtro antes de trocar de aba: o
+                      // PaginatedEventsController observa esse provider e
+                      // já reconstrói a lista filtrada.
+                      onTap: () {
+                        ref.read(eventsFilterProvider.notifier).state =
+                            const EventsFilter().withSport(categories[i].sport);
+                        context.go(AppRoutes.events);
+                      },
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 24),

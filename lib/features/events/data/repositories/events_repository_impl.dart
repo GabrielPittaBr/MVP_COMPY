@@ -6,6 +6,7 @@ import '../../../../shared/models/event.dart';
 import '../../../../shared/models/paged_result.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
+import '../../domain/entities/events_filter.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../datasources/events_remote_datasource.dart';
 import '../datasources/in_memory_events_store.dart';
@@ -18,11 +19,11 @@ class EventsRepositoryImpl implements EventsRepository {
   Future<PagedResult<Event>> fetchPage({
     Object? cursor,
     int pageSize = 10,
-    Sport? sport,
+    EventsFilter filter = const EventsFilter(),
   }) async {
     if (!kUseFirebaseRepos || _remote == null) {
       // Mock: o cursor é o offset na lista (já filtrada) em memória.
-      final all = InMemoryEventsStore.instance.snapshotBySport(sport);
+      final all = InMemoryEventsStore.instance.snapshotMatching(filter);
       final offset = (cursor as int?) ?? 0;
       final items = all.skip(offset).take(pageSize).toList();
       final nextOffset = offset + items.length;
@@ -36,7 +37,12 @@ class EventsRepositoryImpl implements EventsRepository {
     final snapshot = await _remote.fetchPage(
       startAfter: cursor as DocumentSnapshot<Map<String, dynamic>>?,
       limit: pageSize,
-      sportName: sport?.name,
+      sportName: filter.sport?.name,
+      skillLevelNames: <String>[
+        for (final level in filter.matchingSkillLevels) level.name,
+      ],
+      dayStart: filter.dayStart,
+      dayEnd: filter.dayEnd,
     );
     final items = snapshot.docs
         .map((doc) => Event.fromMap(doc.id, doc.data()))

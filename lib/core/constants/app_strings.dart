@@ -28,6 +28,7 @@ abstract final class AppStrings {
       'Digite ao menos 2 letras para buscar por\nnome do evento ou modalidade esportiva.';
   static const String searchNoResults = 'Nenhum evento encontrado.';
   static const String homeCategories = 'Categorias';
+  static const String homeSeeMoreCategories = 'Ver mais';
   static const String homeExplore = 'Explore locais';
   static const String homeNearbyEvents = 'Eventos Próximos';
   static const String homeFilterByDate = 'Filtrar por data';
@@ -39,12 +40,26 @@ abstract final class AppStrings {
   // Events
   static const String eventsTitle = 'Eventos';
   static const String eventsEmpty = 'Nenhum evento disponível.';
+  static const String eventsEmptyFiltered =
+      'Nenhum evento com esses filtros por enquanto.';
   static const String eventsClearFilter = 'Limpar filtro';
   static const String eventsCreateCta = 'Criar um evento';
 
   /// Estado vazio da lista quando há filtro de modalidade ativo.
   static String eventsEmptyForSport(String sportLabel) =>
       'Nenhum evento de $sportLabel por enquanto.';
+
+  // Filtros da aba Eventos
+  static const String eventsFilters = 'Filtros';
+  static const String eventsFilterTitle = 'Filtrar eventos';
+  static const String eventsFilterSport = 'Modalidade';
+  static const String eventsFilterSkillLevel = 'Nível de habilidade';
+  static const String eventsFilterSkillLevelHint =
+      'Eventos abertos a todos os níveis aparecem em qualquer escolha.';
+  static const String eventsFilterDay = 'Data';
+  static const String eventsFilterAnyDay = 'Qualquer data';
+  static const String eventsFilterApply = 'Aplicar';
+  static const String eventsFilterClearAll = 'Limpar tudo';
   static const String eventCreateTitle = 'Criar evento';
   static const String eventTitle = 'Título';
   static const String eventTitleHint =

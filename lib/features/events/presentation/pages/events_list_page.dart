@@ -1,39 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/models/sport.dart';
 import '../../../../shared/widgets/event_card.dart';
+import '../../domain/entities/events_filter.dart';
 import '../providers/events_providers.dart';
+import '../widgets/events_filter_sheet.dart';
 
 /// Aba "Eventos" — lista paginada (blocos de 10) com scroll infinito.
 ///
 /// RN-05: filtra eventos com vagas restantes > 0; lotados ficam ocultos
 /// (na vida real moveríamos para uma aba "encerrados").
 ///
-/// O filtro de modalidade vem do [eventsSportFilterProvider] (setado pelas
-/// categorias da Home) e é aplicado na consulta, não no cliente.
+/// Os critérios vêm do [eventsFilterProvider] (escritos pelas categorias
+/// da Home ou pela folha de filtros) e entram na consulta, não no cliente.
 class EventsListPage extends ConsumerWidget {
   const EventsListPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final eventsAsync = ref.watch(paginatedEventsProvider);
-    final sportFilter = ref.watch(eventsSportFilterProvider);
+    final filter = ref.watch(eventsFilterProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.eventsTitle)),
+      appBar: AppBar(
+        title: const Text(AppStrings.eventsTitle),
+        actions: <Widget>[
+          IconButton(
+            onPressed: () => showEventsFilterSheet(context),
+            icon: Icon(
+              filter.isEmpty ? Icons.tune : Icons.filter_alt,
+              color: filter.isEmpty ? null : AppColors.primary,
+            ),
+            tooltip: AppStrings.eventsFilters,
+          ),
+        ],
+      ),
       body: Column(
         children: <Widget>[
-          if (sportFilter != null)
-            _SportFilterChip(
-              sport: sportFilter,
-              onClear: () =>
-                  ref.read(eventsSportFilterProvider.notifier).state = null,
-            ),
+          if (filter.isNotEmpty) _ActiveFilterChips(filter: filter),
           Expanded(
             child: eventsAsync.when(
               data: (events) {
@@ -53,7 +62,7 @@ class EventsListPage extends ConsumerWidget {
                       return false;
                     },
                     child: visible.isEmpty && !hasMore
-                        ? _EmptyState(sport: sportFilter)
+                        ? _EmptyState(filter: filter)
                         : ListView.separated(
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.symmetric(
@@ -101,40 +110,94 @@ class EventsListPage extends ConsumerWidget {
   }
 }
 
-/// Chip do filtro ativo — sem ele o usuário vê uma lista curta sem
-/// entender o motivo.
-class _SportFilterChip extends StatelessWidget {
-  const _SportFilterChip({required this.sport, required this.onClear});
+/// Um chip por critério ativo — sem esse retorno visual o usuário vê uma
+/// lista curta sem entender o motivo. O "x" limpa só aquele critério.
+class _ActiveFilterChips extends ConsumerWidget {
+  const _ActiveFilterChips({required this.filter});
 
-  final Sport sport;
-  final VoidCallback onClear;
+  final EventsFilter filter;
 
   @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-        child: InputChip(
-          avatar: Icon(sport.icon, size: 18, color: sport.color),
-          label: Text(sport.label),
-          onDeleted: onClear,
-          deleteIcon: const Icon(Icons.close, size: 18),
-          tooltip: AppStrings.eventsClearFilter,
-          backgroundColor: AppColors.surfaceMuted,
-          side: const BorderSide(color: AppColors.outline),
-        ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    void update(EventsFilter next) =>
+        ref.read(eventsFilterProvider.notifier).state = next;
+
+    return SizedBox(
+      height: 56,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        children: <Widget>[
+          if (filter.sport != null)
+            _FilterChip(
+              icon: filter.sport!.icon,
+              iconColor: filter.sport!.color,
+              label: filter.sport!.label,
+              onClear: () => update(filter.withSport(null)),
+            ),
+          if (filter.skillLevel != null)
+            _FilterChip(
+              icon: Icons.signal_cellular_alt,
+              label: filter.skillLevel!.label,
+              onClear: () => update(filter.withSkillLevel(null)),
+            ),
+          if (filter.day != null)
+            _FilterChip(
+              icon: Icons.calendar_today_outlined,
+              label: DateFormat('dd/MM/yyyy').format(filter.day!),
+              onClear: () => update(filter.withDay(null)),
+            ),
+        ],
       ),
     );
   }
 }
 
-/// Estado vazio — específico por modalidade quando há filtro, com atalho
-/// para criar o primeiro evento.
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.sport});
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.icon,
+    required this.label,
+    required this.onClear,
+    this.iconColor,
+  });
 
-  final Sport? sport;
+  final IconData icon;
+  final Color? iconColor;
+  final String label;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InputChip(
+        avatar: Icon(icon, size: 18, color: iconColor ?? AppColors.onSurfaceMuted),
+        label: Text(label),
+        onDeleted: onClear,
+        deleteIcon: const Icon(Icons.close, size: 18),
+        tooltip: AppStrings.eventsClearFilter,
+        backgroundColor: AppColors.surfaceMuted,
+        side: const BorderSide(color: AppColors.outline),
+      ),
+    );
+  }
+}
+
+/// Estado vazio — específico por modalidade quando esse é o critério, com
+/// atalho para criar o primeiro evento.
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.filter});
+
+  final EventsFilter filter;
+
+  String get _message {
+    if (filter.isEmpty) return AppStrings.eventsEmpty;
+    if (filter.sport != null && filter.skillLevel == null &&
+        filter.day == null) {
+      return AppStrings.eventsEmptyForSport(filter.sport!.label);
+    }
+    return AppStrings.eventsEmptyFiltered;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,9 +209,7 @@ class _EmptyState extends StatelessWidget {
           child: Column(
             children: <Widget>[
               Text(
-                sport == null
-                    ? AppStrings.eventsEmpty
-                    : AppStrings.eventsEmptyForSport(sport!.label),
+                _message,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppColors.onSurfaceMuted),
               ),

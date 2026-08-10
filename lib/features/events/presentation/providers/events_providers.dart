@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_flags.dart';
 import '../../../../shared/models/event.dart';
-import '../../../../shared/models/sport.dart';
 import '../../data/datasources/events_remote_datasource.dart';
 import '../../data/repositories/events_repository_impl.dart';
+import '../../domain/entities/events_filter.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../../domain/usecases/create_event.dart';
 import '../../domain/usecases/get_event_detail.dart';
@@ -31,11 +31,12 @@ final createEventProvider = Provider<CreateEvent>(
   (ref) => CreateEvent(ref.watch(eventsRepositoryProvider)),
 );
 
-/// Modalidade selecionada na aba "Eventos" — `null` lista todas.
+/// Critérios ativos da aba "Eventos" — vazio lista tudo.
 ///
-/// Setado pelas categorias da Home antes de navegar para a aba e limpo
-/// pelo "x" do chip de filtro ativo.
-final eventsSportFilterProvider = StateProvider<Sport?>((ref) => null);
+/// Escrito pelas categorias da Home, pela folha de filtros e pelo "x" de
+/// cada chip da lista.
+final eventsFilterProvider =
+    StateProvider<EventsFilter>((ref) => const EventsFilter());
 
 /// Lista paginada da aba "5 Eventos" — blocos de 10 documentos via
 /// `startAfterDocument`. Use `loadMore()` ao aproximar do fim do scroll e
@@ -47,7 +48,7 @@ class PaginatedEventsController extends AsyncNotifier<List<Event>> {
   Object? _cursor;
   bool _hasMore = true;
   bool _isLoadingMore = false;
-  Sport? _sport;
+  EventsFilter _filter = const EventsFilter();
 
   /// Se ainda há páginas para buscar — controla o footer de loading.
   bool get hasMore => _hasMore;
@@ -57,12 +58,12 @@ class PaginatedEventsController extends AsyncNotifier<List<Event>> {
     _cursor = null;
     _hasMore = true;
     _isLoadingMore = false;
-    // Observar o filtro aqui faz o controller ser reconstruído ao trocar
-    // de modalidade — a paginação reseta naturalmente, sem estado órfão.
-    _sport = ref.watch(eventsSportFilterProvider);
+    // Observar o filtro aqui faz o controller ser reconstruído a cada
+    // mudança — a paginação reseta naturalmente, sem estado órfão.
+    _filter = ref.watch(eventsFilterProvider);
     final page = await ref
         .watch(eventsRepositoryProvider)
-        .fetchPage(pageSize: pageSize, sport: _sport);
+        .fetchPage(pageSize: pageSize, filter: _filter);
     _cursor = page.cursor;
     _hasMore = page.hasMore;
     return page.items;
@@ -73,14 +74,16 @@ class PaginatedEventsController extends AsyncNotifier<List<Event>> {
     final current = state.valueOrNull;
     if (current == null || _isLoadingMore || !_hasMore) return;
     _isLoadingMore = true;
-    final requestedSport = _sport;
+    final requestedFilter = _filter;
     try {
-      final page = await ref
-          .read(eventsRepositoryProvider)
-          .fetchPage(cursor: _cursor, pageSize: pageSize, sport: requestedSport);
+      final page = await ref.read(eventsRepositoryProvider).fetchPage(
+            cursor: _cursor,
+            pageSize: pageSize,
+            filter: requestedFilter,
+          );
       // O filtro pode ter mudado durante a busca — nesse caso o build()
       // já repopulou o estado e esta página é lixo.
-      if (requestedSport != _sport) return;
+      if (requestedFilter != _filter) return;
       _cursor = page.cursor;
       _hasMore = page.hasMore;
       state = AsyncData<List<Event>>(<Event>[...current, ...page.items]);

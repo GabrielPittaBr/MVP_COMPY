@@ -11,17 +11,30 @@ class EventsRemoteDataSource {
   /// página anterior em [startAfter] para buscar a próxima (paginação
   /// com `startAfterDocument`).
   ///
-  /// [sportName] (nome do enum `Sport`) filtra a modalidade. A combinação
-  /// `where('sport') + orderBy('dateTime')` exige o índice composto
-  /// declarado em `firestore.indexes.json`.
+  /// [sportName] (nome do enum `Sport`) e [skillLevelNames] (nomes do enum
+  /// `SkillLevel`) filtram modalidade e nível; [dayStart]/[dayEnd] recortam
+  /// um dia. Cada combinação de igualdade com o `orderBy('dateTime')` exige
+  /// um índice composto — todos declarados em `firestore.indexes.json`.
   Future<QuerySnapshot<Map<String, dynamic>>> fetchPage({
     DocumentSnapshot<Map<String, dynamic>>? startAfter,
     int limit = 10,
     String? sportName,
+    List<String> skillLevelNames = const <String>[],
+    DateTime? dayStart,
+    DateTime? dayEnd,
   }) {
     Query<Map<String, dynamic>> query = _firestore.collection('events');
     if (sportName != null) {
       query = query.where('sport', isEqualTo: sportName);
+    }
+    if (skillLevelNames.isNotEmpty) {
+      query = query.where('skillLevel', whereIn: skillLevelNames);
+    }
+    if (dayStart != null && dayEnd != null) {
+      query = query
+          .where('dateTime',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart))
+          .where('dateTime', isLessThan: Timestamp.fromDate(dayEnd));
     }
     query = query.orderBy('dateTime').limit(limit);
     if (startAfter != null) {
