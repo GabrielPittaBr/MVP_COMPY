@@ -17,6 +17,7 @@ import '../../features/events/presentation/pages/events_list_page.dart';
 import '../../features/events/presentation/pages/search_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/maps/presentation/pages/maps_page.dart';
+import '../../features/profile/presentation/pages/favorite_sports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 
@@ -29,6 +30,7 @@ abstract final class AppRoutes {
   static const String login = '/login';
   static const String signup = '/signup';
   static const String username = '/username';
+  static const String onboardingSports = '/onboarding/esportes';
 
   // App (dentro do shell com 5 abas)
   static const String home = '/home';
@@ -144,6 +146,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           }
           return UsernamePage(user: user);
         },
+      ),
+
+      GoRoute(
+        path: AppRoutes.onboardingSports,
+        builder: (context, state) => const FavoriteSportsPage(),
       ),
 
       // ── Shell com bottom nav preservando estado entre as 5 abas (RNF07) ───

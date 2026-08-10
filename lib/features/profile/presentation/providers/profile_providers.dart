@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_flags.dart';
+import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../data/datasources/mock_profile.dart';
@@ -64,6 +65,44 @@ final currentProfileProvider = FutureProvider<UserProfile>((ref) {
   if (uid == null) throw Exception('Usuário não autenticado');
   return ref.watch(getProfileProvider).call(uid);
 });
+
+/// Grava a escolha de esportes favoritos.
+///
+/// Estado só para a tela saber quando desabilitar o botão e quando reclamar:
+/// `null` = ocioso, loading = gravando, error = falhou.
+class FavoriteSportsController extends AutoDisposeAsyncNotifier<void> {
+  @override
+  Future<void> build() async {}
+
+  /// Devolve `true` quando a escolha foi de fato gravada.
+  ///
+  /// Lista vazia é escolha válida — é o que o "pular" do onboarding grava.
+  Future<bool> save(List<Sport> sports) async {
+    state = const AsyncLoading<void>();
+    state = await AsyncValue.guard<void>(() async {
+      // `.future`, não `.valueOrNull`: quem chega aqui vindo do onboarding
+      // pode ser o primeiro a tocar no stream de auth, e nesse instante ele
+      // ainda está em loading — ler o valor direto daria "não autenticado"
+      // para um usuário perfeitamente logado.
+      final String? uid = (await ref.read(authStateProvider.future))?.uid;
+      if (kUseFirebaseRepos && uid == null) {
+        throw Exception('Usuário não autenticado');
+      }
+      await ref
+          .read(profileRepositoryProvider)
+          .updateFavoriteSports(uid ?? '', sports);
+      // O perfil (e o carrossel da Home, que bebe dele) precisa refletir a
+      // escolha sem esperar o app reabrir.
+      ref.invalidate(currentProfileProvider);
+    });
+    return !state.hasError;
+  }
+}
+
+final favoriteSportsControllerProvider =
+    AutoDisposeAsyncNotifierProvider<FavoriteSportsController, void>(
+  FavoriteSportsController.new,
+);
 
 /// Identidade pública ([UserSummary]) do usuário logado — usada para
 /// registrar participação em eventos e preencher o criador na criação.

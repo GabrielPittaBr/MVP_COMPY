@@ -8,6 +8,7 @@ import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/skill_level.dart';
 import '../../../../shared/models/sport.dart';
+import '../../../../shared/widgets/sport_select_tile.dart';
 import '../../domain/entities/events_filter.dart';
 import '../providers/events_providers.dart';
 
@@ -237,67 +238,12 @@ class _SportGrid extends StatelessWidget {
       childAspectRatio: 0.85,
       children: <Widget>[
         for (final sport in Sport.values)
-          _SportTile(
+          SportSelectTile(
             sport: sport,
             isSelected: sport == selected,
             onTap: () => onSelected(sport),
           ),
       ],
-    );
-  }
-}
-
-class _SportTile extends StatelessWidget {
-  const _SportTile({
-    required this.sport,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final Sport sport;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isSelected
-                  ? sport.color.withValues(alpha: 0.18)
-                  : AppColors.surfaceMuted,
-              border: Border.all(
-                color: isSelected ? sport.color : AppColors.outline,
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Icon(
-              sport.icon,
-              color: isSelected ? sport.color : AppColors.onSurfaceMuted,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            sport.label,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-              color: isSelected ? AppColors.onSurface : AppColors.onSurfaceMuted,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

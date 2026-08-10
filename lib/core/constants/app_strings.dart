@@ -175,6 +175,16 @@ abstract final class AppStrings {
   static const String authErrorProfileLookup =
       'Não foi possível carregar seu perfil. Verifique a conexão e tente novamente.';
   static const String authRetry = 'Tentar novamente';
+
+  // Onboarding — esportes favoritos
+  static const String onboardingSportsTitle =
+      'Muito bem! Agora vamos personalizar seu perfil:';
+  static const String onboardingSportsHint =
+      'Escolha os esportes que você mais curte. É por eles que o COMPY monta o que você vê primeiro.';
+  static const String onboardingSportsContinue = 'Continuar';
+  static const String onboardingSportsSkip = 'Pular por agora';
+  static const String onboardingSportsSaveError =
+      'Não foi possível salvar seus esportes. Tente novamente.';
   static const String authErrorInvalidCredential = 'E-mail ou senha incorretos.';
   static const String authErrorEmailAlreadyInUse = 'Este e-mail já está cadastrado.';
 }
