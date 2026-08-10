@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../data/datasources/in_memory_chat_store.dart';
 import '../../domain/entities/conversation.dart';
 import '../providers/chat_providers.dart';
 import '../widgets/chat_input_bar.dart';
@@ -18,6 +17,7 @@ class ChatRoomPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentUserId = ref.watch(currentUserIdProvider);
     // Peer vem da lista paginada já carregada (a navegação parte dela).
     final conversations =
         ref.watch(paginatedConversationsProvider).valueOrNull ??
@@ -60,7 +60,7 @@ class ChatRoomPage extends ConsumerWidget {
                     itemBuilder: (context, i) {
                       if (i == 0) return const _DateChip(text: AppStrings.chatToday);
                       final m = messages[i - 1];
-                      final isMine = m.senderId == InMemoryChatStore.currentUserId;
+                      final isMine = m.senderId == currentUserId;
                       return MessageBubble(
                         message: m,
                         isMine: isMine,

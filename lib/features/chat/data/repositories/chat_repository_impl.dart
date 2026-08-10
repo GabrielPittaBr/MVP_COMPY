@@ -8,10 +8,17 @@ import '../../domain/entities/message.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../datasources/chat_remote_datasource.dart';
 import '../datasources/in_memory_chat_store.dart';
+import '../mappers/message_mapper.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
-  ChatRepositoryImpl(this._remote);
+  ChatRepositoryImpl(this._remote, {String? currentUserId})
+      : _currentUserId = currentUserId;
+
   final ChatRemoteDataSource? _remote;
+
+  /// Uid de quem está usando o app. Nulo quando ninguém está logado — nesse
+  /// caso o envio é recusado em vez de gravar identidade falsa.
+  final String? _currentUserId;
 
   @override
   Future<PagedResult<Conversation>> fetchConversationsPage(
@@ -91,10 +98,15 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Stream<List<Message>> watchMessages(String conversationId) {
-    if (!kUseFirebaseRepos) {
+    if (!kUseFirebaseRepos || _remote == null) {
       return InMemoryChatStore.instance.watchMessages(conversationId);
     }
-    return const Stream<List<Message>>.empty();
+    return _remote.watchMessages(conversationId).map((snapshot) {
+      final messages = snapshot.docs
+          .map((doc) => MessageMapper.fromMap(doc.id, conversationId, doc.data()))
+          .toList();
+      return MessageMapper.sortedBySentAt(messages);
+    });
   }
 
   @override
@@ -102,16 +114,22 @@ class ChatRepositoryImpl implements ChatRepository {
     required String conversationId,
     required String text,
   }) async {
-    if (!kUseFirebaseRepos) {
+    if (!kUseFirebaseRepos || _remote == null) {
       InMemoryChatStore.instance.sendMessage(
         conversationId: conversationId,
         text: text,
       );
       return;
     }
-    return _remote!.sendMessage(
+    final senderId = _currentUserId;
+    if (senderId == null) {
+      // As regras do Firestore exigem `senderId == request.auth.uid`; enviar
+      // sem uid seria gravar identidade falsa e levar PERMISSION_DENIED.
+      throw StateError('Não há usuário autenticado para enviar a mensagem.');
+    }
+    return _remote.sendMessage(
       conversationId: conversationId,
-      senderId: InMemoryChatStore.currentUserId,
+      senderId: senderId,
       text: text,
     );
   }
