@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/message.dart';
 import 'peer_avatar.dart';
+import 'place_message_card.dart';
 
 /// Balão de mensagem alinhado conforme [isMine].
 class MessageBubble extends StatelessWidget {
@@ -52,13 +53,18 @@ class MessageBubble extends StatelessWidget {
                       bottomRight: Radius.circular(isMine ? 4 : 16),
                     ),
                   ),
-                  child: Text(
-                    message.text,
-                    style: TextStyle(
-                      color: isMine ? Colors.white : AppColors.onSurface,
-                      fontSize: 14,
-                    ),
-                  ),
+                  child: message.isPlace
+                      ? PlaceMessageCard(
+                          placeId: message.placeId!,
+                          isMine: isMine,
+                        )
+                      : Text(
+                          message.text,
+                          style: TextStyle(
+                            color: isMine ? Colors.white : AppColors.onSurface,
+                            fontSize: 14,
+                          ),
+                        ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 4),

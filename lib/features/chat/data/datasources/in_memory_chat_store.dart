@@ -158,7 +158,11 @@ class InMemoryChatStore {
     _conversationsCtl.add(List<Conversation>.unmodifiable(_conversations));
   }
 
-  void sendMessage({required String conversationId, required String text}) {
+  void sendMessage({
+    required String conversationId,
+    required String text,
+    String? placeId,
+  }) {
     final list = _messages.putIfAbsent(conversationId, () => <Message>[]);
     final newMsg = Message(
       id: 'm_${DateTime.now().millisecondsSinceEpoch}',
@@ -166,6 +170,7 @@ class InMemoryChatStore {
       senderId: currentUserId,
       text: text,
       sentAt: DateTime.now(),
+      placeId: placeId,
     );
     list.add(newMsg);
     _messagesCtls[conversationId]?.add(List<Message>.unmodifiable(list));

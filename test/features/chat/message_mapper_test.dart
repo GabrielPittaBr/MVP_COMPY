@@ -43,6 +43,37 @@ void main() {
       expect(message.text, '');
       expect(message.sentAt, isNotNull);
     });
+
+    test('mensagem de local carrega o id do local', () {
+      final message = MessageMapper.fromMap('m4', 'c_douglas', <String, dynamic>{
+        'senderId': 'uid_joao',
+        'text': 'Encaminhou um local...',
+        'placeId': 'parque_do_trabalhador',
+      });
+
+      expect(message.placeId, 'parque_do_trabalhador');
+      expect(message.isPlace, isTrue);
+    });
+
+    test('mensagem de texto não é mensagem de local', () {
+      final message = MessageMapper.fromMap('m5', 'c_douglas', <String, dynamic>{
+        'senderId': 'uid_joao',
+        'text': 'Bora!',
+      });
+
+      expect(message.placeId, isNull);
+      expect(message.isPlace, isFalse);
+    });
+
+    test('placeId vazio não vira card de local', () {
+      final message = MessageMapper.fromMap('m6', 'c_douglas', <String, dynamic>{
+        'senderId': 'uid_joao',
+        'text': 'Bora!',
+        'placeId': '   ',
+      });
+
+      expect(message.isPlace, isFalse);
+    });
   });
 
   group('MessageMapper.sortedBySentAt', () {
