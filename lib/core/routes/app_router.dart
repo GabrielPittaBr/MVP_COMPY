@@ -10,6 +10,7 @@ import '../../features/auth/presentation/pages/username_page.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
 import '../../features/chat/presentation/pages/chat_room_page.dart';
 import '../../features/chat/presentation/pages/conversations_page.dart';
+import '../../features/chat/presentation/pages/new_conversation_page.dart';
 import '../../features/events/presentation/pages/create_event_page.dart';
 import '../../features/events/presentation/pages/event_detail_page.dart';
 import '../../features/events/presentation/pages/events_list_page.dart';
@@ -36,6 +37,7 @@ abstract final class AppRoutes {
   static const String create = '/create';
   static const String chat = '/chat';
   static const String chatRoom = '/chat/:conversationId';
+  static const String chatNew = '/chat/nova';
   static const String profile = '/profile';
 
   /// Mapa fica como sub-rota da home para preservar o bottom nav (mockup).
@@ -195,6 +197,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: AppRoutes.chat,
                 builder: (context, state) => const ConversationsPage(),
                 routes: <RouteBase>[
+                  // Declarada antes de `:conversationId`: o GoRouter casa as
+                  // rotas na ordem, e sem isso "nova" seria lido como id de
+                  // conversa.
+                  GoRoute(
+                    path: 'nova',
+                    builder: (context, state) => const NewConversationPage(),
+                  ),
                   GoRoute(
                     path: ':conversationId',
                     builder: (context, state) => ChatRoomPage(

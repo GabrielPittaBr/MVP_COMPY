@@ -121,6 +121,27 @@ class InMemoryChatStore {
     yield* ctl.stream;
   }
 
+  /// Cria a conversa com [peer] se ela ainda não existir — o equivalente
+  /// mockado do `createConversation` do Firestore, para o fluxo de "nova
+  /// conversa" funcionar sem backend.
+  void ensureConversation({required String id, required UserSummary peer}) {
+    if (_conversations.any((c) => c.id == id)) return;
+
+    _peers[peer.id] = peer;
+    _conversations.insert(
+      0,
+      Conversation(
+        id: id,
+        peer: peer,
+        lastMessage: '',
+        unreadCount: 0,
+        lastMessageAt: DateTime.now(),
+      ),
+    );
+    _messages.putIfAbsent(id, () => <Message>[]);
+    _conversationsCtl.add(List<Conversation>.unmodifiable(_conversations));
+  }
+
   void sendMessage({required String conversationId, required String text}) {
     final list = _messages.putIfAbsent(conversationId, () => <Message>[]);
     final newMsg = Message(
