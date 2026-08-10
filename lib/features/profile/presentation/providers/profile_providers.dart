@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_flags.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../data/datasources/mock_profile.dart';
 import '../../data/datasources/profile_remote_datasource.dart';
 import '../../data/repositories/profile_repository_impl.dart';
 import '../../domain/entities/user_profile.dart';
@@ -54,6 +55,11 @@ final userSearchProvider =
 const Duration _searchDebounce = Duration(milliseconds: 350);
 
 final currentProfileProvider = FutureProvider<UserProfile>((ref) {
+  // Sem Firebase não há uid, e exigir um deixaria o app mockado sem
+  // identidade — era o que fazia "Nova conversa" terminar sempre em erro
+  // com `kUseFirebaseRepos = false`.
+  if (!kUseFirebaseRepos) return MockProfile.current;
+
   final uid = ref.watch(authStateProvider).valueOrNull?.uid;
   if (uid == null) throw Exception('Usuário não autenticado');
   return ref.watch(getProfileProvider).call(uid);

@@ -88,6 +88,7 @@ abstract final class AppStrings {
   static const String chatConversationUnavailable =
       'Esta conversa não está disponível.';
   static const String chatFallbackTitle = 'Conversa';
+  static const String chatUnknownPeer = 'Desconhecido';
   static const String chatNewConversation = 'Nova conversa';
   static const String chatSearchHandleHint = 'Buscar por @handle';
   static const String chatSearchPrompt =

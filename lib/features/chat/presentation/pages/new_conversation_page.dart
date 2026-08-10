@@ -7,6 +7,7 @@ import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/username_rules.dart';
 import '../../../../shared/models/user_summary.dart';
+import '../../../profile/domain/usecases/search_users.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/chat_providers.dart';
 import '../widgets/peer_avatar.dart';
@@ -88,7 +89,8 @@ class _NewConversationPageState extends ConsumerState<NewConversationPage> {
           Expanded(
             child: results.when(
               data: (users) {
-                if (_query.trim().length < 2) {
+                if (_query.trim().replaceFirst('@', '').length <
+                    SearchUsers.minPrefixLength) {
                   return const _Notice(text: AppStrings.chatSearchPrompt);
                 }
                 if (users.isEmpty) {

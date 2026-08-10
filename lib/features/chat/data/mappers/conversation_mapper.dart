@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/conversation.dart';
 
@@ -18,9 +19,10 @@ import '../../domain/entities/conversation.dart';
 /// unreadCounts: { uid: int } (opcional)
 /// ```
 abstract final class ConversationMapper {
+  /// Conversa sem `memberSummaries` legível — a lista precisa desenhar algo.
   static const UserSummary unknownPeer = UserSummary(
     id: 'unknown',
-    name: 'Desconhecido',
+    name: AppStrings.chatUnknownPeer,
     handle: '@unknown',
     avatarUrl: '',
   );

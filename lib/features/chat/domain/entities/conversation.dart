@@ -18,6 +18,20 @@ class Conversation extends Equatable {
   final int unreadCount;
   final DateTime lastMessageAt;
 
+  Conversation copyWith({
+    String? lastMessage,
+    int? unreadCount,
+    DateTime? lastMessageAt,
+  }) {
+    return Conversation(
+      id: id,
+      peer: peer,
+      lastMessage: lastMessage ?? this.lastMessage,
+      unreadCount: unreadCount ?? this.unreadCount,
+      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+    );
+  }
+
   /// Identidade determinística da conversa 1:1 entre [a] e [b].
   ///
   /// Os uids são ordenados antes de virar o id do documento, então os dois

@@ -29,6 +29,26 @@ class ChatRemoteDataSource {
     return query.get();
   }
 
+  /// Primeira página de conversas, ao vivo.
+  ///
+  /// A paginação é feita com `get`, mas a página do topo precisa ser um
+  /// listener: é dela que saem o preview da última mensagem e o contador de
+  /// não-lidas, que mudam sozinhos quando chega mensagem. Sem isso o badge
+  /// só apareceria depois de o usuário puxar a lista para atualizar.
+  ///
+  /// Usa o mesmo índice composto da consulta paginada.
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchConversationsFirstPage(
+    String userId, {
+    int limit = 10,
+  }) {
+    return _firestore
+        .collection('conversations')
+        .where('members', arrayContains: userId)
+        .orderBy('lastMessageAt', descending: true)
+        .limit(limit)
+        .snapshots();
+  }
+
   /// Uma conversa avulsa, pelo id.
   ///
   /// A sala usa isto quando a conversa não está na página já carregada da
