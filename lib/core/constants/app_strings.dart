@@ -38,6 +38,13 @@ abstract final class AppStrings {
 
   // Events
   static const String eventsTitle = 'Eventos';
+  static const String eventsEmpty = 'Nenhum evento disponível.';
+  static const String eventsClearFilter = 'Limpar filtro';
+  static const String eventsCreateCta = 'Criar um evento';
+
+  /// Estado vazio da lista quando há filtro de modalidade ativo.
+  static String eventsEmptyForSport(String sportLabel) =>
+      'Nenhum evento de $sportLabel por enquanto.';
   static const String eventCreateTitle = 'Criar evento';
   static const String eventTitle = 'Título';
   static const String eventTitleHint =
