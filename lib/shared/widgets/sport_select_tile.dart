@@ -18,7 +18,9 @@ class SportSelectTile extends StatelessWidget {
 
   final Sport sport;
   final bool isSelected;
-  final VoidCallback onTap;
+
+  /// `null` desabilita o ladrilho — sem toque e sem ripple.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

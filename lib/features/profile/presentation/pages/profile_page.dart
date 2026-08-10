@@ -109,7 +109,7 @@ class _SectionTitle extends StatelessWidget {
         IconButton(
           icon: const Icon(Icons.edit_outlined, size: 20),
           color: AppColors.onSurfaceMuted,
-          tooltip: AppStrings.profileEdit,
+          tooltip: AppStrings.profileEditFavoriteSports,
           visualDensity: VisualDensity.compact,
           onPressed: onEdit,
         ),

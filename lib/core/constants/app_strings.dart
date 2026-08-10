@@ -105,6 +105,7 @@ abstract final class AppStrings {
   // Profile
   static const String profileTitle = 'Perfil';
   static const String profileEdit = 'Editar perfil';
+  static const String profileEditFavoriteSports = 'Editar esportes favoritos';
   static const String profileFavoriteSports = 'Esportes favoritos';
   static const String profileBadges = 'Insígnias';
   static const String profileFriends = 'Amigos';
@@ -175,6 +176,8 @@ abstract final class AppStrings {
   static const String authErrorProfileLookup =
       'Não foi possível carregar seu perfil. Verifique a conexão e tente novamente.';
   static const String authRetry = 'Tentar novamente';
+  static const String authErrorInvalidCredential = 'E-mail ou senha incorretos.';
+  static const String authErrorEmailAlreadyInUse = 'Este e-mail já está cadastrado.';
 
   // Onboarding — esportes favoritos
   static const String onboardingSportsTitle =
@@ -189,6 +192,4 @@ abstract final class AppStrings {
       'Marque ou desmarque à vontade — dá para mudar quando quiser.';
   static const String onboardingSportsSaveError =
       'Não foi possível salvar seus esportes. Tente novamente.';
-  static const String authErrorInvalidCredential = 'E-mail ou senha incorretos.';
-  static const String authErrorEmailAlreadyInUse = 'Este e-mail já está cadastrado.';
 }

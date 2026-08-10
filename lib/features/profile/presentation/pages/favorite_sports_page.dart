@@ -11,16 +11,6 @@ import '../../../../shared/widgets/sport_select_tile.dart';
 import '../../domain/entities/user_profile.dart';
 import '../providers/profile_providers.dart';
 
-/// Escolha de esportes favoritos — último passo do cadastro.
-///
-/// Mora no feature de perfil, não no de auth, porque é perfil que ela edita:
-/// a escrita vai por `ProfileRepository` e a mesma tela é reaproveitada na
-/// edição a partir da aba Perfil.
-///
-/// **Pular grava lista vazia, e isso é de propósito.** O que marca o
-/// onboarding como concluído é o campo passar a existir em `users/{uid}`, não
-/// a lista ter itens. Se o "pular" não gravasse nada, o guard do router
-/// devolveria o usuário para cá na abertura seguinte, para sempre.
 /// Os dois contextos em que a tela aparece.
 enum FavoriteSportsMode {
   /// Último passo do cadastro: pede ao menos um esporte, oferece pular e
@@ -32,6 +22,17 @@ enum FavoriteSportsMode {
   edit,
 }
 
+/// Escolha de esportes favoritos — último passo do cadastro, e a tela de
+/// edição da seção correspondente no perfil.
+///
+/// Mora no feature de perfil, não no de auth, porque é perfil que ela edita:
+/// a escrita vai por `ProfileRepository` e a mesma tela serve os dois
+/// contextos de [FavoriteSportsMode].
+///
+/// **Pular grava lista vazia, e isso é de propósito.** O que marca o
+/// onboarding como concluído é o campo passar a existir em `users/{uid}`, não
+/// a lista ter itens. Se o "pular" não gravasse nada, o guard do router
+/// devolveria o usuário para cá na abertura seguinte, para sempre.
 class FavoriteSportsPage extends ConsumerStatefulWidget {
   const FavoriteSportsPage({
     this.mode = FavoriteSportsMode.onboarding,
@@ -127,7 +128,7 @@ class _FavoriteSportsPageState extends ConsumerState<FavoriteSportsPage> {
                         SportSelectTile(
                           sport: sport,
                           isSelected: _selected.contains(sport),
-                          onTap: isSaving ? () {} : () => _toggle(sport),
+                          onTap: isSaving ? null : () => _toggle(sport),
                         ),
                     ],
                   ),

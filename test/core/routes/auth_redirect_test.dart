@@ -32,6 +32,7 @@ void main() {
     AppRoutes.events,
     AppRoutes.chat,
     AppRoutes.profile,
+    AppRoutes.profileFavoriteSports,
     AppRoutes.maps,
     '/events/abc',
   ];
