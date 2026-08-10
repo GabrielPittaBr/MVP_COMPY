@@ -31,9 +31,8 @@ class HomeRepositoryImpl implements HomeRepository {
     List<Sport> favoriteSports = const <Sport>[],
   }) {
     // O carrossel mostra um punhado de modalidades; as demais ficam no
-    // "Ver mais" (folha de filtros). Quando a tarefa 13 entregar os
-    // esportes favoritos editáveis, basta o provider repassar a lista do
-    // perfil aqui — a Home passa a refletir o usuário sem mais mudanças.
+    // "Ver mais" (folha de filtros). Sem favoritos — usuário que pulou o
+    // onboarding, ou perfil ainda carregando — cai no trio padrão.
     final sports =
         favoriteSports.isNotEmpty ? favoriteSports : _defaultCategorySports;
     return <SportCategory>[
