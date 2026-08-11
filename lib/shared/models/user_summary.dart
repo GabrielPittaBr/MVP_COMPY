@@ -1,6 +1,10 @@
 import 'package:equatable/equatable.dart';
 
 /// Identidade pública mínima de um usuário (RN-06: protege dados sensíveis).
+///
+/// O que esta classe omite, `users/{uid}` também omite: o e-mail vive em
+/// `users/{uid}/private/contact`, fora do alcance da regra que deixa qualquer
+/// autenticado ler o perfil.
 class UserSummary extends Equatable {
   const UserSummary({
     required this.id,

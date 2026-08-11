@@ -17,6 +17,7 @@ import '../../features/events/presentation/pages/events_list_page.dart';
 import '../../features/events/presentation/pages/search_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/maps/presentation/pages/maps_page.dart';
+import '../../features/profile/presentation/pages/favorite_sports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 
@@ -29,6 +30,7 @@ abstract final class AppRoutes {
   static const String login = '/login';
   static const String signup = '/signup';
   static const String username = '/username';
+  static const String onboardingSports = '/onboarding/esportes';
 
   // App (dentro do shell com 5 abas)
   static const String home = '/home';
@@ -40,11 +42,87 @@ abstract final class AppRoutes {
   static const String chatNew = '/chat/nova';
   static const String profile = '/profile';
 
+  /// Edição dos esportes favoritos — sub-rota do perfil, dentro do shell.
+  /// Separada de [onboardingSports] porque o guard manda quem já concluiu o
+  /// cadastro para longe das rotas de onboarding: quem edita já concluiu.
+  static const String profileFavoriteSports = '/profile/esportes';
+
   /// Mapa fica como sub-rota da home para preservar o bottom nav (mockup).
   static const String maps = '/home/maps';
 
   /// Busca de eventos — sub-rota da home (aberta pelo SearchField).
   static const String search = '/home/search';
+}
+
+/// Rotas abertas a quem ainda não está autenticado.
+const Set<String> _publicRoutes = <String>{AppRoutes.login, AppRoutes.signup};
+
+/// Rotas de quem já está autenticado mas ainda não terminou de entrar.
+/// Ficam fora do shell — não têm bottom nav e não são "o app" ainda.
+const Set<String> _onboardingRoutes = <String>{
+  AppRoutes.username,
+  AppRoutes.onboardingSports,
+};
+
+/// Para onde o usuário deve ir, dado o estado de autenticação e onde ele
+/// está. `null` = fica onde está.
+///
+/// Separada do [GoRouter] de propósito: é a decisão mais sensível do app —
+/// errar aqui tranca o usuário fora ou em loop — e como função pura ela é
+/// testável sem construir uma única tela. Ver
+/// `test/core/routes/auth_redirect_test.dart`, que percorre os quatro
+/// estados a partir de toda rota e prova que nenhum caminho cicla.
+///
+/// A ordem dos degraus é o contrato: autenticar, depois username, depois
+/// esportes, depois entrar. Cada degrau só é avaliado quando o anterior
+/// está satisfeito.
+@visibleForTesting
+String? authRedirect({
+  required AuthUser? user,
+  required bool isLoading,
+  required bool hasError,
+  required String location,
+}) {
+  // Estado de auth ainda carregando: splash.
+  if (isLoading) {
+    return location == AppRoutes.splash ? null : AppRoutes.splash;
+  }
+
+  // Leitura de `users/{uid}` falhou: há alguém logado, mas não dá para saber
+  // em que ponto do cadastro ele está. Fica na splash, que oferece nova
+  // tentativa — mandar para /login deslogaria quem está autenticado, e
+  // mandar para /username faria recadastrar quem já tem conta.
+  if (user == null && hasError) {
+    return location == AppRoutes.splash ? null : AppRoutes.splash;
+  }
+
+  // Não autenticado → /login. Nem /username nem /onboarding servem de
+  // esconderijo: sem uid não há o que gravar em nenhuma das duas.
+  if (user == null) {
+    return _publicRoutes.contains(location) ? null : AppRoutes.login;
+  }
+
+  // Autenticado sem username (conta Google nova) → /username.
+  if (!user.hasUsername) {
+    return location == AppRoutes.username ? null : AppRoutes.username;
+  }
+
+  // Com username e sem ter passado pelos esportes → /onboarding/esportes.
+  if (!user.hasFavoriteSports) {
+    return location == AppRoutes.onboardingSports
+        ? null
+        : AppRoutes.onboardingSports;
+  }
+
+  // Cadastro completo: nada de ficar parado na splash nem nas telas de
+  // entrada, que já cumpriram seu papel.
+  if (location == AppRoutes.splash ||
+      _publicRoutes.contains(location) ||
+      _onboardingRoutes.contains(location)) {
+    return AppRoutes.home;
+  }
+
+  return null;
 }
 
 /// Provider que expõe o router para o `MaterialApp.router`.
@@ -72,39 +150,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final AsyncValue<AuthUser?> controllerAsync =
           ref.read(authControllerProvider);
 
-      final String location = state.uri.path;
-
-      // Exibe splash enquanto o estado de auth carrega.
-      if (authAsync.isLoading) {
-        return location == AppRoutes.splash ? null : AppRoutes.splash;
-      }
-
       // O estado do controller tem prioridade sobre o stream para evitar
       // a race condition no cadastro por e-mail (authStateChanges dispara
-      // antes do perfil ser gravado no Firestore).
+      // antes do perfil ser gravado no Firestore) e para o onboarding de
+      // esportes valer imediatamente, sem esperar o stream reemitir.
       final AuthUser? user =
           controllerAsync.valueOrNull ?? authAsync.valueOrNull;
 
-      final bool onAuthRoute = location == AppRoutes.login ||
-          location == AppRoutes.signup ||
-          location == AppRoutes.username;
-
-      // Não autenticado → /login
-      if (user == null) {
-        return onAuthRoute ? null : AppRoutes.login;
-      }
-
-      // Autenticado mas sem username (novo usuário Google) → /username
-      if (!user.hasUsername && location != AppRoutes.username) {
-        return AppRoutes.username;
-      }
-
-      // Autenticado com username em rota pública → /home
-      if (user.hasUsername && (onAuthRoute || location == AppRoutes.splash)) {
-        return AppRoutes.home;
-      }
-
-      return null; // sem redirecionamento
+      return authRedirect(
+        user: user,
+        isLoading: authAsync.isLoading && user == null,
+        // `authAsync` só entra em erro com usuário logado: deslogado emite
+        // null sem passar pela leitura do perfil.
+        hasError: authAsync.hasError,
+        location: state.uri.path,
+      );
     },
 
     routes: <RouteBase>[
@@ -135,6 +195,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           }
           return UsernamePage(user: user);
         },
+      ),
+
+      GoRoute(
+        path: AppRoutes.onboardingSports,
+        builder: (context, state) => const FavoriteSportsPage(),
       ),
 
       // ── Shell com bottom nav preservando estado entre as 5 abas (RNF07) ───
@@ -223,6 +288,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.profile,
                 builder: (context, state) => const ProfilePage(),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: 'esportes',
+                    builder: (context, state) => const FavoriteSportsPage(
+                      mode: FavoriteSportsMode.edit,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

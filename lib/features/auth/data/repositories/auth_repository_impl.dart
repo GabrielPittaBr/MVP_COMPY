@@ -40,8 +40,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<AuthUser> signInWithGoogle() => _dataSource.signInWithGoogle();
 
   @override
-  Future<bool> isUsernameAvailable(String username) =>
-      _dataSource.isUsernameAvailable(username);
+  Future<bool> isUsernameAvailable(String username, {String? forUid}) =>
+      _dataSource.isUsernameAvailable(username, forUid: forUid);
 
   @override
   Future<void> setUsername({

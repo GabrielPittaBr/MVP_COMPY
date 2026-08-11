@@ -30,10 +30,9 @@ service cloud.firestore {
     // o seu. `hasOnly` impede que o cliente despeje campos arbitrários no
     // documento (inclusive médias de avaliação forjadas — ver `ratings`).
     //
-    // Decisão consciente pendente (tarefa 13): `read: if signedIn()` também
-    // expõe o `email` gravado por `_writeUserProfile`, o que contraria a RN-06.
-    // A correção é mover o e-mail para `users/{uid}/private/contact` — mudança
-    // de código, não de regra. Enquanto isso, a exposição fica registrada aqui.
+    // O e-mail **não** mora aqui: `read: if signedIn()` o entregaria a
+    // qualquer autenticado, contrariando a RN-06. Ele vive em
+    // `users/{uid}/private/contact`, no bloco aninhado no fim deste match.
     //
     // Não é validado de propósito: `handle` e `createdAt` continuam
     // reescrevíveis pelo dono porque `_writeUserProfile` os regrava em batch no
@@ -41,7 +40,7 @@ service cloud.firestore {
     match /users/{userId} {
       function validProfile() {
         return request.resource.data.keys().hasOnly(
-                 ['id', 'name', 'handle', 'avatarUrl', 'email', 'createdAt',
+                 ['id', 'name', 'handle', 'avatarUrl', 'createdAt',
                   'favoriteSports'])
             && request.resource.data.id == userId
             && request.resource.data.name is string
@@ -64,6 +63,19 @@ service cloud.firestore {
                             && request.auth.uid == userId
                             && validProfile();
       allow delete: if false;
+
+      // ── users/{uid}/private ──────────────────────────────────────
+      // Tarefa 13 (RN-06). Dados de contato — hoje só o e-mail. Subcoleção
+      // porque as regras do documento pai não alcançam os filhos: é o que
+      // permite o perfil continuar público e o contato não.
+      //
+      // Só o dono lê e escreve. Nenhuma tela do app lê este documento; ele
+      // existe para o e-mail ter onde ficar sem virar dado público.
+      match /private/{docId} {
+        allow read, create, update: if signedIn()
+                                    && request.auth.uid == userId;
+        allow delete: if false;
+      }
     }
 
     // ── usernames ────────────────────────────────────────────────────

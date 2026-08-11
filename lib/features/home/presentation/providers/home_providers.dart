@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_flags.dart';
 import '../../../../core/providers/location_providers.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/sport.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/home_remote_datasource.dart';
 import '../../data/repositories/home_repository_impl.dart';
 import '../../domain/entities/sport_category.dart';
@@ -30,12 +32,19 @@ final getNearbyEventsProvider = Provider<GetNearbyEvents>(
   (ref) => GetNearbyEvents(ref.watch(homeRepositoryProvider)),
 );
 
-/// Categorias do carrossel. Hoje o trio padrão; quando a tarefa 13
-/// entregar os esportes favoritos editáveis, passar a lista do perfil em
-/// `favoriteSports` aqui é o único ponto a mudar.
-final categoriesProvider = Provider<List<SportCategory>>(
-  (ref) => ref.watch(getCategoriesProvider).call(),
-);
+/// Categorias do carrossel, seguindo os esportes favoritos do perfil.
+///
+/// Lê o perfil **sem esperar**: enquanto ele não chega, o carrossel mostra o
+/// trio padrão e troca sozinho quando os favoritos aparecem. Segurar a Home
+/// em branco por causa de uma faixa de categorias seria trocar um problema
+/// pequeno por um grande — e quem pulou o onboarding nunca teria favoritos
+/// para esperar.
+final categoriesProvider = Provider<List<SportCategory>>((ref) {
+  final List<Sport> favoriteSports =
+      ref.watch(currentProfileProvider).valueOrNull?.favoriteSports ??
+          const <Sport>[];
+  return ref.watch(getCategoriesProvider).call(favoriteSports: favoriteSports);
+});
 
 /// Eventos próximos à posição real do usuário (RF03). Aguarda a
 /// resolução da localização (com fallback para o centro de Taquara —

@@ -40,10 +40,10 @@
 
 ### 2. Edição de perfil
 
-**Situação atual:** O botão "Editar perfil" em `ProfileHeader` chama `onPressed: () {}` — não faz nada.
+**Situação atual:** O botão "Editar perfil" em `ProfileHeader` chama `onPressed: () {}` — não faz nada. **Esportes favoritos já são editáveis** pelo lápis na própria seção (tarefa 13), por rota dedicada; o que falta é bio e foto.
 
 **O que fazer:**
-- Criar `EditProfilePage` com campos para bio, esportes favoritos e foto.
+- Criar `EditProfilePage` com campos para bio e foto, e um atalho para a tela de esportes que já existe (`FavoriteSportsPage` em modo `edit`) em vez de duplicar a grade.
 - Implementar `ProfileRemoteDataSource.update(uid, data)` para escrever no Firestore.
 - Permitir upload de foto para Firebase Storage e salvar a URL em `users/{uid}.avatarUrl`.
 

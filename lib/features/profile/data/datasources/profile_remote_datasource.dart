@@ -1,11 +1,29 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../shared/models/sport.dart';
+
 class ProfileRemoteDataSource {
   ProfileRemoteDataSource(this._firestore);
   final FirebaseFirestore _firestore;
 
   Future<DocumentSnapshot<Map<String, dynamic>>> fetchById(String userId) {
     return _firestore.collection('users').doc(userId).get();
+  }
+
+  /// Grava o array de esportes favoritos em `users/{uid}`.
+  ///
+  /// `set` com merge, não `update`: preserva os demais campos do perfil em
+  /// vez de exigir que o chamador conheça todos eles.
+  ///
+  /// Não serve para criar o documento do zero — um `users/{uid}` só com este
+  /// campo é recusado por `validProfile()`, que exige `id == userId`. Nem
+  /// precisa: quem ainda não tem perfil é mandado para `/username` antes de
+  /// chegar à escolha de esportes.
+  Future<void> updateFavoriteSports(String userId, List<String> sports) {
+    return _firestore.collection('users').doc(userId).set(
+      <String, dynamic>{Sport.favoriteSportsField: sports},
+      SetOptions(merge: true),
+    );
   }
 
   /// Usuários cujo handle começa por [handlePrefix] (sem o `@`).

@@ -15,10 +15,21 @@ FirebaseService.ensureInitialized()
     ↓
 GoRouter.redirect() avalia authStateProvider
     ↓
-Usuario não autenticado → /login
-Usuario autenticado sem username → /username  (só Google: 1ª vez)
-Usuario autenticado com username → /home
+Usuario não autenticado           → /login
+Usuario sem username              → /username             (só Google: 1ª vez)
+Usuario sem esportes escolhidos   → /onboarding/esportes  (e-mail e Google)
+Cadastro completo                 → /home
 ```
+
+A ordem dos degraus é o contrato, e cada um só é avaliado quando o anterior
+está satisfeito. A decisão vive em `authRedirect()` — função pura, separada do
+`GoRouter` justamente por ser o ponto onde um erro tranca o usuário fora ou em
+loop. `test/core/routes/auth_redirect_test.dart` percorre cada estado a partir
+de cada rota e prova que todo caminho estabiliza.
+
+**Concluir o onboarding é ter passado pela tela, não ter escolhido algo.** Quem
+pula grava lista vazia em `users/{uid}.favoriteSports`, e é o campo existir que
+conta. Se o sinal exigisse ao menos um esporte, o "pular" viraria um loop.
 
 ---
 
@@ -104,7 +115,48 @@ usernames/{username_minusculo}
 2. `GoRouter.redirect` detecta `!hasUsername` → vai para `/username`.
 3. Usuário escolhe username na `UsernamePage` (nome e e-mail pré-preenchidos read-only).
 4. `AuthController.setUsername()` grava Firestore.
-5. `authStateProvider` emite → redirect `/home`.
+5. Redirect para `/onboarding/esportes` — o degrau seguinte.
+6. Escolha (ou "pular") gravada → redirect `/home`.
+
+### E — Onboarding de esportes (fecha C, D e B)
+
+1. Chega aqui quem tem username e ainda não passou pela tela.
+2. `FavoriteSportsController.save()` grava `users/{uid}.favoriteSports`.
+3. Depois de gravar, avisa `AuthController.markFavoriteSportsChosen()`.
+
+O passo 3 não é enfeite: gravar no Firestore **não** dispara `userChanges()`,
+então nem o stream nem o controller descobririam sozinhos que o onboarding
+acabou — e o guard devolveria o usuário para a tela que ele acabou de
+concluir. Como o estado do controller tem prioridade sobre o stream no guard,
+é ele que faz a passagem valer na hora.
+
+---
+
+## O que o login com Google cria, e quando (tarefa 5)
+
+**Conta sim, perfil não.** `signInWithCredential` cria a conta no Firebase Auth
+automaticamente no primeiro login — não existe passo de "cadastro". O documento
+`users/{uid}` **não** nasce ali: ele só é gravado em `setUsername()`, depois de
+o usuário escolher o username. É por isso que o guard usa `hasUsername` e não a
+mera existência da conta.
+
+Esse descompasso gerava três problemas. Os três foram corrigidos:
+
+| # | Problema | Correção |
+|---|---|---|
+| 1 | **Conta órfã.** Fechar o app em `/username` deixa conta no Auth sem documento em `users/`. | Aceito. No próximo login ele volta para `/username` e completa — não quebra nada, só suja a base. |
+| 2 | **Falso negativo em rede ruim.** `_userHasProfile()` devolvia `false` no catch, então um usuário **já cadastrado** com internet lenta era mandado para `/username` — e ao confirmar o próprio username levava `UsernameAlreadyTakenException` no username dele mesmo, sem saída. | Duas frentes: a leitura agora estoura `ProfileLookupFailedException` em vez de mentir `false`, e a splash oferece "Tentar novamente"; e `isUsernameAvailable()` passou a aceitar o username cujo documento já aponta para o **mesmo uid**. |
+| 3 | **`batch.set` sem merge no índice.** Se `usernames/{username}` já existia, a escrita virava *update* e sobrescrevia o documento inteiro. | `SetOptions(merge: true)`, casando com a regra que permite o update do dono. |
+
+O erro de leitura tem tratamento próprio no guard: com o estado de auth em erro
+e nenhum usuário utilizável em mãos, o router segura o usuário na splash. Cair
+para `/login` deslogaria quem está autenticado; cair para `/username` faria
+recadastrar quem já tem conta.
+
+> **Pendente de verificação no console.** As conclusões acima vêm da leitura do
+> código e da suíte de regras no emulador. Falta rodar o fluxo com uma conta
+> Google nova e conferir em Authentication → Users e Firestore → `users` em que
+> momento cada registro aparece, anexando a evidência aqui.
 
 ---
 
@@ -112,8 +164,9 @@ usernames/{username_minusculo}
 
 As regras usam a função auxiliar `signedIn()` que verifica `request.auth != null` (cobre anônimo e contas reais). Destaques:
 
-- `users/{userId}`: leitura para qualquer autenticado; escrita só para o dono.
-- `usernames/{username}`: leitura livre; criação só se `request.resource.data.uid == request.auth.uid`.
+- `users/{userId}`: leitura para qualquer autenticado; escrita só para o dono, com `hasOnly` limitando os campos.
+- `users/{userId}/private/contact`: e-mail e demais dados de contato. Só o dono lê e escreve — o perfil é público, o contato não (RN-06).
+- `usernames/{username}`: leitura livre (a checagem de disponibilidade roda **antes** do login); criação só se `request.resource.data.uid == request.auth.uid`; atualização só do documento que já pertence ao mesmo uid.
 - `events`, `conversations`: escrita restrita por papel (criador do evento, membro da conversa) — ver os comentários no próprio `firestore.rules`.
 - `places`: não existe. O catálogo de locais é curado e vive em código (`SportPlace.all`).
 
@@ -186,8 +239,11 @@ Checklist manual:
 - [ ] Cadastro manual cria conta + perfil no Firestore
 - [ ] Username duplicado → mensagem de erro
 - [ ] Login com e-mail/senha funciona
-- [ ] Login com Google (1ª vez) → tela de username
+- [ ] Login com Google (1ª vez) → tela de username → tela de esportes
 - [ ] Login com Google (conta existente) → vai direto para /home
+- [ ] Cadastro por e-mail → tela de esportes antes da Home
+- [ ] "Pular" na tela de esportes entra no app e não reaparece ao reabrir
+- [ ] Esportes escolhidos aparecem no Perfil
 - [ ] Logout volta para /login
 - [ ] Eventos carregam sem "permission denied"
 - [ ] Criar evento funciona (participante salvo no Firestore)
@@ -196,6 +252,5 @@ Checklist manual:
 
 ## Próximos Passos Recomendados
 
-- Mapear `users/{uid}` → `UserProfile` em `ProfileRepositoryImpl.getCurrentProfile()` (TODO pré-existente).
 - Adicionar botão de logout na tela de Perfil.
 - Índice composto para a query de chat (`members arrayContains + orderBy lastMessageAt`) — o Firestore mostra o link para criar quando rodar pela primeira vez.

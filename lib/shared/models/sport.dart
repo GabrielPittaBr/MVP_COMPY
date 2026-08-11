@@ -68,4 +68,55 @@ enum Sport {
   final IconData icon;
   final Color color;
   final String banner;
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Persistência
+  // ───────────────────────────────────────────────────────────────────────
+
+  /// Nome sob o qual o esporte é gravado no Firestore.
+  ///
+  /// É o próprio `name` do enum. Renomear um valor invalida os documentos já
+  /// gravados — o acoplamento fica explícito aqui em vez de espalhado pelos
+  /// mapeadores.
+  String get storageName => name;
+
+  /// Chave do array de esportes favoritos em `users/{uid}`.
+  static const String favoriteSportsField = 'favoriteSports';
+
+  /// Nome gravado → esporte, ou `null` se esse nome não existe mais.
+  ///
+  /// Tolerante de propósito: um valor removido do enum, ou um documento
+  /// escrito à mão, não pode derrubar a leitura do perfil inteiro.
+  static Sport? tryParse(Object? raw) {
+    if (raw is! String) return null;
+    for (final Sport sport in values) {
+      if (sport.storageName == raw) return sport;
+    }
+    return null;
+  }
+
+  /// Array gravado → esportes, descartando nomes desconhecidos e duplicatas.
+  /// Campo ausente ou de tipo errado vira lista vazia.
+  static List<Sport> parseList(Object? raw) {
+    if (raw is! List) return const <Sport>[];
+    final List<Sport> parsed = <Sport>[];
+    for (final Object? item in raw) {
+      final Sport? sport = tryParse(item);
+      if (sport != null && !parsed.contains(sport)) parsed.add(sport);
+    }
+    return parsed;
+  }
+
+  /// Esportes → array gravável.
+  static List<String> toStorage(Iterable<Sport> sports) =>
+      sports.map((Sport s) => s.storageName).toList();
+
+  /// `true` quando o documento já registrou uma escolha de esportes —
+  /// inclusive a escolha vazia de quem pulou o onboarding.
+  ///
+  /// É a **presença do campo** que conta, não o tamanho da lista. Exigir ao
+  /// menos um esporte aqui faria o guard do router devolver quem pulou de
+  /// volta para o onboarding, indefinidamente.
+  static bool hasStoredFavorites(Map<String, dynamic>? data) =>
+      data != null && data.containsKey(favoriteSportsField);
 }

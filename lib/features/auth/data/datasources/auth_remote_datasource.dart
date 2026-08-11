@@ -8,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/services/firebase_service.dart';
+import '../../../../shared/models/sport.dart';
 import '../../domain/entities/auth_user.dart';
 
 /// Datasource remoto de autenticação.
@@ -31,6 +32,8 @@ class AuthRemoteDataSource {
   final FirebaseFirestore _firestore;
   final GoogleSignIn _googleSignIn;
 
+  static const Duration _profileLookupTimeout = Duration(seconds: 10);
+
   // ─────────────────────────────────────────────────────────────────────────
   // Stream de estado
   // ─────────────────────────────────────────────────────────────────────────
@@ -44,12 +47,8 @@ class AuthRemoteDataSource {
   /// emissão (inclui a renovação de token, ~1x/hora).
   Stream<AuthUser?> authState() {
     return _auth.userChanges().asyncMap((User? firebaseUser) async {
-      debugPrint('[Auth] userChanges emitiu: ${firebaseUser?.uid ?? 'null'}');
       if (firebaseUser == null) return null;
-      debugPrint('[Auth] chamando _toAuthUser...');
-      final result = await _toAuthUser(firebaseUser);
-      debugPrint('[Auth] _toAuthUser concluído: hasUsername=${result.hasUsername}');
-      return result;
+      return _toAuthUser(firebaseUser);
     });
   }
 
@@ -106,6 +105,9 @@ class AuthRemoteDataSource {
       email: email.trim(),
       displayName: name.trim(),
       hasUsername: true,
+      // Conta recém-criada: o perfil nasce sem o campo de esportes, então o
+      // guard leva este usuário para o onboarding antes da Home.
+      hasFavoriteSports: false,
     );
   }
 
@@ -142,29 +144,40 @@ class AuthRemoteDataSource {
 
     final UserCredential userCredential =
         await _auth.signInWithCredential(credential);
-    final User firebaseUser = userCredential.user!;
 
-    // Verificar se o usuário já tem perfil no Firestore.
-    final bool hasProfile = await _userHasProfile(firebaseUser.uid);
-
-    return AuthUser(
-      uid: firebaseUser.uid,
-      email: firebaseUser.email ?? '',
-      displayName: firebaseUser.displayName ?? '',
-      hasUsername: hasProfile,
-    );
+    return _toAuthUser(userCredential.user!);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Username
   // ─────────────────────────────────────────────────────────────────────────
 
-  Future<bool> isUsernameAvailable(String username) async {
+  /// [forUid] é o dono esperado do username. Sem ele, qualquer documento
+  /// existente bloqueia — é o caso do cadastro por e-mail, onde a conta ainda
+  /// não existe.
+  Future<bool> isUsernameAvailable(String username, {String? forUid}) async {
     final String normalized = username.trim().toLowerCase();
     if (normalized.isEmpty) return false;
     final DocumentSnapshot<Map<String, dynamic>> doc =
         await _firestore.collection('usernames').doc(normalized).get();
-    return !doc.exists;
+    return usernameAvailableFor(
+      existing: doc.exists ? doc.data() : null,
+      forUid: forUid,
+    );
+  }
+
+  /// Um documento de username já existente só bloqueia quem **não** é o dono.
+  ///
+  /// Sem esta ressalva, o usuário mandado de volta para `/username` por uma
+  /// leitura de perfil que falhou levava `UsernameAlreadyTakenException` no
+  /// username dele mesmo, e não tinha como sair da tela.
+  @visibleForTesting
+  static bool usernameAvailableFor({
+    required Map<String, dynamic>? existing,
+    String? forUid,
+  }) {
+    if (existing == null) return true;
+    return forUid != null && existing['uid'] == forUid;
   }
 
   /// Grava `users/{uid}` e `usernames/{username}` em um batch atômico.
@@ -177,7 +190,8 @@ class AuthRemoteDataSource {
     final String normalizedUsername = username.trim().toLowerCase();
     final String trimmedName = name.trim();
 
-    final bool available = await isUsernameAvailable(normalizedUsername);
+    final bool available =
+        await isUsernameAvailable(normalizedUsername, forUid: uid);
     if (!available) {
       throw const UsernameAlreadyTakenException();
     }
@@ -216,28 +230,34 @@ class AuthRemoteDataSource {
   // Helpers privados
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// Uma leitura de `users/{uid}` alimenta os dois sinais do guard.
   Future<AuthUser> _toAuthUser(User firebaseUser) async {
-    final bool hasProfile = await _userHasProfile(firebaseUser.uid);
+    final Map<String, dynamic>? data = await _fetchUserData(firebaseUser.uid);
     return AuthUser(
       uid: firebaseUser.uid,
       email: firebaseUser.email ?? '',
       displayName: firebaseUser.displayName ?? '',
-      hasUsername: hasProfile,
+      hasUsername: (data?['handle'] as String?)?.isNotEmpty == true,
+      hasFavoriteSports: Sport.hasStoredFavorites(data),
     );
   }
 
-  Future<bool> _userHasProfile(String uid) async {
-    debugPrint('[Auth] _userHasProfile iniciando para $uid');
+  /// Lê `users/{uid}`. `null` quando o documento ainda não existe.
+  ///
+  /// Falha de leitura **estoura** em vez de devolver "não tem perfil". Mentir
+  /// era o bug: um usuário já cadastrado com internet lenta batia no timeout,
+  /// era tratado como novo e mandado para `/username` — onde confirmar o
+  /// próprio username dava "username já em uso". Um erro explícito na tela é
+  /// pior de ver e melhor de viver do que um cadastro fantasma.
+  Future<Map<String, dynamic>?> _fetchUserData(String uid) async {
     try {
-      debugPrint('[Auth] chamando Firestore .get()...');
       final DocumentSnapshot<Map<String, dynamic>> doc =
           await _firestore.collection('users').doc(uid).get()
-              .timeout(const Duration(seconds: 10));
-      debugPrint('[Auth] Firestore .get() concluído: exists=${doc.exists}');
-      return doc.exists && (doc.data()?['handle'] as String?)?.isNotEmpty == true;
-    } catch (e) {
-      debugPrint('[Auth] _userHasProfile erro/timeout: $e');
-      return false;
+              .timeout(_profileLookupTimeout);
+      return doc.exists ? (doc.data() ?? <String, dynamic>{}) : null;
+    } catch (error) {
+      debugPrint('[Auth] leitura de users/$uid falhou: $error');
+      throw ProfileLookupFailedException(error);
     }
   }
 
@@ -260,16 +280,33 @@ class AuthRemoteDataSource {
         'name': name,
         'handle': '@$username',
         'avatarUrl': AppAssets.avatar(name),
-        'email': email, // guardado para exibição interna; não exposto via UserSummary
         'createdAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
     );
 
-    // Índice de unicidade.
+    // Contato privado (RN-06). `users/{uid}` é legível por qualquer
+    // autenticado, então o e-mail não pode morar lá — a entidade Dart nunca o
+    // expunha, mas a regra expunha. Mesmo batch: perfil e contato nascem
+    // juntos ou não nascem.
+    final DocumentReference<Map<String, dynamic>> contactRef =
+        userRef.collection('private').doc('contact');
+    batch.set(
+      contactRef,
+      <String, dynamic>{'email': email},
+      SetOptions(merge: true),
+    );
+
+    // Índice de unicidade. Merge porque no re-cadastro o documento já existe
+    // e `set` sem merge sobrescreveria o documento inteiro — a regra permite
+    // o update do dono justamente para este caminho.
     final DocumentReference<Map<String, dynamic>> usernameRef =
         _firestore.collection('usernames').doc(username);
-    batch.set(usernameRef, <String, dynamic>{'uid': uid});
+    batch.set(
+      usernameRef,
+      <String, dynamic>{'uid': uid},
+      SetOptions(merge: true),
+    );
 
     await batch.commit();
   }
@@ -296,6 +333,18 @@ class GoogleSignInMisconfiguredException implements Exception {
   const GoogleSignInMisconfiguredException();
   @override
   String toString() => 'GoogleSignInMisconfiguredException';
+}
+
+/// A leitura de `users/{uid}` falhou (timeout, rede, permissão).
+///
+/// Existe para o app **não** confundir "não consegui saber" com "não tem
+/// perfil": o segundo manda o usuário para o cadastro, o primeiro pede uma
+/// nova tentativa.
+class ProfileLookupFailedException implements Exception {
+  const ProfileLookupFailedException(this.cause);
+  final Object cause;
+  @override
+  String toString() => 'ProfileLookupFailedException($cause)';
 }
 
 class GoogleSignInCancelledException implements Exception {

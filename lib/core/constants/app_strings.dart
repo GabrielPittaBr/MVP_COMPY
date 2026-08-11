@@ -105,6 +105,7 @@ abstract final class AppStrings {
   // Profile
   static const String profileTitle = 'Perfil';
   static const String profileEdit = 'Editar perfil';
+  static const String profileEditFavoriteSports = 'Editar esportes favoritos';
   static const String profileFavoriteSports = 'Esportes favoritos';
   static const String profileBadges = 'Insígnias';
   static const String profileFriends = 'Amigos';
@@ -172,6 +173,23 @@ abstract final class AppStrings {
   static const String authErrorPasswordShort = 'A senha precisa ter ao menos 6 caracteres.';
   static const String authErrorNameEmpty = 'Informe seu nome.';
   static const String authErrorGeneric = 'Ocorreu um erro. Tente novamente.';
+  static const String authErrorProfileLookup =
+      'Não foi possível carregar seu perfil. Verifique a conexão e tente novamente.';
+  static const String authRetry = 'Tentar novamente';
   static const String authErrorInvalidCredential = 'E-mail ou senha incorretos.';
   static const String authErrorEmailAlreadyInUse = 'Este e-mail já está cadastrado.';
+
+  // Onboarding — esportes favoritos
+  static const String onboardingSportsTitle =
+      'Muito bem! Agora vamos personalizar seu perfil:';
+  static const String onboardingSportsHint =
+      'Escolha os esportes que você mais curte. É por eles que o COMPY monta o que você vê primeiro.';
+  static const String onboardingSportsContinue = 'Continuar';
+  static const String onboardingSportsSkip = 'Pular por agora';
+  static const String onboardingSportsSave = 'Salvar';
+  static const String onboardingSportsEditTitle = 'Esportes favoritos';
+  static const String onboardingSportsEditHint =
+      'Marque ou desmarque à vontade — dá para mudar quando quiser.';
+  static const String onboardingSportsSaveError =
+      'Não foi possível salvar seus esportes. Tente novamente.';
 }
