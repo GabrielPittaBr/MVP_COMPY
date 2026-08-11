@@ -116,21 +116,30 @@ class _FavoriteSportsPageState extends ConsumerState<FavoriteSportsPage> {
               const SizedBox(height: 28),
               Expanded(
                 child: SingleChildScrollView(
-                  child: GridView.count(
-                    crossAxisCount: 4,
+                  // `mainAxisExtent`, não `childAspectRatio`: por proporção a
+                  // altura da célula segue a largura da tela, e em tela
+                  // estreita "Tênis de mesa" não cabia em duas linhas — era o
+                  // "BOTTOM OVERFLOWED BY 1.8 PIXELS" da primeira fileira.
+                  // Altura explícita: 52 do círculo + 6 + duas linhas de 11pt.
+                  child: GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.85,
-                    children: <Widget>[
-                      for (final Sport sport in Sport.values)
-                        SportSelectTile(
-                          sport: sport,
-                          isSelected: _selected.contains(sport),
-                          onTap: isSaving ? null : () => _toggle(sport),
-                        ),
-                    ],
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 12,
+                      mainAxisExtent: 104,
+                    ),
+                    itemCount: Sport.values.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final Sport sport = Sport.values[index];
+                      return SportSelectTile(
+                        sport: sport,
+                        isSelected: _selected.contains(sport),
+                        onTap: isSaving ? null : () => _toggle(sport),
+                      );
+                    },
                   ),
                 ),
               ),

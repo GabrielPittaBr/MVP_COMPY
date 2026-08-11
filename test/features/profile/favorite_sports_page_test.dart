@@ -48,8 +48,10 @@ void main() {
     WidgetTester tester,
     GoRouter router, {
     List<Sport> saved = const <Sport>[],
+    bool tallViewport = true,
+    double textScale = 1,
   }) async {
-    useTallViewport(tester);
+    if (tallViewport) useTallViewport(tester);
     addTearDown(router.dispose);
 
     await tester.pumpWidget(
@@ -72,7 +74,14 @@ void main() {
               .overrideWith((_) => ProfileRepositoryImpl(null)),
           currentProfileProvider.overrideWith((_) async => profileWith(saved)),
         ],
-        child: MaterialApp.router(routerConfig: router),
+        child: MaterialApp.router(
+          routerConfig: router,
+          builder: (BuildContext context, Widget? child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -222,6 +231,56 @@ void main() {
       await tester.pumpAndSettle();
       expect(MockProfile.favoriteSportsOverride, <Sport>[Sport.futsal]);
     });
+  });
+
+  group('FavoriteSportsPage — layout', () {
+    // Aparelho de verdade — 411x914 lógicos, o do relato: com 4 colunas a
+    // célula fica estreita e "Tênis de mesa" precisa de duas linhas.
+    //
+    // A fonte ampliada não é capricho do teste: a fonte do ambiente de teste
+    // tem métrica diferente da do aparelho, e no tamanho padrão ela cabia
+    // mesmo na célula curta que estourou na mão do usuário. Ampliar recria a
+    // pressão que a fonte real faz — e cobre de brinde quem usa o app com a
+    // fonte do sistema aumentada.
+    // 2x fica de fora: com a fonte do sistema no dobro, título e botões
+    // sozinhos já não cabem na tela, e resolver isso é remontar o layout da
+    // página — outro trabalho, não este conserto.
+    for (final double escala in <double>[1, 1.3]) {
+      testWidgets('cabe num aparelho estreito com fonte ${escala}x, sem overflow',
+          (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.625;
+        addTearDown(tester.view.reset);
+
+        await pumpRouter(
+          tester,
+          GoRouter(
+            initialLocation: AppRoutes.onboardingSports,
+            routes: <RouteBase>[
+              GoRoute(
+                path: AppRoutes.onboardingSports,
+                builder: (_, __) => const FavoriteSportsPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.home,
+                builder: (_, __) => const Scaffold(body: Text('home')),
+              ),
+            ],
+          ),
+          tallViewport: false,
+          textScale: escala,
+        );
+
+        // `pumpWidget` já teria estourado no overflow; a checagem explícita
+        // deixa o motivo da falha legível.
+        expect(tester.takeException(), isNull);
+
+        // E as 8 modalidades continuam todas na tela.
+        for (final sport in Sport.values) {
+          expect(find.text(sport.label), findsOneWidget, reason: sport.label);
+        }
+      });
+    }
   });
 
   group('FavoriteSportsPage — edição pelo perfil', () {

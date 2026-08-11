@@ -49,15 +49,21 @@ class SportSelectTile extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            sport.label,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-              color: isSelected ? AppColors.onSurface : AppColors.onSurfaceMuted,
+          // Flexible: "Tênis de mesa" ocupa duas linhas, e com fonte
+          // ampliada pelo sistema ocuparia mais altura do que a célula tem.
+          // Sem isto o rótulo estoura a grade em vez de encolher.
+          Flexible(
+            child: Text(
+              sport.label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                color:
+                    isSelected ? AppColors.onSurface : AppColors.onSurfaceMuted,
+              ),
             ),
           ),
         ],
