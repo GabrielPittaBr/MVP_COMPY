@@ -1,28 +1,35 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../domain/entities/sport_place.dart';
+import '../../../../shared/models/sport_place.dart';
 
 /// Bottom sheet exibido ao tocar em um pin (RF04 — informações do local +
-/// ações: criar evento / compartilhar / favoritar).
+/// ação de criar evento ali).
+///
+/// D11: "Favoritar" saiu — não existe modelo de local favorito e botão
+/// inerte é pior que botão ausente. "Compartilhar" voltou junto com o chat
+/// funcional, que é para onde um local compartilhado vai.
 class PlaceDetailsSheet extends StatelessWidget {
   const PlaceDetailsSheet({
     required this.place,
     required this.onCreateEvent,
     required this.onShare,
-    required this.onFavorite,
     super.key,
   });
 
   final SportPlace place;
   final VoidCallback onCreateEvent;
   final VoidCallback onShare;
-  final VoidCallback onFavorite;
 
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
+      // Sem `expand: false` o sheet ocupa o Stack inteiro e o Scrollable
+      // interno engole os toques na área transparente acima do card —
+      // era isso que impedia de tocar no mapa para fechá-lo.
+      expand: false,
       initialChildSize: 0.55,
       minChildSize: 0.3,
       maxChildSize: 0.9,
@@ -57,7 +64,11 @@ class PlaceDetailsSheet extends StatelessWidget {
                   errorWidget: (_, __, ___) => Container(
                     height: 200,
                     color: AppColors.surfaceMuted,
-                    child: Icon(place.sport.icon, size: 60, color: place.sport.color),
+                    child: Icon(
+                    place.primarySport.icon,
+                    size: 60,
+                    color: place.primarySport.color,
+                  ),
                   ),
                 ),
               ),
@@ -75,38 +86,47 @@ class PlaceDetailsSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      place.address,
+                      // Endereço completo só quando conferido; senão a
+                      // cidade já situa o local.
+                      place.address.isEmpty ? place.city : place.address,
                       style: const TextStyle(
                         color: AppColors.onSurfaceMuted,
                         fontSize: 13,
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _RatingRow(rating: place.rating, count: place.ratingsCount),
+                    // Esportes praticáveis — os mesmos que o seletor de
+                    // "Criar evento" oferece para este local.
+                    _SportsWrap(place: place),
+                    // Local sem nenhuma avaliação não mostra nota nenhuma
+                    // (nada de 0,0 estrelas em local real).
+                    if (place.hasRatings) ...<Widget>[
+                      const SizedBox(height: 12),
+                      _RatingRow(
+                        rating: place.rating,
+                        count: place.ratingsCount,
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
                         _ActionButton(
                           icon: Icons.add,
-                          label: 'Criar evento',
+                          label: AppStrings.eventCreate,
                           onTap: onCreateEvent,
                         ),
+                        const SizedBox(width: 40),
                         _ActionButton(
                           icon: Icons.share_outlined,
-                          label: 'Compartilhar',
+                          label: AppStrings.mapsShare,
                           onTap: onShare,
-                        ),
-                        _ActionButton(
-                          icon: Icons.bookmark_outline,
-                          label: 'Favoritar',
-                          onTap: onFavorite,
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'Informações',
+                      AppStrings.mapsPlaceInfo,
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
@@ -128,6 +148,37 @@ class PlaceDetailsSheet extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _SportsWrap extends StatelessWidget {
+  const _SportsWrap({required this.place});
+  final SportPlace place;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        for (final sport in place.allowedSports)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(sport.icon, size: 14, color: sport.color),
+                const SizedBox(width: 6),
+                Text(sport.label, style: const TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

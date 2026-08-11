@@ -1,1 +1,47 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"compy-tcc","appId":"1:260166625635:android:e6aa9ad008728ea879cb56","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"compy-tcc","configurations":{"android":"1:260166625635:android:e6aa9ad008728ea879cb56","ios":"1:260166625635:ios:1ac3c9f8cc5ca0f479cb56"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "compy-tcc",
+          "appId": "1:260166625635:android:d3a540c67965084979cb56",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "compy-tcc",
+          "configurations": {
+            "android": "1:260166625635:android:d3a540c67965084979cb56",
+            "ios": "1:260166625635:ios:1ac3c9f8cc5ca0f479cb56"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "southamerica-east1",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  },
+  "auth": {
+    "providers": {
+      "anonymous": true,
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Compy",
+        "supportEmail": "gabrielfernandespitta@gmail.com"
+      }
+    }
+  }
+}

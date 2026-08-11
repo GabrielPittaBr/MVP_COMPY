@@ -15,6 +15,11 @@ class RatingSummary extends Equatable {
   final int count;
   final Map<int, double> breakdown;
 
+  /// Sem nota nenhuma a média vale 0 — e 0 exibido como nota é mentira.
+  /// Mesmo contrato de `SportPlace.hasRatings`, que já resolve isso na tela
+  /// de detalhes do local.
+  bool get hasRatings => count > 0;
+
   @override
   List<Object?> get props => <Object?>[average, count, breakdown];
 }

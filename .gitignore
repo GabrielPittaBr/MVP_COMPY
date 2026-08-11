@@ -41,6 +41,12 @@ ios/Runner/GeneratedPluginRegistrant.*
 google-services.json
 GoogleService-Info.plist
 firebase_options.dart
+.agents/
+
+# Emuladores do Firebase (logs e dados exportados)
+*-debug.log
+firebase-export-*/
+.firebase/
 
 # Logs
 *.log

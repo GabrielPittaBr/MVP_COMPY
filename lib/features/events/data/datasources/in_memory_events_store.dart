@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import '../../../../core/constants/app_assets.dart';
 import '../../../../features/home/data/datasources/mock_events.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/user_summary.dart';
+import '../../domain/entities/events_filter.dart';
 
 /// Repositório em memória que mantém o estado dos eventos para o MVP em
 /// modo mock — emite uma nova snapshot via stream sempre que algo muda
@@ -26,6 +26,35 @@ class InMemoryEventsStore {
   Stream<List<Event>> watchAll() async* {
     yield List<Event>.unmodifiable(_events);
     yield* _controller.stream;
+  }
+
+  /// Snapshot imutável da lista atual — usado pela paginação e busca mock.
+  List<Event> get snapshot => List<Event>.unmodifiable(_events);
+
+  /// Snapshot já filtrada — espelha os `where` do Firestore para que a
+  /// paginação mock percorra o mesmo conjunto que a consulta real
+  /// percorreria. Filtro vazio devolve tudo.
+  List<Event> snapshotMatching(EventsFilter filter) {
+    if (filter.isEmpty) return snapshot;
+    return List<Event>.unmodifiable(_events.where(filter.matches));
+  }
+
+  /// Eventos criados por [uid] — espelha
+  /// `where('creator.id', isEqualTo: uid).orderBy('dateTime')`.
+  List<Event> createdBy(String uid, EventsFilter filter) =>
+      _sortedByDate((e) => e.creator.id == uid, filter);
+
+  /// Eventos em que [uid] está inscrito — espelha
+  /// `where('participantIds', arrayContains: uid).orderBy('dateTime')`.
+  List<Event> joinedBy(String uid, EventsFilter filter) =>
+      _sortedByDate((e) => e.participantIds.contains(uid), filter);
+
+  /// As duas seções não são paginadas, então (ao contrário da lista
+  /// principal) podem ordenar em memória sem risco de cursor inconsistente.
+  List<Event> _sortedByDate(bool Function(Event) test, EventsFilter filter) {
+    final result = _events.where((e) => test(e) && filter.matches(e)).toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    return List<Event>.unmodifiable(result);
   }
 
   Event? getById(String id) {
@@ -65,13 +94,4 @@ class InMemoryEventsStore {
     _controller.add(List<Event>.unmodifiable(_events));
     return draft;
   }
-
-  /// Usuário "logado" mockado para o MVP. Quando RF02 estiver pronto,
-  /// substituir por leitura do AuthService.
-  static UserSummary get currentUser => UserSummary(
-        id: 'u_joao',
-        name: 'João Souza',
-        handle: '@joao.souza',
-        avatarUrl: AppAssets.avatar('João'),
-      );
 }

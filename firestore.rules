@@ -1,0 +1,298 @@
+rules_version = '2';
+
+// Regras de segurança do Firestore — COMPY.
+//
+// Estratégia: `signedIn()` autoriza **o app**, não **o usuário certo**. Como o
+// app já tem uid real em todo lugar, cada coleção é restringida ao papel de
+// quem escreve (dono do perfil, criador do evento, membro da conversa).
+//
+// Base: docs/roadmap-prioridade-alta.md → "Regras do Firestore — trabalho
+// pendente". Cada bloco abaixo referencia a tarefa que o originou.
+//
+// Convenção deste arquivo:
+//   - `delete` é negado por padrão. A única exceção é a exclusão de conta:
+//     o dono apaga o próprio `users/{uid}`, o `private/contact` e a reserva
+//     em `usernames/{username}`. Nenhuma outra coleção apaga nada.
+//   - Campos ainda não implementados (`endedAt`) estão marcados com TODO e a
+//     tarefa correspondente.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    /// Chaves que mudaram entre o estado atual e o escrito.
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // ── users ────────────────────────────────────────────────────────
+    // Tarefa 13. Perfis públicos: qualquer autenticado lê, só o dono escreve
+    // o seu. `hasOnly` impede que o cliente despeje campos arbitrários no
+    // documento (inclusive médias de avaliação forjadas — ver `ratings`).
+    //
+    // O e-mail **não** mora aqui: `read: if signedIn()` o entregaria a
+    // qualquer autenticado, contrariando a RN-06. Ele vive em
+    // `users/{uid}/private/contact`, no bloco aninhado no fim deste match.
+    //
+    // Não é validado de propósito: `handle` e `createdAt` continuam
+    // reescrevíveis pelo dono porque `_writeUserProfile` os regrava em batch no
+    // re-cadastro, e as regras não enxergam as outras escritas do mesmo batch.
+    match /users/{userId} {
+      function validProfile() {
+        return request.resource.data.keys().hasOnly(
+                 ['id', 'name', 'handle', 'avatarUrl', 'createdAt',
+                  'favoriteSports'])
+            && request.resource.data.id == userId
+            && request.resource.data.name is string
+            && request.resource.data.name.size() <= 60
+            && request.resource.data.handle is string
+            && request.resource.data.handle.size() <= 21
+            && validFavoriteSports();
+      }
+
+      // Tarefa 13: no máximo 8 esportes (tamanho do enum `Sport`), lista de
+      // strings — evita que `Sport.values.firstWhere` estoure na leitura.
+      function validFavoriteSports() {
+        return !('favoriteSports' in request.resource.data.keys())
+            || (request.resource.data.favoriteSports is list
+                && request.resource.data.favoriteSports.size() <= 8);
+      }
+
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+                            && request.auth.uid == userId
+                            && validProfile();
+      // Exclusão de conta: o dono apaga o próprio perfil. Sem isto, o
+      // documento sobrevive à conta e vira registro órfão de gente que
+      // pediu para sair.
+      allow delete: if signedIn() && request.auth.uid == userId;
+
+      // ── users/{uid}/private ──────────────────────────────────────
+      // Tarefa 13 (RN-06). Dados de contato — hoje só o e-mail. Subcoleção
+      // porque as regras do documento pai não alcançam os filhos: é o que
+      // permite o perfil continuar público e o contato não.
+      //
+      // Só o dono lê e escreve. Nenhuma tela do app lê este documento; ele
+      // existe para o e-mail ter onde ficar sem virar dado público.
+      match /private/{docId} {
+        allow read, create, update, delete: if signedIn()
+                                            && request.auth.uid == userId;
+      }
+    }
+
+    // ── usernames ────────────────────────────────────────────────────
+    // Tarefa 5. Índice de unicidade (doc id = username em minúsculo, dado
+    // `{ uid }`).
+    //
+    // `read: if true` é decisão consciente, não resquício: `isUsernameAvailable()`
+    // roda **antes** do login, no formulário de cadastro. O custo é expor a
+    // lista de usernames — aceitável, já que username é público por natureza.
+    //
+    // `update` permitido quando o doc já pertence ao mesmo uid: sem isso o
+    // re-cadastro do item 3 da tarefa 5 (`batch.set` sobre doc existente vira
+    // update) estoura em PERMISSION_DENIED.
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn()
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.uid == request.auth.uid;
+      // Exclusão de conta: só o dono da reserva a libera. Sem isto o
+      // username fica preso para sempre — `update` exige ser do mesmo uid,
+      // e esse uid não existe mais.
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // ── events ───────────────────────────────────────────────────────
+    // Tarefa 12. Antes, qualquer autenticado editava qualquer evento — podia
+    // mudar a data de um evento alheio, remover participantes ou inflar as
+    // próprias vagas. Agora `update` tem dois caminhos distintos:
+    //
+    //   1. Criador edita os dados do evento (não pode trocar o dono).
+    //   2. Qualquer autenticado entra no evento — e apenas isso: mexe só em
+    //      `participants` + `participantIds` + `remainingSpots`, adiciona **a si
+    //      mesmo** no fim dos dois arrays (o `arrayUnion` do `join()` sempre
+    //      acrescenta ao fim) e decrementa exatamente uma vaga. Isso fecha a
+    //      fraude do join apontada em proximos-passos.md: não dá para aumentar
+    //      `remainingSpots` sem remover participante, nem vice-versa.
+    match /events/{eventId} {
+      function isCreator() {
+        return signedIn() && resource.data.creator.id == request.auth.uid;
+      }
+
+      function ownerUnchanged() {
+        return request.resource.data.creator.id == resource.data.creator.id;
+      }
+
+      function spotsCoherent() {
+        return request.resource.data.remainingSpots >= 0
+            && request.resource.data.remainingSpots
+               <= request.resource.data.totalSpots;
+      }
+
+      // `participantIds` é o array de uids que a seção "Participando"
+      // consulta (`arrayContains`) — `participants`, sendo array de mapas, não
+      // é consultável. Por isso ele entra na regra: se pudesse crescer sozinho,
+      // qualquer um se enfiaria na lista de qualquer evento sem ocupar vaga, e
+      // o app mostraria eventos alheios como "meus".
+      //
+      // O `get(..., [])` cobre documentos anteriores à tarefa 12, que não têm
+      // o campo: sem o default a expressão estouraria e eles ficariam
+      // impossíveis de participar. O primeiro join cria o array.
+      function joinedIdsBefore() {
+        return resource.data.get('participantIds', []);
+      }
+
+      // TODO(tarefa 14): abrir a exceção do encerramento automático —
+      // qualquer participante pode gravar `endedAt`/`endedAutomatically`
+      // desde que `endsAt` + 1h já tenha passado e `endedAt` ainda seja nulo.
+      function isJoin() {
+        return signedIn()
+            && changed().hasOnly(
+                 ['participants', 'participantIds', 'remainingSpots'])
+            && request.resource.data.participants.size()
+               == resource.data.participants.size() + 1
+            && request.resource.data
+                 .participants[resource.data.participants.size()].id
+               == request.auth.uid
+            && request.resource.data.participantIds.size()
+               == joinedIdsBefore().size() + 1
+            && request.resource.data
+                 .participantIds[joinedIdsBefore().size()] == request.auth.uid
+            && request.resource.data.remainingSpots
+               == resource.data.remainingSpots - 1
+            && request.resource.data.remainingSpots >= 0;
+      }
+
+      allow read: if signedIn();
+      // Criar evento em nome de outro é negado duas vezes: pelo `creator.id` e
+      // pelo `participantIds`, que na criação só pode conter o próprio uid —
+      // ninguém inscreve terceiros num evento que acabou de inventar.
+      allow create: if signedIn()
+                    && request.resource.data.creator.id == request.auth.uid
+                    && request.resource.data.participantIds
+                       == [request.auth.uid]
+                    && request.resource.data.totalSpots is int
+                    && request.resource.data.totalSpots > 0
+                    && spotsCoherent();
+      allow update: if (isCreator() && ownerUnchanged() && spotsCoherent())
+                    || isJoin();
+      allow delete: if false;
+    }
+
+    // ── conversations / messages ─────────────────────────────────────
+    // Tarefa 9. Antes, qualquer autenticado lia e escrevia qualquer conversa
+    // privada de qualquer pessoa — o pior default possível num app de chat.
+    // O documento já tem o array `members`, então dá para apertar sem perder
+    // funcionalidade: a query paginada já filtra por
+    // `where('members', arrayContains: userId)`.
+    //
+    // As mensagens validam a associação com um `get()` no documento pai — custa
+    // uma leitura por operação. A alternativa (desnormalizar `members` em cada
+    // mensagem) foi descartada por enquanto: exigiria mudar o schema de
+    // `sendMessage` e o volume de mensagens do MVP não justifica.
+    match /conversations/{conversationId} {
+      function isMember() {
+        return signedIn() && request.auth.uid in resource.data.members;
+      }
+
+      function isMemberOfParent() {
+        return signedIn()
+            && request.auth.uid in get(
+                 /databases/$(database)/documents/conversations/$(conversationId)
+               ).data.members;
+      }
+
+      allow read: if isMember();
+
+      // Só se cria conversa incluindo a si mesmo — ninguém abre conversa entre
+      // terceiros. Conversas são 1:1 (a entidade `Conversation` resolve um
+      // único `peer`).
+      allow create: if signedIn()
+                    && request.resource.data.members is list
+                    && request.resource.data.members.size() == 2
+                    && request.auth.uid in request.resource.data.members;
+
+      // Depois de criada, `members` é imutável: só o rodapé da conversa muda.
+      allow update: if isMember()
+                    && changed().hasOnly(
+                         ['lastMessage', 'lastMessageAt', 'unreadCounts']);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isMemberOfParent();
+        allow create: if isMemberOfParent()
+                      && request.resource.data.senderId == request.auth.uid;
+        // Mensagem enviada não se edita nem se apaga.
+        allow update, delete: if false;
+      }
+    }
+
+    // ── places (não existe) ──────────────────────────────────────────
+    // Tarefa 6. O catálogo de locais é curado pela equipe (RN-04), é pequeno e
+    // muda raramente: ele vive **em código**, em `lib/shared/models/
+    // sport_place.dart` (`SportPlace.all`), que alimenta tanto os pins do mapa
+    // quanto o seletor de "Criar evento".
+    //
+    // A regra de `places` foi removida junto com o `PlacesRemoteDataSource`:
+    // nada aponta mais para a coleção, e o deny-by-default cuida do resto. Se
+    // um dia a equipe precisar cadastrar locais sem publicar app novo, é aqui
+    // que a regra volta.
+
+    // ── ratings ──────────────────────────────────────────────────────
+    // Tarefa 14. Coleção nova — antes caía no deny-by-default.
+    //
+    // D13: comentários não são públicos e não há moderação. Leitura é negada
+    // por completo; o que aparece na UI é a média desnormalizada no alvo,
+    // gravada junto da avaliação. Sem `read`, o comentário não vaza nem para
+    // quem inspeciona o tráfego.
+    //
+    // D12: nota abaixo de 3 estrelas exige justificativa — vale para os três
+    // alvos, e é validado aqui além da UI.
+    //
+    // Avaliação enviada não se reescreve: é a única garantia de integridade da
+    // média sem backend.
+    match /ratings/{ratingId} {
+      function validRating() {
+        return request.resource.data.keys().hasAll(
+                 ['eventId', 'fromUid', 'targetType', 'targetId', 'stars',
+                  'createdAt'])
+            && request.resource.data.keys().hasOnly(
+                 ['eventId', 'fromUid', 'targetType', 'targetId', 'stars',
+                  'comment', 'createdAt'])
+            && request.resource.data.targetType in ['user', 'event', 'place']
+            && request.resource.data.stars is int
+            && request.resource.data.stars >= 1
+            && request.resource.data.stars <= 5
+            && validComment();
+      }
+
+      function hasComment() {
+        return 'comment' in request.resource.data.keys()
+            && request.resource.data.comment is string
+            && request.resource.data.comment.size() > 0;
+      }
+
+      function validComment() {
+        return (!('comment' in request.resource.data.keys())
+                || (request.resource.data.comment is string
+                    && request.resource.data.comment.size() <= 500))
+            // D12: menos de 3 estrelas exige justificativa.
+            && (request.resource.data.stars >= 3 || hasComment());
+      }
+
+      // TODO(tarefa 14): avaliar se vale o custo de dois `get()` para exigir
+      // que o evento esteja encerrado (`endedAt != null`) e que o autor tenha
+      // participado dele (`request.auth.uid in participantIds`). O
+      // `participantIds` já existe desde a tarefa 12; falta o `endedAt`.
+      allow read: if false;
+      allow create: if signedIn()
+                    && request.resource.data.fromUid == request.auth.uid
+                    && validRating();
+      allow update, delete: if false;
+    }
+  }
+}

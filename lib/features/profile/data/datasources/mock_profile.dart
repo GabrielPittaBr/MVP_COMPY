@@ -8,6 +8,13 @@ import '../../domain/entities/rating_summary.dart';
 import '../../domain/entities/user_profile.dart';
 
 abstract final class MockProfile {
+  /// Escolha de esportes feita em tempo de execução no modo sem Firebase.
+  ///
+  /// `null` = o usuário mockado ainda está com a lista de fábrica. Mesmo
+  /// papel que o [InMemoryEventsStore] cumpre para eventos: sem isso, salvar
+  /// o onboarding com `kUseFirebaseRepos = false` não teria efeito nenhum.
+  static List<Sport>? favoriteSportsOverride;
+
   static UserProfile get current => UserProfile(
         summary: UserSummary(
           id: 'u_joao',
@@ -16,7 +23,8 @@ abstract final class MockProfile {
           avatarUrl: AppAssets.avatar('João', size: 200),
         ),
         bio: 'Apaixonado por esportes coletivos. Busca parceiros para treinar em Taquara.',
-        favoriteSports: const <Sport>[Sport.futebol, Sport.volei, Sport.basquete],
+        favoriteSports: favoriteSportsOverride ??
+            const <Sport>[Sport.futebol, Sport.volei, Sport.basquete],
         badges: const <SportBadge>[
           SportBadge(
             id: 'b1',
@@ -57,4 +65,42 @@ abstract final class MockProfile {
           AppAssets.galleryTeamPhoto,
         ],
       );
+
+  /// Usuários que a busca por handle encontra no modo sem Firebase.
+  ///
+  /// Inclui os três peers do `InMemoryChatStore` (para reabrir conversa
+  /// existente) e nomes que ainda não têm conversa, para exercitar o caminho
+  /// de criação.
+  static List<UserSummary> get searchable => <UserSummary>[
+        UserSummary(
+          id: 'u_douglas',
+          name: 'Douglas',
+          handle: '@douglas',
+          avatarUrl: AppAssets.avatar('Douglas'),
+        ),
+        UserSummary(
+          id: 'u_hercules',
+          name: 'Hércules',
+          handle: '@hercules',
+          avatarUrl: AppAssets.avatar('Hércules'),
+        ),
+        UserSummary(
+          id: 'u_ripelson',
+          name: 'Ripelson',
+          handle: '@ripelson',
+          avatarUrl: AppAssets.avatar('Ripelson'),
+        ),
+        UserSummary(
+          id: 'u_marina',
+          name: 'Marina',
+          handle: '@marina',
+          avatarUrl: AppAssets.avatar('Marina'),
+        ),
+        UserSummary(
+          id: 'u_dudu',
+          name: 'Eduardo',
+          handle: '@dudu',
+          avatarUrl: AppAssets.avatar('Eduardo'),
+        ),
+      ];
 }

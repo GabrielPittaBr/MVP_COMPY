@@ -22,10 +22,17 @@ dependencies:
   firebase_core: ^3.3.0
   firebase_auth: ^5.1.4
   cloud_firestore: ^5.2.1
+  firebase_app_check: ^0.3.0
+
+  # Login com Google (RF — autenticação social)
+  google_sign_in: ^6.2.1
 
   # Mapa OSM (sem API key — RF04)
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
+
+  # Geolocalização do usuário (RF03 — eventos próximos por raio real)
+  geolocator: ^13.0.1
 
   # Tipografia
   google_fonts: ^6.2.1
@@ -42,5 +49,15 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # Geração do ícone do app (launcher icon)
+  flutter_launcher_icons: ^0.14.1
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/compy-icon.png"
+
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/

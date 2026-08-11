@@ -1,6 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Rede. O template do Flutter declara INTERNET só em src/debug, para o
+         hot reload — no release ela vinha de carona no AAR do
+         google_sign_in_android. Funcionava por acidente: tirar o login com
+         Google deixaria o app sem rede apenas no release, o modo que ninguém
+         testa. Declarada aqui, não depende mais de dependência de terceiro. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Geolocalização (RF03): eventos próximos por raio de distância real. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <application
-        android:label="mvp_compy"
+        android:label="Compy"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

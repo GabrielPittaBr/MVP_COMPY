@@ -2,7 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_flags.dart';
+import '../../../../core/providers/location_providers.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/sport.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/home_remote_datasource.dart';
 import '../../data/repositories/home_repository_impl.dart';
 import '../../domain/entities/sport_category.dart';
@@ -28,14 +32,30 @@ final getNearbyEventsProvider = Provider<GetNearbyEvents>(
   (ref) => GetNearbyEvents(ref.watch(homeRepositoryProvider)),
 );
 
-final categoriesProvider = Provider<List<SportCategory>>(
-  (ref) => ref.watch(getCategoriesProvider).call(),
-);
+/// Categorias do carrossel, seguindo os esportes favoritos do perfil.
+///
+/// Lê o perfil **sem esperar**: enquanto ele não chega, o carrossel mostra o
+/// trio padrão e troca sozinho quando os favoritos aparecem. Segurar a Home
+/// em branco por causa de uma faixa de categorias seria trocar um problema
+/// pequeno por um grande — e quem pulou o onboarding nunca teria favoritos
+/// para esperar.
+final categoriesProvider = Provider<List<SportCategory>>((ref) {
+  final List<Sport> favoriteSports =
+      ref.watch(currentProfileProvider).valueOrNull?.favoriteSports ??
+          const <Sport>[];
+  return ref.watch(getCategoriesProvider).call(favoriteSports: favoriteSports);
+});
 
-final nearbyEventsProvider = StreamProvider<List<Event>>(
-  (ref) => ref.watch(getNearbyEventsProvider).call(),
-);
+/// Eventos próximos à posição real do usuário (RF03). Aguarda a
+/// resolução da localização (com fallback para o centro de Taquara —
+/// ver [userPositionProvider]) e então observa a consulta geográfica.
+final nearbyEventsProvider = StreamProvider<List<Event>>((ref) async* {
+  final position = await ref.watch(userPositionProvider.future);
+  yield* ref.watch(getNearbyEventsProvider).call(position);
+});
 
-/// Nome de exibição do usuário logado. Hoje fixo no mock; quando o login
-/// estiver implementado, plugar via AuthService.
-final greetingNameProvider = Provider<String>((ref) => 'João Souza');
+/// Nome de exibição do usuário logado, vindo do AuthUser autenticado.
+final greetingNameProvider = Provider<String>((ref) {
+  final authUser = ref.watch(authStateProvider).valueOrNull;
+  return authUser?.displayName ?? '';
+});

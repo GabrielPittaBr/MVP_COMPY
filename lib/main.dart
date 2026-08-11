@@ -6,6 +6,9 @@
 // 3. Tenta inicializar Firebase de forma defensiva (segue rodando com
 //    mocks quando `firebase_options.dart` ainda não foi gerado);
 // 4. Roda o app dentro de um ProviderScope (Riverpod).
+//
+// Nota: o login anônimo automático foi removido. O gate de autenticação
+// é tratado pelo GoRouter (`redirect` em `app_router.dart`).
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

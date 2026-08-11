@@ -6,8 +6,11 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/duration_format.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../../shared/widgets/primary_button.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../providers/events_providers.dart';
 import '../widgets/participants_avatars.dart';
@@ -46,7 +49,9 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dateFormat = DateFormat('EEEE, h:mm a', 'pt_BR');
+    // Dia da semana + intervalo início–fim ("Sábado, 15:00 – 16:00"):
+    // saber a que horas acaba é mais útil que só o horário de início.
+    final dayFormat = DateFormat('EEEE', 'pt_BR');
 
     return CustomScrollView(
       slivers: <Widget>[
@@ -77,7 +82,7 @@ class _Body extends ConsumerWidget {
           sliver: SliverList(
             delegate: SliverChildListDelegate(<Widget>[
               Text(
-                'Partida de ${event.sport.label.toLowerCase()}',
+                event.title,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
@@ -89,7 +94,14 @@ class _Body extends ConsumerWidget {
               const SizedBox(height: 8),
               _IconRow(
                 icon: Icons.calendar_today_outlined,
-                label: _capitalize(dateFormat.format(event.dateTime)),
+                label: '${_capitalize(dayFormat.format(event.dateTime))}, '
+                    '${DurationFormat.timeRange(event.dateTime, event.durationMinutes)}',
+              ),
+              const SizedBox(height: 8),
+              _IconRow(
+                icon: Icons.schedule,
+                label: '${AppStrings.eventDuration}: '
+                    '${DurationFormat.short(event.durationMinutes)}',
               ),
               const SizedBox(height: 20),
 
@@ -101,8 +113,17 @@ class _Body extends ConsumerWidget {
               _CreatorTile(event: event),
               const SizedBox(height: 20),
 
-              Text(event.description, style: const TextStyle(height: 1.45)),
-              const SizedBox(height: 24),
+              // Descrição é opcional: sem texto, o bloco inteiro some
+              // (nada de espaçamento órfão no meio do layout).
+              if (event.description.isNotEmpty) ...<Widget>[
+                const Text(
+                  AppStrings.eventDescription,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Text(event.description, style: const TextStyle(height: 1.45)),
+                const SizedBox(height: 24),
+              ],
 
               Text(
                 'Participantes (${event.participants.length})',
@@ -140,10 +161,14 @@ class _Body extends ConsumerWidget {
                           markers: <Marker>[
                             Marker(
                               point: event.coordinates,
-                              child: const Icon(
-                                Icons.location_on,
-                                color: AppColors.error,
-                                size: 36,
+                              // Mesmo pin do mapa e do preview de criação,
+                              // aqui na modalidade do próprio evento.
+                              width: 40,
+                              height: 50,
+                              alignment: Alignment.topCenter,
+                              child: CustomSportMarker(
+                                sport: event.sport,
+                                selected: false,
                               ),
                             ),
                           ],
@@ -170,16 +195,23 @@ class _Body extends ConsumerWidget {
   Future<void> _join(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(joinEventProvider).call(event.id);
-      // Re-emite o evento atualizado.
+      // UserSummary real do usuário autenticado (users/{uid} no Firestore).
+      final user = await ref.read(currentUserSummaryProvider.future);
+      await ref.read(joinEventProvider).call(event.id, user);
+      // Re-emite o evento atualizado e recarrega as seções da aba Eventos —
+      // o evento passa a valer para "Participando".
       ref.invalidate(eventDetailProvider(event.id));
-      ref.invalidate(allEventsProvider);
+      invalidateEventLists(ref);
       messenger.showSnackBar(
         const SnackBar(content: Text('Você entrou no evento!')),
       );
     } on EventFullException {
       messenger.showSnackBar(
         const SnackBar(content: Text(AppStrings.eventFull)),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Erro ao entrar no evento: $e')),
       );
     }
   }

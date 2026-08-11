@@ -1,5 +1,5 @@
 import '../../../../shared/models/sport.dart';
-import '../entities/sport_place.dart';
+import '../../../../shared/models/sport_place.dart';
 
 abstract interface class PlacesRepository {
   Future<List<SportPlace>> getAll();

@@ -7,6 +7,10 @@ abstract final class AppStrings {
   // App
   static const String appName = 'COMPY';
 
+  // Comum
+  static const String commonCancel = 'Cancelar';
+  static const String commonConfirm = 'Confirmar';
+
   // Bottom nav
   static const String navHome = 'Início';
   static const String navEvents = 'Eventos';
@@ -17,27 +21,87 @@ abstract final class AppStrings {
   // Home
   static const String homeGreetingPrefix = 'Oi,';
   static const String homeSearchHint = 'Encontre esportes';
+
+  // Busca
+  static const String searchHint = 'Buscar evento ou esporte';
+  static const String searchPrompt =
+      'Digite ao menos 2 letras para buscar por\nnome do evento ou modalidade esportiva.';
+  static const String searchNoResults = 'Nenhum evento encontrado.';
   static const String homeCategories = 'Categorias';
+  static const String homeSeeMoreCategories = 'Ver mais';
   static const String homeExplore = 'Explore locais';
   static const String homeNearbyEvents = 'Eventos Próximos';
   static const String homeFilterByDate = 'Filtrar por data';
+  static const String homeNearbyEmpty =
+      'Nenhum evento perto de você por enquanto.';
+  static const String homeNearbyError =
+      'Não foi possível carregar os eventos próximos.';
 
   // Maps
   static const String mapsSearchHint = 'Encontre esportes';
+  static const String mapsPlaceInfo = 'Informações';
 
   // Events
   static const String eventsTitle = 'Eventos';
+  static const String eventsEmpty = 'Nenhum evento disponível.';
+  static const String eventsEmptyFiltered =
+      'Nenhum evento com esses filtros por enquanto.';
+  static const String eventsClearFilter = 'Limpar filtro';
+  static const String eventsCreateCta = 'Criar um evento';
+
+  /// Estado vazio da lista quando há filtro de modalidade ativo.
+  static String eventsEmptyForSport(String sportLabel) =>
+      'Nenhum evento de $sportLabel por enquanto.';
+
+  // Seções da aba Eventos — cada uma some junto do seu título quando não
+  // tem nada para mostrar (D3).
+  static const String eventsSectionMine = 'Criados por mim';
+  static const String eventsSectionJoined = 'Participando';
+  static const String eventsSectionAll = 'Todos os eventos';
+  static const String eventsSectionError =
+      'Não foi possível carregar esta seção.';
+
+  // Filtros da aba Eventos
+  static const String eventsFilters = 'Filtros';
+  static const String eventsFilterTitle = 'Filtrar eventos';
+  static const String eventsFilterSport = 'Modalidade';
+  static const String eventsFilterSkillLevel = 'Nível de habilidade';
+  static const String eventsFilterSkillLevelHint =
+      'Eventos abertos a todos os níveis aparecem em qualquer escolha.';
+  static const String eventsFilterDay = 'Data';
+  static const String eventsFilterAnyDay = 'Qualquer data';
+  static const String eventsFilterApply = 'Aplicar';
+  static const String eventsFilterClearAll = 'Limpar tudo';
   static const String eventCreateTitle = 'Criar evento';
+  static const String eventTitle = 'Título';
+  static const String eventTitleHint =
+      'Título (ex.: Pelada de quinta, Vôlei descontraído)';
   static const String eventSelectSport = 'Selecionar esporte';
+  static const String eventSelectLocation = 'Selecionar local';
+  static const String eventSelectLocationFirst =
+      'Selecione o local do evento primeiro.';
   static const String eventDate = 'Data';
   static const String eventTime = 'Horário';
+  static const String eventDuration = 'Duração';
+  static const String eventDurationOther = 'Outro';
+  static const String eventDurationCustomTitle = 'Duração personalizada';
+  static const String eventDurationCustomHint = 'Duração em minutos';
+  static const String eventDurationCustomInvalid =
+      'Informe uma duração entre 15 e 720 minutos.';
   static const String eventSkillLevel = 'Nível de habilidade';
   static const String eventParticipants = 'Participantes';
-  static const String eventVacancies = 'Vagas restantes';
+  static const String eventParticipantsNumber = 'Número de participantes';
+  static const String eventDescription = 'Descrição';
+  static const String eventDescriptionHint =
+      'Conte como vai ser o jogo: leve bola? tem colete? '
+      'é competitivo ou de boa?';
   static const String eventLocation = 'Local';
   static const String eventCreate = 'Criar evento';
   static const String eventJoin = 'Participar';
   static const String eventFull = 'Evento sem vagas';
+
+  /// Versão curta para o CTA do card, que é estreito.
+  static const String eventCardFull = 'Sem vagas';
   static const String eventCreatedBy = 'Criado por:';
   static const String eventSeeMore = 'Ver mais';
   static const String eventVacanciesLabel = 'vagas restantes';
@@ -45,6 +109,7 @@ abstract final class AppStrings {
   // Profile
   static const String profileTitle = 'Perfil';
   static const String profileEdit = 'Editar perfil';
+  static const String profileEditFavoriteSports = 'Editar esportes favoritos';
   static const String profileFavoriteSports = 'Esportes favoritos';
   static const String profileBadges = 'Insígnias';
   static const String profileFriends = 'Amigos';
@@ -52,9 +117,116 @@ abstract final class AppStrings {
   static const String profileGallery = 'Galeria';
   static const String profileSeeMore = 'Ver mais';
 
+  // Profile — estado vazio das avaliações. Sem nota nenhuma a média é 0, e
+  // "0,0" na tela é lido como nota baixa, não como ausência de nota.
+  static const String profileNoRatings = 'Você não tem avaliações ainda';
+  static const String profileNoRatingsHint =
+      'Elas aparecem aqui depois que você participar de eventos e receber notas.';
+
+  // Profile — edição do perfil e exclusão de conta
+  static const String profileUsernameLocked =
+      'Ainda não é possível alterar seu username. Estamos trabalhando nisso.';
+  static const String profileAccountSection = 'Conta';
+  static const String profileDeleteAccount = 'Excluir minha conta';
+  static const String profileDeleteAccountHint =
+      'Apaga seu perfil, libera seu @username e encerra seu acesso ao COMPY.';
+  static const String profileDeleteAccountTitle = 'Excluir conta?';
+  static const String profileDeleteAccountBody =
+      'Esta ação não pode ser desfeita. Eventos que você criou e mensagens já '
+      'enviadas continuam visíveis para os outros participantes.';
+  static const String profileDeleteAccountPasswordHint = 'Confirme sua senha';
+  static const String profileDeleteAccountPasswordEmpty =
+      'Digite sua senha para confirmar a exclusão.';
+  static const String profileDeleteAccountGoogleHint =
+      'Vamos abrir o Google para você confirmar que é você mesmo.';
+  static const String profileDeleteAccountConfirm = 'Excluir conta';
+
   // Chat
   static const String chatTitle = 'Chat';
   static const String chatFindMore = 'Encontre mais companheiros...';
   static const String chatHint = 'Digite uma mensagem...';
   static const String chatToday = 'Hoje';
+  static const String chatYesterday = 'Ontem';
+  static const String chatConversationUnavailable =
+      'Esta conversa não está disponível.';
+  static const String chatFallbackTitle = 'Conversa';
+  static const String chatUnknownPeer = 'Desconhecido';
+  static const String chatNewConversation = 'Nova conversa';
+  static const String chatSearchHandleHint = 'Buscar por @handle';
+  static const String chatSearchPrompt =
+      'Digite ao menos 2 letras do handle para buscar.';
+  static const String chatSearchEmpty = 'Ninguém encontrado com esse handle.';
+  static const String chatSearchError = 'Não foi possível buscar agora.';
+  static const String chatOpenConversationError =
+      'Não foi possível abrir a conversa.';
+  static const String chatForwardedPlace = 'Encaminhou um local...';
+  static const String chatShareTo = 'Enviar para';
+  static const String chatShareNoConversations =
+      'Você ainda não tem conversas. Comece uma para compartilhar o local.';
+  static const String chatShareError =
+      'Não foi possível compartilhar o local.';
+  static const String mapsShare = 'Compartilhar';
+
+  // Auth — login / cadastro / username
+  static const String authTagline = 'Ache seu próximo jogo em Taquara';
+  static const String authLoginWithEmail = 'Entrar com email';
+  static const String authLoginWithGoogle = 'Entrar com Google';
+  static const String authCreateAccount = 'Criar Conta';
+  static const String authPrivacyPrefix = 'Ao continuar, você concorda com nossa';
+  static const String authPrivacyPolicy = 'Política de Privacidade';
+  static const String authName = 'Nome completo';
+  static const String authUsername = 'Username (ex.: @joao)';
+  static const String authEmail = 'E-mail';
+  static const String authPassword = 'Senha (mín. 6 caracteres)';
+  static const String authLoginTitle = 'Bem-vindo ao COMPY';
+  static const String authSignupTitle = 'Criar conta';
+  static const String authSignupButton = 'Cadastrar';
+  static const String authAlreadyHaveAccount = 'Já tenho uma conta';
+  static const String authChooseUsername = 'Escolha seu username';
+  static const String authChooseUsernameHint =
+      'Defina um username exclusivo para sua conta.';
+  static const String authUsernameField = 'Username';
+  static const String authConfirmUsername = 'Confirmar';
+  static const String authBack = 'Voltar';
+  static const String authLoading = 'Aguarde...';
+  static const String authErrorUsernameTaken = 'Este username já está em uso.';
+  static const String authErrorUsernameEmpty = 'O username não pode ser vazio.';
+  static const String authErrorUsernameTooShort =
+      'O username precisa ter ao menos 3 caracteres.';
+  static const String authErrorUsernameTooLong =
+      'O username pode ter no máximo 20 caracteres.';
+  static const String authErrorUsernameInvalidChars =
+      'Use apenas letras, números, ponto e _ — sem começar ou terminar com ponto.';
+  static const String authErrorEmailInvalid = 'Informe um e-mail válido.';
+  static const String authErrorPasswordShort = 'A senha precisa ter ao menos 6 caracteres.';
+  static const String authErrorNameEmpty = 'Informe seu nome.';
+  static const String authErrorGeneric = 'Ocorreu um erro. Tente novamente.';
+  static const String authErrorProfileLookup =
+      'Não foi possível carregar seu perfil. Verifique a conexão e tente novamente.';
+  static const String authRetry = 'Tentar novamente';
+  static const String authErrorInvalidCredential = 'E-mail ou senha incorretos.';
+  static const String authErrorEmailAlreadyInUse = 'Este e-mail já está cadastrado.';
+  static const String authErrorRequiresRecentLogin =
+      'Por segurança, entre novamente para concluir a exclusão da conta.';
+
+  // Onboarding — esportes favoritos
+  static const String onboardingSportsTitle =
+      'Muito bem! Agora vamos personalizar seu perfil:';
+  static const String onboardingSportsHint =
+      'Escolha os esportes que você mais curte. É por eles que o COMPY monta o que você vê primeiro.';
+  static const String onboardingSportsContinue = 'Continuar';
+  static const String onboardingSportsSkip = 'Pular por agora';
+  static const String onboardingSportsSave = 'Salvar';
+  static const String onboardingSportsEditTitle = 'Esportes favoritos';
+  static const String onboardingSportsEditHint =
+      'Marque ou desmarque à vontade — dá para mudar quando quiser.';
+  static const String onboardingSportsSaveError =
+      'Não foi possível salvar seus esportes. Tente novamente.';
+
+  // Em construção — os botões já existem; as telas, ainda não.
+  static const String settingsTitle = 'Configurações';
+  static const String underConstructionTitle = 'Estamos trabalhando nisso';
+  static const String underConstructionBody =
+      'Esta parte do COMPY ainda está em construção. '
+      'Assim que estiver pronta, ela aparece aqui.';
 }

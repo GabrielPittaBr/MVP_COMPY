@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_colors.dart';
 import '../models/event.dart';
 
@@ -12,6 +13,7 @@ class EventCard extends StatelessWidget {
     required this.event,
     required this.actionLabel,
     required this.onAction,
+    this.disableWhenFull = true,
     super.key,
   });
 
@@ -19,8 +21,17 @@ class EventCard extends StatelessWidget {
   final String actionLabel;
   final VoidCallback onAction;
 
+  /// Se um evento lotado (RN-05) trava o CTA e troca o rótulo por
+  /// "Sem vagas". Vale para o "Participar" da Home, mas não para o "Ver
+  /// mais" da aba Eventos: nas seções "Criados por mim" e "Participando"
+  /// aparecem eventos lotados de propósito, e abrir os detalhes de um
+  /// evento que você criou ou de que já participa continua fazendo sentido.
+  final bool disableWhenFull;
+
   @override
   Widget build(BuildContext context) {
+    final blocked = disableWhenFull && event.isFull;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
@@ -98,7 +109,7 @@ class EventCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
-              onPressed: event.isFull ? null : onAction,
+              onPressed: blocked ? null : onAction,
               style: TextButton.styleFrom(
                 backgroundColor: AppColors.surfaceMuted,
                 foregroundColor: AppColors.onSurface,
@@ -111,7 +122,7 @@ class EventCard extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              child: Text(event.isFull ? 'Sem vagas' : actionLabel),
+              child: Text(blocked ? AppStrings.eventCardFull : actionLabel),
             ),
           ),
         ],

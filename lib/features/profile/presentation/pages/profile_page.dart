@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/profile_providers.dart';
 import '../widgets/badges_row.dart';
 import '../widgets/favorite_sports_chips.dart';
@@ -20,24 +23,47 @@ class ProfilePage extends ConsumerWidget {
     final profileAsync = ref.watch(currentProfileProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.profileTitle)),
+      appBar: AppBar(
+        title: const Text(AppStrings.profileTitle),
+        actions: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sair',
+            onPressed: () async {
+              await ref.read(authControllerProvider.notifier).signOut();
+            },
+          ),
+        ],
+      ),
       body: profileAsync.when(
         data: (profile) => SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              ProfileHeader(summary: profile.summary),
+              ProfileHeader(
+                summary: profile.summary,
+                onEdit: () => context.push(AppRoutes.profileEdit),
+              ),
               const SizedBox(height: 24),
 
-              const _SectionTitle(AppStrings.profileFavoriteSports),
+              _SectionTitle(
+                AppStrings.profileFavoriteSports,
+                // Entrada dedicada em vez de sequestrar "Editar perfil":
+                // aquele botão ainda vai abrir a edição completa (bio, foto),
+                // e prometer isso aqui seria mentira.
+                onEdit: () => context.push(AppRoutes.profileFavoriteSports),
+              ),
               const SizedBox(height: 8),
               FavoriteSportsChips(sports: profile.favoriteSports),
               const SizedBox(height: 24),
 
               const _SectionTitle(AppStrings.profileBadges),
               const SizedBox(height: 12),
-              BadgesRow(badges: profile.badges),
+              BadgesRow(
+                badges: profile.badges,
+                onSeeMore: () => context.push(AppRoutes.profileBadges),
+              ),
               const SizedBox(height: 24),
 
               const _SectionTitle(AppStrings.profileFriends),
@@ -65,18 +91,35 @@ class ProfilePage extends ConsumerWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+  const _SectionTitle(this.text, {this.onEdit});
+
   final String text;
+
+  /// Quando presente, a seção ganha um lápis à direita do título.
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: AppColors.onSurface,
-      ),
+    const TextStyle style = TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w700,
+      color: AppColors.onSurface,
+    );
+
+    if (onEdit == null) return Text(text, style: style);
+
+    return Row(
+      children: <Widget>[
+        Text(text, style: style),
+        const Spacer(),
+        IconButton(
+          icon: const Icon(Icons.edit_outlined, size: 20),
+          color: AppColors.onSurfaceMuted,
+          tooltip: AppStrings.profileEditFavoriteSports,
+          visualDensity: VisualDensity.compact,
+          onPressed: onEdit,
+        ),
+      ],
     );
   }
 }
