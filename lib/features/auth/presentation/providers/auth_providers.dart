@@ -129,6 +129,20 @@ class AuthController extends AsyncNotifier<AuthUser?> {
       },
     );
   }
+
+  /// Exclusão de conta.
+  ///
+  /// Fecha com `null` como o [signOut]: é isso que faz o guard do router
+  /// levar para `/login` sozinho, sem a tela precisar navegar na mão.
+  Future<void> deleteAccount({String? password}) async {
+    state = const AsyncLoading<AuthUser?>();
+    state = await AsyncValue.guard<AuthUser?>(
+      () async {
+        await _repo.deleteAccount(password: password);
+        return null;
+      },
+    );
+  }
 }
 
 final authControllerProvider =
@@ -174,6 +188,8 @@ String firebaseAuthErrorMessage(Object error) {
         return 'Informe um e-mail válido.';
       case 'network-request-failed':
         return 'Sem conexão com a internet.';
+      case 'requires-recent-login':
+        return AppStrings.authErrorRequiresRecentLogin;
       default:
         return 'Erro de autenticação (${error.code}).';
     }

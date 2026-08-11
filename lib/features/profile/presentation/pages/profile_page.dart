@@ -41,7 +41,10 @@ class ProfilePage extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              ProfileHeader(summary: profile.summary),
+              ProfileHeader(
+                summary: profile.summary,
+                onEdit: () => context.push(AppRoutes.profileEdit),
+              ),
               const SizedBox(height: 24),
 
               _SectionTitle(

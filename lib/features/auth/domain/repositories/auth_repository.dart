@@ -45,4 +45,18 @@ abstract interface class AuthRepository {
 
   /// Faz logout do Firebase Auth.
   Future<void> signOut();
+
+  /// `true` quando a exclusão de conta vai precisar da senha do usuário.
+  ///
+  /// Quem entrou com Google reautentica pelo seletor da própria Google e não
+  /// digita senha nenhuma.
+  bool signedInWithPassword();
+
+  /// Apaga a conta: `users/{uid}`, o contato privado, a reserva do username e
+  /// o registro no Firebase Auth.
+  ///
+  /// Reautentica antes de apagar qualquer coisa — o Firebase exige login
+  /// recente. [password] é obrigatória quando [signedInWithPassword] devolve
+  /// `true` e ignorada nos outros casos.
+  Future<void> deleteAccount({String? password});
 }

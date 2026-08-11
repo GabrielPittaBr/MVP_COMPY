@@ -67,6 +67,12 @@ Rodar a suíte antes, sempre:
 npm test --prefix tools/firestore-rules-tests
 ```
 
+**Agora isso bloqueia uma tela, não só a segurança.** A exclusão de conta
+apaga `users/{uid}`, `users/{uid}/private/contact` e `usernames/{handle}`, e as
+regras de `delete` dessas três só existem no `firestore.rules` local. Sem o
+deploy acima, o botão "Excluir minha conta" falha com `PERMISSION_DENIED` no
+aparelho do usuário — com o código todo certo.
+
 ---
 
 ## Pendências conhecidas que não bloqueiam a publicação
