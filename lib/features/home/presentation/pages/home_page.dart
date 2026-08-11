@@ -105,26 +105,51 @@ class HomePage extends ConsumerWidget {
                 ],
               ),
               eventsAsync.when(
-                data: (events) => Column(
-                  children: <Widget>[
-                    for (final e in events)
-                      EventCard(
-                        event: e,
-                        actionLabel: AppStrings.eventJoin,
-                        onAction: () => context.go('${AppRoutes.events}/${e.id}'),
+                data: (events) => events.isEmpty
+                    ? const _NearbyMessage(AppStrings.homeNearbyEmpty)
+                    : Column(
+                        children: <Widget>[
+                          for (final e in events)
+                            EventCard(
+                              event: e,
+                              actionLabel: AppStrings.eventJoin,
+                              onAction: () =>
+                                  context.go('${AppRoutes.events}/${e.id}'),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
                 loading: () => const Padding(
                   padding: EdgeInsets.all(24),
                   child: Center(child: CircularProgressIndicator()),
                 ),
-                error: (e, _) => Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text('Não foi possível carregar eventos: $e'),
-                ),
+                error: (_, __) =>
+                    const _NearbyMessage(AppStrings.homeNearbyError),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Recado no lugar da lista — vazio ou falha. Ocupa o mesmo espaço de um
+/// card para a seção não colapsar contra o rodapé.
+class _NearbyMessage extends StatelessWidget {
+  const _NearbyMessage(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Center(
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppColors.onSurfaceMuted,
+            fontSize: 14,
           ),
         ),
       ),

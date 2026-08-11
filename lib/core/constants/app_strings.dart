@@ -32,6 +32,10 @@ abstract final class AppStrings {
   static const String homeExplore = 'Explore locais';
   static const String homeNearbyEvents = 'Eventos Próximos';
   static const String homeFilterByDate = 'Filtrar por data';
+  static const String homeNearbyEmpty =
+      'Nenhum evento perto de você por enquanto.';
+  static const String homeNearbyError =
+      'Não foi possível carregar os eventos próximos.';
 
   // Maps
   static const String mapsSearchHint = 'Encontre esportes';
