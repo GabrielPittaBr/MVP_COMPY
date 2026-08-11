@@ -7,9 +7,16 @@ import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/secondary_button.dart';
 
 class ProfileHeader extends StatelessWidget {
-  const ProfileHeader({required this.summary, super.key});
+  const ProfileHeader({
+    required this.summary,
+    required this.onEdit,
+    super.key,
+  });
 
   final UserSummary summary;
+
+  /// Abre a edição do perfil.
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +37,7 @@ class ProfileHeader extends StatelessWidget {
           style: const TextStyle(color: AppColors.onSurfaceMuted, fontSize: 13),
         ),
         const SizedBox(height: 16),
-        SecondaryButton(label: AppStrings.profileEdit, onPressed: () {}),
+        SecondaryButton(label: AppStrings.profileEdit, onPressed: onEdit),
       ],
     );
   }

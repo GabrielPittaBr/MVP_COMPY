@@ -13,6 +13,7 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
+  deleteDoc,
   doc,
   getDoc,
   serverTimestamp,
@@ -281,6 +282,89 @@ describe('contato privado — RN-06 (tarefa 13)', () => {
   });
 });
 
+
+describe('exclusao de conta', () => {
+  const contato = (db, uid) => doc(db, 'users', uid, 'private', 'contact');
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users', UID), {
+        id: UID,
+        name: 'Gabriel Pitta',
+        handle: `@${USERNAME}`,
+        avatarUrl: 'https://ui-avatars.com/api/?name=Gabriel',
+        createdAt: new Date(),
+      });
+      await setDoc(contato(db, UID), { email: 'g@example.com' });
+      await setDoc(doc(db, 'usernames', USERNAME), { uid: UID });
+    });
+  });
+
+  /** Espelha `_deleteUserDocuments`: um batch com os tres documentos. */
+  function deleteUserProfile(db, { uid, username }) {
+    const batch = writeBatch(db);
+    if (username) batch.delete(doc(db, 'usernames', username));
+    batch.delete(doc(db, 'users', uid, 'private', 'contact'));
+    batch.delete(doc(db, 'users', uid));
+    return batch.commit();
+  }
+
+  it('o dono apaga perfil, contato e reserva no mesmo batch', async () => {
+    await assertSucceeds(
+      deleteUserProfile(as(UID), { uid: UID, username: USERNAME }),
+    );
+  });
+
+  it('o dono apaga o proprio users/{uid}', async () => {
+    await assertSucceeds(deleteDoc(doc(as(UID), 'users', UID)));
+  });
+
+  it('o dono apaga o proprio contato privado', async () => {
+    await assertSucceeds(deleteDoc(contato(as(UID), UID)));
+  });
+
+  it('o dono libera a propria reserva de username', async () => {
+    await assertSucceeds(deleteDoc(doc(as(UID), 'usernames', USERNAME)));
+  });
+
+  it('ninguem apaga o perfil alheio', async () => {
+    await assertFails(deleteDoc(doc(as('uid_outro'), 'users', UID)));
+  });
+
+  it('ninguem apaga o contato alheio', async () => {
+    await assertFails(deleteDoc(contato(as('uid_outro'), UID)));
+  });
+
+  it('ninguem libera a reserva de username alheia', async () => {
+    await assertFails(deleteDoc(doc(as('uid_outro'), 'usernames', USERNAME)));
+  });
+
+  it('deslogado nao apaga o perfil', async () => {
+    await assertFails(deleteDoc(doc(anonimo(), 'users', UID)));
+  });
+
+  it('deslogado nao apaga a reserva de username', async () => {
+    await assertFails(deleteDoc(doc(anonimo(), 'usernames', USERNAME)));
+  });
+
+  // O motivo de `_deleteUserDocuments` so incluir o username quando ele
+  // existe: num documento inexistente `resource` e nulo, a regra que olha
+  // `resource.data.uid` nega, e o batch inteiro cai junto.
+  it('apagar reserva inexistente e negado — por isso o batch a omite', async () => {
+    await assertFails(deleteDoc(doc(as(UID), 'usernames', 'nao-existe')));
+  });
+
+  // A excecao vale so para a conta: o resto do arquivo continua fechado.
+  it('evento continua sem delete, mesmo para o criador', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'events', 'e1'), {
+        creator: { id: UID },
+      });
+    });
+    await assertFails(deleteDoc(doc(as(UID), 'events', 'e1')));
+  });
+});
 function assertHandle(snap) {
   if (!snap.exists() || !snap.data().handle) {
     throw new Error('perfil sem handle — _userHasProfile devolveria false');

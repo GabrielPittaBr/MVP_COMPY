@@ -113,6 +113,30 @@ abstract final class AppStrings {
   static const String profileGallery = 'Galeria';
   static const String profileSeeMore = 'Ver mais';
 
+  // Profile — estado vazio das avaliações. Sem nota nenhuma a média é 0, e
+  // "0,0" na tela é lido como nota baixa, não como ausência de nota.
+  static const String profileNoRatings = 'Você não tem avaliações ainda';
+  static const String profileNoRatingsHint =
+      'Elas aparecem aqui depois que você participar de eventos e receber notas.';
+
+  // Profile — edição do perfil e exclusão de conta
+  static const String profileUsernameLocked =
+      'Ainda não é possível alterar seu username. Estamos trabalhando nisso.';
+  static const String profileAccountSection = 'Conta';
+  static const String profileDeleteAccount = 'Excluir minha conta';
+  static const String profileDeleteAccountHint =
+      'Apaga seu perfil, libera seu @username e encerra seu acesso ao COMPY.';
+  static const String profileDeleteAccountTitle = 'Excluir conta?';
+  static const String profileDeleteAccountBody =
+      'Esta ação não pode ser desfeita. Eventos que você criou e mensagens já '
+      'enviadas continuam visíveis para os outros participantes.';
+  static const String profileDeleteAccountPasswordHint = 'Confirme sua senha';
+  static const String profileDeleteAccountPasswordEmpty =
+      'Digite sua senha para confirmar a exclusão.';
+  static const String profileDeleteAccountGoogleHint =
+      'Vamos abrir o Google para você confirmar que é você mesmo.';
+  static const String profileDeleteAccountConfirm = 'Excluir conta';
+
   // Chat
   static const String chatTitle = 'Chat';
   static const String chatFindMore = 'Encontre mais companheiros...';
@@ -178,6 +202,8 @@ abstract final class AppStrings {
   static const String authRetry = 'Tentar novamente';
   static const String authErrorInvalidCredential = 'E-mail ou senha incorretos.';
   static const String authErrorEmailAlreadyInUse = 'Este e-mail já está cadastrado.';
+  static const String authErrorRequiresRecentLogin =
+      'Por segurança, entre novamente para concluir a exclusão da conta.';
 
   // Onboarding — esportes favoritos
   static const String onboardingSportsTitle =

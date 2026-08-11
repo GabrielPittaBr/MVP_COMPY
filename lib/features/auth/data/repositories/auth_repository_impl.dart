@@ -54,4 +54,11 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> signOut() => _dataSource.signOut();
+
+  @override
+  bool signedInWithPassword() => _dataSource.signedInWithPassword();
+
+  @override
+  Future<void> deleteAccount({String? password}) =>
+      _dataSource.deleteAccount(password: password);
 }

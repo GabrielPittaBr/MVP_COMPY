@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/rating_summary.dart';
 
@@ -11,6 +12,8 @@ class RatingBreakdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!summary.hasRatings) return const _NoRatingsYet();
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -74,6 +77,41 @@ class RatingBreakdown extends StatelessWidget {
                   ),
                 ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// O que ocupa o lugar da média enquanto ninguém avaliou.
+///
+/// Mostrar "0,0" com cinco estrelas vazias comunica nota mínima, não ausência
+/// de nota — e hoje é o que todo usuário vê, porque a avaliação de verdade
+/// ainda não existe (tarefa 14 do roadmap).
+class _NoRatingsYet extends StatelessWidget {
+  const _NoRatingsYet();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          AppStrings.profileNoRatings,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurface,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          AppStrings.profileNoRatingsHint,
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.4,
+            color: AppColors.onSurfaceMuted,
           ),
         ),
       ],

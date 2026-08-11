@@ -116,6 +116,18 @@ class AuthRemoteDataSource {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<AuthUser> signInWithGoogle() async {
+    final UserCredential userCredential =
+        await _auth.signInWithCredential(await _googleCredential());
+
+    return _toAuthUser(userCredential.user!);
+  }
+
+  /// Abre o seletor do Google e devolve a credencial resultante.
+  ///
+  /// Serve ao login e à reautenticação da exclusão de conta: nos dois casos o
+  /// que se quer é a mesma coisa — prova recente de que quem está ali é dono
+  /// daquela conta Google.
+  Future<OAuthCredential> _googleCredential() async {
     final GoogleSignInAccount? googleAccount;
     try {
       googleAccount = await _googleSignIn.signIn();
@@ -137,15 +149,10 @@ class AuthRemoteDataSource {
     final GoogleSignInAuthentication googleAuth =
         await googleAccount.authentication;
 
-    final OAuthCredential credential = GoogleAuthProvider.credential(
+    return GoogleAuthProvider.credential(
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
-
-    final UserCredential userCredential =
-        await _auth.signInWithCredential(credential);
-
-    return _toAuthUser(userCredential.user!);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -224,6 +231,119 @@ class AuthRemoteDataSource {
       _auth.signOut(),
       _googleSignIn.signOut(),
     ]);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Exclusão de conta
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// `true` quando a exclusão vai precisar da senha para reautenticar.
+  ///
+  /// Com Google e senha vinculados ao mesmo uid, o Google ganha: reautenticar
+  /// por lá não faz o usuário digitar nada.
+  bool signedInWithPassword() {
+    final User? user = _auth.currentUser;
+    if (user == null) return false;
+
+    final Iterable<String> providers =
+        user.providerData.map((UserInfo info) => info.providerId);
+    if (providers.contains(GoogleAuthProvider.PROVIDER_ID)) return false;
+    return providers.contains(EmailAuthProvider.PROVIDER_ID);
+  }
+
+  /// Apaga a conta e os documentos que [_writeUserProfile] criou.
+  ///
+  /// **A ordem é o contrato:**
+  ///
+  /// 1. **Reautenticar.** `User.delete()` exige login recente. Descobrir isso
+  ///    só no fim deixaria o perfil apagado com a conta ainda viva — o pior
+  ///    estado possível, porque o guard do router mandaria o usuário para
+  ///    `/username` como se fosse gente nova.
+  /// 2. **Firestore.** Todas as regras exigem `signedIn()`: depois que a
+  ///    conta some não há mais como apagar `users/{uid}`.
+  /// 3. **Auth.**
+  ///
+  /// Fora do escopo de propósito: eventos criados e mensagens de chat
+  /// continuam existindo, com nome e avatar congelados. As regras tornam
+  /// `creator` e `members` imutáveis e não existe "sair do evento" — limpar
+  /// isso é outra tarefa, com outras regras.
+  Future<void> deleteAccount({String? password}) async {
+    final User? user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'Não há usuário autenticado para excluir.',
+      );
+    }
+
+    await _reauthenticate(user, password);
+    await _deleteUserDocuments(user.uid);
+    await user.delete();
+    await _googleSignIn.signOut();
+  }
+
+  /// Prova recente de identidade, pelo provedor que a conta usa.
+  Future<void> _reauthenticate(User user, String? password) async {
+    final Iterable<String> providers =
+        user.providerData.map((UserInfo info) => info.providerId);
+
+    if (providers.contains(GoogleAuthProvider.PROVIDER_ID)) {
+      await user.reauthenticateWithCredential(await _googleCredential());
+      return;
+    }
+
+    if (!providers.contains(EmailAuthProvider.PROVIDER_ID)) {
+      // Conta sem provedor conhecido: não há o que reautenticar. Segue e
+      // deixa o `delete()` falar por si.
+      return;
+    }
+
+    final String email = user.email ?? '';
+    if (email.isEmpty || password == null || password.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'requires-recent-login',
+        message: 'Senha necessária para excluir a conta.',
+      );
+    }
+
+    await user.reauthenticateWithCredential(
+      EmailAuthProvider.credential(email: email, password: password),
+    );
+  }
+
+  /// O inverso exato de [_writeUserProfile], no mesmo batch atômico.
+  Future<void> _deleteUserDocuments(String uid) async {
+    final DocumentReference<Map<String, dynamic>> userRef =
+        _firestore.collection('users').doc(uid);
+
+    final DocumentSnapshot<Map<String, dynamic>> snapshot = await userRef.get();
+    final String? usernameDocId =
+        usernameDocIdFromHandle(snapshot.data()?['handle'] as String?);
+
+    final WriteBatch batch = _firestore.batch();
+
+    // A regra de `usernames` olha `resource.data.uid`, e num documento
+    // inexistente `resource` é nulo — pedir a exclusão dele derruba o batch
+    // inteiro com PERMISSION_DENIED. Por isso o id só entra quando existe.
+    if (usernameDocId != null) {
+      batch.delete(_firestore.collection('usernames').doc(usernameDocId));
+    }
+    batch.delete(userRef.collection('private').doc('contact'));
+    batch.delete(userRef);
+
+    await batch.commit();
+  }
+
+  /// Id do documento em `usernames` a partir do `handle` do perfil.
+  ///
+  /// O índice é chaveado pelo username (`joao`), enquanto o perfil guarda o
+  /// handle (`@joao`) — sem essa conversão a reserva do nome sobrevive à
+  /// conta e ninguém mais consegue usá-lo.
+  @visibleForTesting
+  static String? usernameDocIdFromHandle(String? handle) {
+    final String normalized =
+        (handle ?? '').trim().replaceFirst('@', '').toLowerCase();
+    return normalized.isEmpty ? null : normalized;
   }
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -17,6 +17,7 @@ import '../../features/events/presentation/pages/events_list_page.dart';
 import '../../features/events/presentation/pages/search_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/maps/presentation/pages/maps_page.dart';
+import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/favorite_sports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../shared/pages/under_construction_page.dart';
@@ -48,6 +49,9 @@ abstract final class AppRoutes {
   /// Separada de [onboardingSports] porque o guard manda quem já concluiu o
   /// cadastro para longe das rotas de onboarding: quem edita já concluiu.
   static const String profileFavoriteSports = '/profile/esportes';
+
+  /// Edição do perfil — sub-rota do perfil, dentro do shell.
+  static const String profileEdit = '/profile/editar';
 
   /// Mapa fica como sub-rota da home para preservar o bottom nav (mockup).
   static const String maps = '/home/maps';
@@ -314,6 +318,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const UnderConstructionPage(
                       title: AppStrings.profileBadges,
                     ),
+                  ),
+                  GoRoute(
+                    path: 'editar',
+                    builder: (context, state) => const EditProfilePage(),
                   ),
                 ],
               ),

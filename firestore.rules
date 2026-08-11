@@ -10,7 +10,9 @@ rules_version = '2';
 // pendente". Cada bloco abaixo referencia a tarefa que o originou.
 //
 // Convenção deste arquivo:
-//   - `delete` é sempre negado explicitamente (nenhuma tela apaga documentos).
+//   - `delete` é negado por padrão. A única exceção é a exclusão de conta:
+//     o dono apaga o próprio `users/{uid}`, o `private/contact` e a reserva
+//     em `usernames/{username}`. Nenhuma outra coleção apaga nada.
 //   - Campos ainda não implementados (`endedAt`) estão marcados com TODO e a
 //     tarefa correspondente.
 service cloud.firestore {
@@ -62,7 +64,10 @@ service cloud.firestore {
       allow create, update: if signedIn()
                             && request.auth.uid == userId
                             && validProfile();
-      allow delete: if false;
+      // Exclusão de conta: o dono apaga o próprio perfil. Sem isto, o
+      // documento sobrevive à conta e vira registro órfão de gente que
+      // pediu para sair.
+      allow delete: if signedIn() && request.auth.uid == userId;
 
       // ── users/{uid}/private ──────────────────────────────────────
       // Tarefa 13 (RN-06). Dados de contato — hoje só o e-mail. Subcoleção
@@ -72,9 +77,8 @@ service cloud.firestore {
       // Só o dono lê e escreve. Nenhuma tela do app lê este documento; ele
       // existe para o e-mail ter onde ficar sem virar dado público.
       match /private/{docId} {
-        allow read, create, update: if signedIn()
-                                    && request.auth.uid == userId;
-        allow delete: if false;
+        allow read, create, update, delete: if signedIn()
+                                            && request.auth.uid == userId;
       }
     }
 
@@ -96,7 +100,10 @@ service cloud.firestore {
       allow update: if signedIn()
                     && resource.data.uid == request.auth.uid
                     && request.resource.data.uid == request.auth.uid;
-      allow delete: if false;
+      // Exclusão de conta: só o dono da reserva a libera. Sem isto o
+      // username fica preso para sempre — `update` exige ser do mesmo uid,
+      // e esse uid não existe mais.
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
     // ── events ───────────────────────────────────────────────────────
