@@ -33,7 +33,13 @@ class HomePage extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              GreetingHeader(userName: userName),
+              GreetingHeader(
+                userName: userName,
+                // `go`, e não `push`: o avatar troca de aba. Mesmo caminho do
+                // carrossel de categorias logo abaixo, que leva a Eventos.
+                onAvatarTap: () => context.go(AppRoutes.profile),
+                onSettingsTap: () => context.push(AppRoutes.settings),
+              ),
               const SizedBox(height: 16),
               const SearchField(),
               const SizedBox(height: 24),

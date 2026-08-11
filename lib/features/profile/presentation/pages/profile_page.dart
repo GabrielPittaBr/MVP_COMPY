@@ -57,7 +57,10 @@ class ProfilePage extends ConsumerWidget {
 
               const _SectionTitle(AppStrings.profileBadges),
               const SizedBox(height: 12),
-              BadgesRow(badges: profile.badges),
+              BadgesRow(
+                badges: profile.badges,
+                onSeeMore: () => context.push(AppRoutes.profileBadges),
+              ),
               const SizedBox(height: 24),
 
               const _SectionTitle(AppStrings.profileFriends),
