@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_flags.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
+import '../../../auth/domain/entities/auth_user.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../data/datasources/mock_profile.dart';
 import '../../data/datasources/profile_remote_datasource.dart';
@@ -70,7 +72,10 @@ final currentProfileProvider = FutureProvider<UserProfile>((ref) {
 ///
 /// Estado só para a tela saber quando desabilitar o botão e quando reclamar:
 /// `null` = ocioso, loading = gravando, error = falhou.
-class FavoriteSportsController extends AutoDisposeAsyncNotifier<void> {
+/// Não é `autoDispose` de propósito: gravar dispara o redirecionamento do
+/// guard, que desmonta a tela — e um notifier descartado no meio do `save()`
+/// estoura ao receber o estado final.
+class FavoriteSportsController extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}
 
@@ -80,17 +85,8 @@ class FavoriteSportsController extends AutoDisposeAsyncNotifier<void> {
   Future<bool> save(List<Sport> sports) async {
     state = const AsyncLoading<void>();
     state = await AsyncValue.guard<void>(() async {
-      // `.future`, não `.valueOrNull`: quem chega aqui vindo do onboarding
-      // pode ser o primeiro a tocar no stream de auth, e nesse instante ele
-      // ainda está em loading — ler o valor direto daria "não autenticado"
-      // para um usuário perfeitamente logado.
-      final String? uid = (await ref.read(authStateProvider.future))?.uid;
-      if (kUseFirebaseRepos && uid == null) {
-        throw Exception('Usuário não autenticado');
-      }
-      await ref
-          .read(profileRepositoryProvider)
-          .updateFavoriteSports(uid ?? '', sports);
+      final String uid = await _requireUid();
+      await ref.read(profileRepositoryProvider).updateFavoriteSports(uid, sports);
       // O perfil (e o carrossel da Home, que bebe dele) precisa refletir a
       // escolha sem esperar o app reabrir.
       ref.invalidate(currentProfileProvider);
@@ -98,12 +94,43 @@ class FavoriteSportsController extends AutoDisposeAsyncNotifier<void> {
       // devolve o usuário para a tela que ele acabou de concluir.
       ref.read(authControllerProvider.notifier).markFavoriteSportsChosen();
     });
-    return !state.hasError;
+
+    final AsyncValue<void> result = state;
+    if (result.hasError) {
+      debugPrint('[FavoriteSports] falha ao gravar: ${result.error}');
+      debugPrintStack(stackTrace: result.stackTrace);
+    }
+    return !result.hasError;
+  }
+
+  /// Uid de quem está gravando, na mesma ordem de prioridade que o guard usa.
+  ///
+  /// O controller vem primeiro, e isso é o conserto de um bug real: quem
+  /// acabou de se cadastrar chega aqui com um `AuthUser` perfeitamente bom no
+  /// controller enquanto o stream pode estar **em erro** — basta a releitura
+  /// de `users/{uid}` disparada por `updateDisplayName` ter estourado o
+  /// timeout. A versão anterior lia só `authStateProvider.future`, que
+  /// repropaga esse erro, e o cadastro terminava em "não foi possível salvar
+  /// seus esportes" com a rede inteira funcionando.
+  ///
+  /// Esperar a primeira emissão fica como último recurso: só quando não há
+  /// valor nenhum em mãos, o que acontece se o stream acabou de ser ligado.
+  Future<String> _requireUid() async {
+    AuthUser? user = ref.read(authControllerProvider).valueOrNull ??
+        ref.read(authStateProvider).valueOrNull;
+    user ??= await ref.read(authStateProvider.future);
+
+    final String? uid = user?.uid;
+    if (uid == null || uid.isEmpty) {
+      if (!kUseFirebaseRepos) return '';
+      throw StateError('Sem usuário autenticado para gravar os esportes');
+    }
+    return uid;
   }
 }
 
 final favoriteSportsControllerProvider =
-    AutoDisposeAsyncNotifierProvider<FavoriteSportsController, void>(
+    AsyncNotifierProvider<FavoriteSportsController, void>(
   FavoriteSportsController.new,
 );
 
