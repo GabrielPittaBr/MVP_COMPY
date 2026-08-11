@@ -192,4 +192,11 @@ abstract final class AppStrings {
       'Marque ou desmarque à vontade — dá para mudar quando quiser.';
   static const String onboardingSportsSaveError =
       'Não foi possível salvar seus esportes. Tente novamente.';
+
+  // Em construção — os botões já existem; as telas, ainda não.
+  static const String settingsTitle = 'Configurações';
+  static const String underConstructionTitle = 'Estamos trabalhando nisso';
+  static const String underConstructionBody =
+      'Esta parte do COMPY ainda está em construção. '
+      'Assim que estiver pronta, ela aparece aqui.';
 }

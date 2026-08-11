@@ -19,7 +19,9 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/maps/presentation/pages/maps_page.dart';
 import '../../features/profile/presentation/pages/favorite_sports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../shared/pages/under_construction_page.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
+import '../constants/app_strings.dart';
 
 /// Caminhos das principais telas — centralizados para evitar strings espalhadas.
 abstract final class AppRoutes {
@@ -52,6 +54,12 @@ abstract final class AppRoutes {
 
   /// Busca de eventos — sub-rota da home (aberta pelo SearchField).
   static const String search = '/home/search';
+
+  /// Configurações — o botão da Home já existe; a tela, ainda não.
+  static const String settings = '/home/configuracoes';
+
+  /// Insígnias — o "Ver mais" do perfil já existe; a tela, ainda não.
+  static const String profileBadges = '/profile/insignias';
 }
 
 /// Rotas abertas a quem ainda não está autenticado.
@@ -225,6 +233,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'search',
                     builder: (context, state) => const SearchPage(),
                   ),
+                  GoRoute(
+                    path: 'configuracoes',
+                    builder: (context, state) => const UnderConstructionPage(
+                      title: AppStrings.settingsTitle,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -293,6 +307,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'esportes',
                     builder: (context, state) => const FavoriteSportsPage(
                       mode: FavoriteSportsMode.edit,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'insignias',
+                    builder: (context, state) => const UnderConstructionPage(
+                      title: AppStrings.profileBadges,
                     ),
                   ),
                 ],
