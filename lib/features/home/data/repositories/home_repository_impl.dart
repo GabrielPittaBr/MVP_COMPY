@@ -51,11 +51,9 @@ class HomeRepositoryImpl implements HomeRepository {
       return Stream<List<Event>>.value(const <Event>[]);
     }
 
-    return _remote
-        .watchNearbyEvents(center: center, radiusKm: radiusKm)
-        .map((docs) {
-      // As células geohash cobrem uma área maior que o círculo pedido —
-      // refinamos pela distância exata e ordenamos por proximidade.
+    return _remote.watchEvents().map((docs) {
+      // O lote vem ordenado por data; aqui recortamos pelo raio e
+      // reordenamos por proximidade (RF03).
       final events = <({Event event, double km})>[];
       for (final doc in docs) {
         final event = Event.fromMap(doc.id, doc.data());
