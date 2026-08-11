@@ -1,4 +1,4 @@
-package com.example.mvp_compy
+package br.com.compy.app
 
 import io.flutter.embedding.android.FlutterActivity
 
