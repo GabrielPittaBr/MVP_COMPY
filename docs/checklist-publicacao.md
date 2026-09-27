@@ -76,7 +76,7 @@ clientes ficaria verde com o app apontando para o pacote errado.
 As SHAs entraram **antes** do download do `google-services.json`, que é a ordem
 que faz o arquivo vir com `oauth_client` preenchido. Fora dessa ordem ele volta
 vazio e o login com Google falha com `ApiException: 10` — ver
-[`debug-auth-login.md`](debug-auth-login.md).
+[`autenticacao.md`](autenticacao.md#solução-de-problemas).
 
 Tudo isso é automatizável, e foi:
 
