@@ -57,6 +57,16 @@ Gitflow: `main` (stable) ← `develop` ← `feature/<name>` branches. PRs target
 
 Branch naming: `feature/`, `fix/`, `refactor/`, `chore/`, `style/` prefixes.
 
+Commits and PRs never carry a `Co-Authored-By: Claude` trailer or a Claude Code signature (also enforced by `attribution` in `.claude/settings.json`).
+
+## Caderno de campo
+
+Every change you make to the repository gets a note in `docs/caderno_de_campo/` — without being asked, in the same commit as the change.
+
+- One file per day, named `AnotacoesMMDDYYYY.md` (e.g. `Anotacoes09272026.md` for 27/09/2026). If today's file already exists, add a new bullet to it instead of creating another file.
+- File starts with the header `Taquara, 27 de Setembro de 2026`, then one `- ` bullet per task done that day.
+- Written in PT-BR, simple and direct, first person plural, like a notebook entry ("Hoje ajustamos..."): what was done and why. Length follows the task — detail it when needed, just don't turn it into a huge text. Avoid dumping file lists or code.
+
 ## Key Files
 
 | File | Purpose |
