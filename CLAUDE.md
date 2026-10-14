@@ -21,6 +21,10 @@ flutter pub get               # Install Dart dependencies
 flutterfire configure         # Regenerate lib/firebase_options.dart (required after cloning or changing Firebase project)
 dart analyze                  # Run the Dart analyzer (uses analysis_options.yaml)
 
+# Browser testing against local Auth + Firestore emulators (never touches compy-tcc data)
+firebase emulators:start --only auth,firestore
+flutter run -d chrome --dart-define=USE_FIREBASE_EMULATORS=true
+
 # Firestore security rules (needs JDK 21+ on PATH — see tools/firestore-rules-tests/README.md)
 npm install --prefix tools/firestore-rules-tests   # once
 npm test --prefix tools/firestore-rules-tests      # runs the rules suite against the emulator

@@ -233,9 +233,12 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     final picked = await showModalBottomSheet<SportPlace>(
       context: context,
       // Mesmo catálogo curado que alimenta os pins do mapa.
+      // ListView (e não Column) nos seletores desta tela: em tela baixa —
+      // janela do navegador, celular deitado — a lista passa da altura do
+      // sheet e precisa rolar em vez de estourar.
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
           children: <Widget>[
             for (final loc in SportPlace.all)
               ListTile(
@@ -274,8 +277,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     final picked = await showModalBottomSheet<Sport>(
       context: context,
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
           children: <Widget>[
             // Apenas esportes praticáveis no local selecionado.
             for (final s in location.allowedSports)
@@ -329,8 +332,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     final picked = await showModalBottomSheet<int>(
       context: context,
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
           children: <Widget>[
             for (final minutes in _durationOptions)
               ListTile(
@@ -407,8 +410,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     final picked = await showModalBottomSheet<SkillLevel>(
       context: context,
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
           children: <Widget>[
             for (final lvl in SkillLevel.values)
               ListTile(

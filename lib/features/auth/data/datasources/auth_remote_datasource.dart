@@ -23,14 +23,19 @@ class AuthRemoteDataSource {
     GoogleSignIn? googleSignIn,
   })  : _auth = auth ?? FirebaseService.instance.auth,
         _firestore = firestore ?? FirebaseService.instance.firestore,
-        _googleSignIn = googleSignIn ??
-            GoogleSignIn(
-              scopes: <String>['email', 'profile'],
-            );
+        _googleSignInOverride = googleSignIn;
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
-  final GoogleSignIn _googleSignIn;
+  final GoogleSignIn? _googleSignInOverride;
+
+  /// Preguiçoso porque construir o `GoogleSignIn` já dispara a inicialização
+  /// do plugin, que na web exige Client ID — e a web nunca o usa (ver
+  /// [signInWithGoogle]).
+  late final GoogleSignIn _googleSignIn = _googleSignInOverride ??
+      GoogleSignIn(
+        scopes: <String>['email', 'profile'],
+      );
 
   static const Duration _profileLookupTimeout = Duration(seconds: 10);
 
@@ -115,9 +120,13 @@ class AuthRemoteDataSource {
   // Login com Google
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// Na web o login vai pelo popup do próprio Firebase Auth: o plugin
+  /// `google_sign_in` exigiria um Client ID em `web/index.html` e a People
+  /// API ativa no projeto, e o popup não precisa de nenhum dos dois.
   Future<AuthUser> signInWithGoogle() async {
-    final UserCredential userCredential =
-        await _auth.signInWithCredential(await _googleCredential());
+    final UserCredential userCredential = kIsWeb
+        ? await _auth.signInWithPopup(GoogleAuthProvider())
+        : await _auth.signInWithCredential(await _googleCredential());
 
     return _toAuthUser(userCredential.user!);
   }
@@ -229,7 +238,9 @@ class AuthRemoteDataSource {
   Future<void> signOut() async {
     await Future.wait(<Future<void>>[
       _auth.signOut(),
-      _googleSignIn.signOut(),
+      // Na web o `google_sign_in` nunca é usado (ver [signInWithGoogle]) e,
+      // sem Client ID configurado, chamá-lo estoura.
+      if (!kIsWeb) _googleSignIn.signOut(),
     ]);
   }
 
@@ -279,7 +290,7 @@ class AuthRemoteDataSource {
     await _reauthenticate(user, password);
     await _deleteUserDocuments(user.uid);
     await user.delete();
-    await _googleSignIn.signOut();
+    if (!kIsWeb) await _googleSignIn.signOut();
   }
 
   /// Prova recente de identidade, pelo provedor que a conta usa.
@@ -288,7 +299,11 @@ class AuthRemoteDataSource {
         user.providerData.map((UserInfo info) => info.providerId);
 
     if (providers.contains(GoogleAuthProvider.PROVIDER_ID)) {
-      await user.reauthenticateWithCredential(await _googleCredential());
+      if (kIsWeb) {
+        await user.reauthenticateWithPopup(GoogleAuthProvider());
+      } else {
+        await user.reauthenticateWithCredential(await _googleCredential());
+      }
       return;
     }
 
