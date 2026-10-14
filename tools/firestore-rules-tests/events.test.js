@@ -6,6 +6,7 @@
  * cresça junto de `participants`. Errar aqui trava o botão "Participar"
  * em produção com PERMISSION_DENIED — daí a suíte.
  */
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import {
@@ -19,6 +20,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  GeoPoint,
   getDoc,
   setDoc,
   updateDoc,
@@ -80,6 +82,46 @@ function eventoNovo(criador = CRIADOR, { totalSpots = 4 } = {}) {
   };
 }
 
+const PLACE = 'place_test';
+const address = {
+  street: 'Rua Central',
+  city: 'Taquara',
+  cityLower: 'taquara',
+  state: 'RS',
+};
+const placeCoordinates = new GeoPoint(-29.65, -50.78);
+
+function placeDocument({ status = 'active', sports = ['futebol'] } = {}) {
+  return {
+    name: 'Quadra Central',
+    nameLower: 'quadra central',
+    description: 'Espaço esportivo comunitário para atividades locais.',
+    address,
+    sports,
+    primarySport: 'futebol',
+    coordinates: placeCoordinates,
+    imageUrl: 'https://example.com/place.jpg',
+    status,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+  };
+}
+
+function eventoComLocal(criador = CRIADOR) {
+  return {
+    ...eventoNovo(criador),
+    placeId: PLACE,
+    placeSnapshot: {
+      name: 'Quadra Central',
+      address,
+      coordinates: placeCoordinates,
+    },
+    coordinates: placeCoordinates,
+    geohash: '6gkzwgjzn',
+    location: 'Quadra Central, Taquara',
+  };
+}
+
 /** Semeia um evento sem passar pelas regras. */
 async function semear(dados, id = EVENTO) {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
@@ -97,28 +139,129 @@ function entrar(db, uid, { remainingSpots }) {
 }
 
 describe('events — criar', () => {
-  it('o criador cria o próprio evento', async () => {
-    await assertSucceeds(
-      addDoc(collection(as(CRIADOR), 'events'), eventoNovo(CRIADOR)),
-    );
+  it('nega nova criação de evento pelo writer legado sem placeSnapshot', async () => {
+    await assertFails(addDoc(collection(as(CRIADOR), 'events'), eventoNovo(CRIADOR)));
+    await assertFails(addDoc(collection(as(CRIADOR), 'events'), {
+      ...eventoNovo(CRIADOR),
+      placeId: PLACE,
+    }));
+    const snapshotSemId = {
+      ...eventoNovo(CRIADOR),
+      placeSnapshot: {
+        name: 'Quadra Central',
+        address,
+        coordinates: placeCoordinates,
+      },
+    };
+    await assertFails(addDoc(collection(as(CRIADOR), 'events'), snapshotSemId));
   });
 
   it('ninguém cria evento em nome de outro', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'places', PLACE), placeDocument());
+    });
     await assertFails(
-      addDoc(collection(as(VISITANTE), 'events'), eventoNovo(CRIADOR)),
+      addDoc(collection(as(VISITANTE), 'events'), eventoComLocal(CRIADOR)),
     );
   });
 
   it('participantIds não pode nascer com terceiros dentro', async () => {
-    const forjado = eventoNovo(CRIADOR);
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'places', PLACE), placeDocument());
+    });
+    const forjado = eventoComLocal(CRIADOR);
     forjado.participantIds = [CRIADOR, VISITANTE];
     await assertFails(addDoc(collection(as(CRIADOR), 'events'), forjado));
   });
 
   it('deslogado não cria evento', async () => {
     await assertFails(
-      addDoc(collection(anonimo(), 'events'), eventoNovo(CRIADOR)),
+      addDoc(collection(anonimo(), 'events'), eventoComLocal(CRIADOR)),
     );
+  });
+
+  it('aceita novo contrato com local ativo, esporte e snapshot atuais', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'places', PLACE), placeDocument());
+    });
+    await assertSucceeds(
+      addDoc(collection(as(CRIADOR), 'events'), eventoComLocal()),
+    );
+  });
+
+  it('nega novo evento com local inexistente ou inativo', async () => {
+    await assertFails(
+      addDoc(collection(as(CRIADOR), 'events'), eventoComLocal()),
+    );
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), 'places', PLACE),
+        placeDocument({ status: 'inactive' }),
+      );
+    });
+    await assertFails(
+      addDoc(collection(as(CRIADOR), 'events'), eventoComLocal()),
+    );
+  });
+
+  it('nega modalidade não suportada pelo local', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'places', PLACE), placeDocument());
+    });
+    await assertFails(
+      addDoc(collection(as(CRIADOR), 'events'), {
+        ...eventoComLocal(),
+        sport: 'corrida',
+      }),
+    );
+  });
+
+  it('nega snapshot ou coordenadas divergentes do local atual', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'places', PLACE), placeDocument());
+    });
+    const badSnapshot = eventoComLocal();
+    badSnapshot.placeSnapshot.name = 'Outro nome';
+    await assertFails(addDoc(collection(as(CRIADOR), 'events'), badSnapshot));
+
+    const badCoordinates = eventoComLocal();
+    badCoordinates.coordinates = new GeoPoint(-29.66, -50.78);
+    await assertFails(
+      addDoc(collection(as(CRIADOR), 'events'), badCoordinates),
+    );
+  });
+
+  it('nega snapshot que ficou antigo após editar o local', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'places', PLACE), placeDocument());
+      await setDoc(doc(ctx.firestore(), 'places', PLACE), {
+        ...placeDocument(),
+        name: 'Quadra Reformada',
+        nameLower: 'quadra reformada',
+      });
+    });
+    await assertFails(
+      addDoc(collection(as(CRIADOR), 'events'), eventoComLocal()),
+    );
+  });
+
+  it('leitura histórica mantém snapshot após alterar e inativar o local', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'places', PLACE), placeDocument());
+      await setDoc(
+        doc(ctx.firestore(), 'events', EVENTO),
+        eventoComLocal(),
+      );
+      await setDoc(
+        doc(ctx.firestore(), 'places', PLACE),
+        placeDocument({ status: 'inactive' }),
+      );
+    });
+
+    const snapshot = await getDoc(doc(as(VISITANTE), 'events', EVENTO));
+    assert.equal(snapshot.data().placeSnapshot.name, 'Quadra Central');
+    assert.equal(snapshot.data().location, 'Quadra Central, Taquara');
+    assert.equal(snapshot.data().coordinates.latitude, -29.65);
   });
 });
 
@@ -211,5 +354,33 @@ describe('events — editar e apagar', () => {
 
   it('evento não se apaga', async () => {
     await assertFails(deleteDoc(doc(as(CRIADOR), 'events', EVENTO)));
+  });
+
+  it('sport permanece imutável em evento legado', async () => {
+    await assertFails(
+      updateDoc(doc(as(CRIADOR), 'events', EVENTO), { sport: 'corrida' }),
+    );
+  });
+
+  it('sport, placeId e snapshot permanecem imutáveis em evento novo', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'places', PLACE), placeDocument());
+      await setDoc(
+        doc(ctx.firestore(), 'events', EVENTO),
+        eventoComLocal(),
+      );
+    });
+    const db = as(CRIADOR);
+    await assertFails(
+      updateDoc(doc(db, 'events', EVENTO), { sport: 'corrida' }),
+    );
+    await assertFails(
+      updateDoc(doc(db, 'events', EVENTO), { placeId: 'another_place' }),
+    );
+    await assertFails(
+      updateDoc(doc(db, 'events', EVENTO), {
+        'placeSnapshot.name': 'Outro nome',
+      }),
+    );
   });
 });

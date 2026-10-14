@@ -14,6 +14,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   serverTimestamp,
@@ -23,6 +24,7 @@ import {
 
 const UID = 'uid_gabriel';
 const USERNAME = 'gabriel';
+const PROFILE_CREATED_AT = new Date('2025-01-02T03:04:05.000Z');
 
 let testEnv;
 
@@ -49,16 +51,23 @@ const as = (uid) => testEnv.authenticatedContext(uid).firestore();
 const anonimo = () => testEnv.unauthenticatedContext().firestore();
 
 /** Espelha `_writeUserProfile`: batch de users/{uid} (merge) + usernames/{name}. */
-function writeUserProfile(db, { uid, username, name = 'Gabriel Pitta', email = 'g@example.com' }) {
+function writeUserProfile(db, {
+  uid,
+  username,
+  name = 'Gabriel Pitta',
+  email = 'g@example.com',
+  createdAt = serverTimestamp(),
+}) {
   const batch = writeBatch(db);
   batch.set(
     doc(db, 'users', uid),
     {
       id: uid,
       name,
+      nameLower: name.trim().toLowerCase(),
       handle: `@${username}`,
       avatarUrl: 'https://ui-avatars.com/api/?name=Gabriel',
-      createdAt: serverTimestamp(),
+      createdAt,
     },
     { merge: true },
   );
@@ -95,7 +104,7 @@ describe('login com Google — usuario que ja tem perfil', () => {
         name: 'Gabriel Pitta',
         handle: `@${USERNAME}`,
         avatarUrl: 'https://ui-avatars.com/api/?name=Gabriel',
-        createdAt: new Date(),
+        createdAt: PROFILE_CREATED_AT,
       });
       await setDoc(doc(db, 'usernames', USERNAME), { uid: UID });
     });
@@ -108,7 +117,11 @@ describe('login com Google — usuario que ja tem perfil', () => {
 
   it('regravar o proprio perfil no re-acesso continua permitido', async () => {
     await assertSucceeds(
-      writeUserProfile(as(UID), { uid: UID, username: USERNAME }),
+      writeUserProfile(as(UID), {
+        uid: UID,
+        username: USERNAME,
+        createdAt: PROFILE_CREATED_AT,
+      }),
     );
   });
 
@@ -157,6 +170,57 @@ describe('indice de usernames — re-cadastro (tarefa 5)', () => {
   });
 });
 
+describe('nameLower e identidade de perfil (ticket 08)', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users', UID), {
+        id: UID,
+        name: 'Gabriel Pitta',
+        nameLower: 'gabriel pitta',
+        handle: `@${USERNAME}`,
+        avatarUrl: 'https://ui-avatars.com/api/?name=Gabriel',
+        createdAt: PROFILE_CREATED_AT,
+      });
+    });
+  });
+
+  it('novo perfil sem nameLower é recusado', async () => {
+    await assertFails(
+      setDoc(doc(as('novo'), 'users', 'novo'), {
+        id: 'novo',
+        name: 'Novo Perfil',
+        handle: '@novo',
+        avatarUrl: '',
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('recusa mudança de handle ou createdAt após criação', async () => {
+    await assertFails(
+      setDoc(doc(as(UID), 'users', UID), { handle: '@outro' }, { merge: true }),
+    );
+    await assertFails(
+      setDoc(doc(as(UID), 'users', UID), { createdAt: serverTimestamp() }, { merge: true }),
+    );
+  });
+
+  it('recusa remover nameLower de perfil já normalizado', async () => {
+    await assertFails(
+      setDoc(doc(as(UID), 'users', UID), { nameLower: deleteField() }, { merge: true }),
+    );
+  });
+
+  it('permite trocar nome com nameLower presente na transição', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(UID), 'users', UID), {
+        name: 'Gabriel Silva',
+        nameLower: 'gabriel silva',
+      }, { merge: true }),
+    );
+  });
+});
+
 describe('esportes favoritos (tarefa 13)', () => {
   beforeEach(async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
@@ -166,7 +230,7 @@ describe('esportes favoritos (tarefa 13)', () => {
         name: 'Gabriel Pitta',
         handle: `@${USERNAME}`,
         avatarUrl: 'https://ui-avatars.com/api/?name=Gabriel',
-        createdAt: new Date(),
+        createdAt: PROFILE_CREATED_AT,
       });
     });
   });
@@ -235,7 +299,7 @@ describe('contato privado — RN-06 (tarefa 13)', () => {
         name: 'Gabriel Pitta',
         handle: `@${USERNAME}`,
         avatarUrl: 'https://ui-avatars.com/api/?name=Gabriel',
-        createdAt: new Date(),
+        createdAt: PROFILE_CREATED_AT,
       });
       await setDoc(contato(db, UID), { email: 'g@example.com' });
     });
@@ -365,6 +429,25 @@ describe('exclusao de conta', () => {
     await assertFails(deleteDoc(doc(as(UID), 'events', 'e1')));
   });
 });
+
+describe('registros administrativos de suspensão (ticket 14)', () => {
+  const operation = (db) => doc(db, 'adminOperations', 'a04988af-ccba-4c4e-a0d2-df5c56be31d6');
+
+  it('cliente, inclusive Admin, não lê nem escreve registro administrativo', async () => {
+    const adminDb = testEnv.authenticatedContext('admin-uid', { admin: true }).firestore();
+    await assertFails(getDoc(operation(adminDb)));
+    await assertFails(
+      setDoc(operation(adminDb), {
+        adminUid: 'admin-uid',
+        targetUid: UID,
+        action: 'suspend',
+        reason: 'Motivo administrativo com tamanho válido.',
+        status: 'pending',
+      }),
+    );
+  });
+});
+
 function assertHandle(snap) {
   if (!snap.exists() || !snap.data().handle) {
     throw new Error('perfil sem handle — _userHasProfile devolveria false');

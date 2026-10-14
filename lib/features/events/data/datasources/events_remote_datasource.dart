@@ -1,5 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/utils/geohash.dart';
+import '../../../../shared/models/event.dart';
+import '../../../../shared/models/event_place_snapshot.dart';
+import '../../../../shared/models/sport_place.dart';
 import '../../domain/repositories/events_repository.dart';
 
 /// Datasource Firestore dos eventos.
@@ -151,9 +155,67 @@ class EventsRemoteDataSource {
     });
   }
 
-  Future<DocumentReference<Map<String, dynamic>>> create(
-    Map<String, dynamic> data,
-  ) {
-    return _firestore.collection('events').add(data);
+  Future<Event> create(
+    Event draft, {
+    required SportPlace selectedPlace,
+  }) async {
+    if (draft.placeId != selectedPlace.id) {
+      throw const EventPlaceChangedException();
+    }
+
+    final eventRef = _firestore.collection('events').doc();
+    final placeRef = _firestore.collection('places').doc(selectedPlace.id);
+    try {
+      return await _firestore.runTransaction<Event>((transaction) async {
+        final placeSnapshot = await transaction.get(placeRef);
+        final rawPlace = placeSnapshot.data();
+        final currentPlace = rawPlace == null
+            ? null
+            : SportPlace.tryFromFirestore(placeSnapshot.id, rawPlace);
+        if (currentPlace == null || currentPlace.status != PlaceStatus.active) {
+          throw const EventPlaceUnavailableException();
+        }
+        if (!_sameEventRelevantFields(currentPlace, selectedPlace)) {
+          throw const EventPlaceChangedException();
+        }
+        if (!currentPlace.sports.contains(draft.sport)) {
+          throw const EventPlaceSportUnsupportedException();
+        }
+
+        final snapshot = EventPlaceSnapshot.fromPlace(currentPlace);
+        final event = draft.copyWith(
+          id: eventRef.id,
+          location: '${snapshot.name}, ${snapshot.address.city}',
+          coordinates: snapshot.coordinates,
+          placeId: currentPlace.id,
+          placeSnapshot: snapshot,
+        );
+        transaction.set(eventRef, <String, dynamic>{
+          ...event.toMap(),
+          'geohash': Geohash.encode(
+            snapshot.coordinates.latitude,
+            snapshot.coordinates.longitude,
+          ),
+        });
+        return event;
+      });
+    } on FirebaseException catch (error) {
+      if (const <String>{'unavailable', 'network-request-failed'}
+          .contains(error.code)) {
+        throw const EventCreationOfflineException();
+      }
+      rethrow;
+    }
+  }
+
+  bool _sameEventRelevantFields(SportPlace current, SportPlace selected) {
+    if (current.id != selected.id ||
+        current.name != selected.name ||
+        current.address != selected.address ||
+        current.coordinates != selected.coordinates ||
+        current.sports.length != selected.sports.length) {
+      return false;
+    }
+    return current.sports.toSet().containsAll(selected.sports);
   }
 }

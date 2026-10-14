@@ -15,16 +15,13 @@ npm test --prefix tools/firestore-rules-tests
 
 ## Pré-requisitos
 
-- **JDK 21 ou superior.** O `firebase-tools` recusa versões anteriores. Nesta
-  máquina o Java do PATH é o 1.8 e não serve; aponte para um JDK moderno antes
-  de rodar:
+- **JDK 21 LTS ou superior compatível com o emulador.** O `firebase-tools`
+  recusa versões anteriores. Aponte `JAVA_HOME` para um JDK compatível apenas
+  na sessão que executará a suíte; não é necessário nem desejável versionar
+  caminhos locais.
 
-  ```bash
-  export JAVA_HOME="/c/Users/gabri/.jdks/temurin-25.0.3"
-  export PATH="$JAVA_HOME/bin:$PATH"
-  ```
-
-- `firebase-tools` no PATH (instalação global — ver `CLAUDE.md`).
+- O `firebase-tools` é dependência de desenvolvimento deste pacote; não é
+  necessária instalação global.
 
 O script roda `node --test` sem lista de arquivos: todo `*.test.js` desta pasta
 entra automaticamente. O `--test-concurrency=1` não é enfeite — por padrão o

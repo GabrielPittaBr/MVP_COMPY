@@ -21,6 +21,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  GeoPoint,
   getDoc,
   getDocs,
   increment,
@@ -28,12 +29,14 @@ import {
   setDoc,
   updateDoc,
   writeBatch,
+  runTransaction,
 } from 'firebase/firestore';
 
 const JOAO = 'uid_joao';
 const DOUGLAS = 'uid_douglas';
 const ESTRANHO = 'uid_estranho';
 const CONVERSA = 'uid_douglas_uid_joao';
+const PLACE = 'place_active';
 
 let testEnv;
 
@@ -49,6 +52,38 @@ const conversationDoc = (members = [JOAO, DOUGLAS]) => ({
   lastMessage: 'Bora treinar?',
   lastMessageAt: new Date(),
   unreadCounts: Object.fromEntries(members.map((uid) => [uid, 0])),
+});
+
+const placeDoc = ({ status = 'active', name = 'Parque do Trabalhador' } = {}) => ({
+  name,
+  nameLower: name.toLowerCase(),
+  description: 'Parque público de Taquara com campo, quadras e espaço de caminhada.',
+  address: {
+    street: 'Rua Ernesto Alves',
+    city: 'Taquara',
+    cityLower: 'taquara',
+    state: 'RS',
+  },
+  sports: ['futebol', 'corrida'],
+  primarySport: 'futebol',
+  coordinates: new GeoPoint(-29.65, -50.78),
+  imageUrl: 'https://example.com/place.jpg',
+  status,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+
+const placeMessage = (overrides = {}) => ({
+  senderId: JOAO,
+  text: 'Encaminhou um local...',
+  sentAt: serverTimestamp(),
+  placeId: PLACE,
+  placeSnapshot: {
+    name: 'Parque do Trabalhador',
+    imageUrl: 'https://example.com/place.jpg',
+    primarySport: 'futebol',
+  },
+  ...overrides,
 });
 
 before(async () => {
@@ -77,6 +112,7 @@ beforeEach(async () => {
       text: 'Bora treinar?',
       sentAt: new Date(),
     });
+    await setDoc(doc(db, 'places', PLACE), placeDoc());
   });
 });
 
@@ -323,6 +359,103 @@ describe('messages', () => {
         sentAt: serverTimestamp(),
       }),
     );
+  });
+
+  it('membro compartilha Local Esportivo ativo com snapshot exato', async () => {
+    await assertSucceeds(addDoc(mensagens(as(JOAO)), placeMessage()));
+  });
+
+  it('transação grava mensagem com snapshot e rodapé juntos', async () => {
+    const db = as(JOAO);
+    const messageRef = doc(mensagens(db));
+    await assertSucceeds(
+      runTransaction(db, async (transaction) => {
+        const currentPlace = await transaction.get(doc(db, 'places', PLACE));
+        assert.equal(currentPlace.data().status, 'active');
+        transaction.set(messageRef, placeMessage());
+        transaction.update(doc(db, 'conversations', CONVERSA), {
+          lastMessage: 'Encaminhou um local...',
+          lastMessageAt: serverTimestamp(),
+          [`unreadCounts.${DOUGLAS}`]: increment(1),
+        });
+      }),
+    );
+  });
+
+  it('recusa compartilhamento de Local Esportivo inativo', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'places', PLACE), placeDoc({ status: 'inactive' }));
+    });
+    await assertFails(addDoc(mensagens(as(JOAO)), placeMessage()));
+  });
+
+  it('recusa snapshot adulterado ou desatualizado', async () => {
+    await assertFails(
+      addDoc(
+        mensagens(as(JOAO)),
+        placeMessage({
+          placeSnapshot: {
+            name: 'Nome adulterado',
+            imageUrl: 'https://example.com/place.jpg',
+            primarySport: 'futebol',
+          },
+        }),
+      ),
+    );
+  });
+
+  it('Rules recusam snapshot que ficou desatualizado antes do commit', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), 'places', PLACE),
+        placeDoc({ name: 'Parque renomeado' }),
+      );
+    });
+    await assertFails(addDoc(mensagens(as(JOAO)), placeMessage()));
+  });
+
+  it('recusa snapshot com campos fora da whitelist', async () => {
+    await assertFails(
+      addDoc(
+        mensagens(as(JOAO)),
+        placeMessage({
+          placeSnapshot: {
+            name: 'Parque do Trabalhador',
+            imageUrl: 'https://example.com/place.jpg',
+            primarySport: 'futebol',
+            privateData: 'não permitido',
+          },
+        }),
+      ),
+    );
+  });
+
+  it('nega nova mensagem de local no formato placeId-only transitório', async () => {
+    await assertFails(
+      addDoc(mensagens(as(JOAO)), {
+        senderId: JOAO,
+        text: 'Encaminhou um local...',
+        sentAt: serverTimestamp(),
+        placeId: PLACE,
+      }),
+    );
+  });
+
+  it('membro continua lendo mensagem legada com placeId sem snapshot', async () => {
+    const legacyId = 'legacy_place_message';
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'conversations', CONVERSA, 'messages', legacyId), {
+        senderId: JOAO,
+        text: 'Encaminhou um local...',
+        sentAt: new Date(),
+        placeId: PLACE,
+      });
+    });
+
+    const snapshot = await getDoc(doc(as(JOAO), 'conversations', CONVERSA, 'messages', legacyId));
+    assert.equal(snapshot.exists(), true);
+    assert.equal(snapshot.data().placeId, PLACE);
+    assert.equal('placeSnapshot' in snapshot.data(), false);
   });
 
   it('membro não envia mensagem assinada por outro', async () => {

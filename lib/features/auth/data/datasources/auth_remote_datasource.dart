@@ -8,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/services/firebase_service.dart';
+import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/sport.dart';
 import '../../domain/entities/auth_user.dart';
 
@@ -38,6 +39,9 @@ class AuthRemoteDataSource {
       );
 
   static const Duration _profileLookupTimeout = Duration(seconds: 10);
+
+  @visibleForTesting
+  static String normalizeProfileName(String name) => TextNormalizer.normalize(name);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Stream de estado
@@ -403,19 +407,38 @@ class AuthRemoteDataSource {
     required String username,
     required String email,
   }) async {
-    final WriteBatch batch = _firestore.batch();
-
     // Documento de perfil — compatível com UserSummary.fromMap().
     final DocumentReference<Map<String, dynamic>> userRef =
         _firestore.collection('users').doc(uid);
+    final DocumentSnapshot<Map<String, dynamic>> existingProfile =
+        await userRef.get();
+    final dynamic createdAt;
+    if (existingProfile.exists) {
+      final Map<String, dynamic>? existingData = existingProfile.data();
+      if (existingData == null || !existingData.containsKey('createdAt')) {
+        throw StateError('O perfil existente não possui createdAt imutável.');
+      }
+      createdAt = existingData['createdAt'];
+      if (createdAt == null) {
+        throw StateError('O perfil existente não possui createdAt imutável.');
+      }
+    } else {
+      createdAt = FieldValue.serverTimestamp();
+    }
+
+    final WriteBatch batch = _firestore.batch();
     batch.set(
       userRef,
       <String, dynamic>{
         'id': uid,
         'name': name,
+        'nameLower': normalizeProfileName(name),
         'handle': '@$username',
         'avatarUrl': AppAssets.avatar(name),
-        'createdAt': FieldValue.serverTimestamp(),
+        // Re-cadastros preservam o Timestamp persistido; novos perfis usam o
+        // timestamp do servidor. Assim as Rules podem manter createdAt
+        // imutável sem quebrar o fluxo já existente.
+        'createdAt': createdAt,
       },
       SetOptions(merge: true),
     );

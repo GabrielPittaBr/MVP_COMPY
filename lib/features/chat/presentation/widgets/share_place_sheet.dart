@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/conversation.dart';
+import '../../domain/entities/place_cannot_be_shared_exception.dart';
 import '../providers/chat_providers.dart';
 import 'peer_avatar.dart';
 
@@ -57,13 +59,25 @@ class _SharePlaceSheetState extends ConsumerState<SharePlaceSheet> {
 
       navigator.pop();
       router.go('${AppRoutes.chat}/${conversation.id}');
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() => _sending = false);
       messenger.showSnackBar(
-        const SnackBar(content: Text(AppStrings.chatShareError)),
+        SnackBar(content: Text(_errorMessage(error))),
       );
     }
+  }
+
+  String _errorMessage(Object error) {
+    if (error is FirebaseException &&
+        const <String>{'unavailable', 'deadline-exceeded'}
+            .contains(error.code)) {
+      return AppStrings.chatShareNeedsConnection;
+    }
+    if (error is PlaceCannotBeSharedException) {
+      return AppStrings.chatPlaceNoLongerActive;
+    }
+    return AppStrings.chatShareError;
   }
 
   @override
@@ -117,7 +131,8 @@ class _SharePlaceSheetState extends ConsumerState<SharePlaceSheet> {
                       final conversation = items[i];
                       return ListTile(
                         onTap: _sending ? null : () => _send(conversation),
-                        leading: PeerAvatar(peer: conversation.peer, radius: 24),
+                        leading:
+                            PeerAvatar(peer: conversation.peer, radius: 24),
                         title: Text(
                           conversation.peer.name,
                           style: const TextStyle(fontWeight: FontWeight.w700),

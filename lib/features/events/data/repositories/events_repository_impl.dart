@@ -3,8 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/app_flags.dart';
 import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/event_place_snapshot.dart';
 import '../../../../shared/models/paged_result.dart';
 import '../../../../shared/models/sport.dart';
+import '../../../../shared/models/sport_place.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/events_filter.dart';
 import '../../domain/repositories/events_repository.dart';
@@ -44,9 +46,8 @@ class EventsRepositoryImpl implements EventsRepository {
       dayStart: filter.dayStart,
       dayEnd: filter.dayEnd,
     );
-    final items = snapshot.docs
-        .map((doc) => Event.fromMap(doc.id, doc.data()))
-        .toList();
+    final items =
+        snapshot.docs.map((doc) => Event.fromMap(doc.id, doc.data())).toList();
     return PagedResult<Event>(
       items: items,
       // Último documento da página — cursor do startAfterDocument.
@@ -161,27 +162,23 @@ class EventsRepositoryImpl implements EventsRepository {
   }
 
   @override
-  Future<Event> createEvent(Event draft) async {
+  Future<Event> createEvent(
+    Event draft, {
+    required SportPlace selectedPlace,
+  }) async {
     if (!kUseFirebaseRepos || _remote == null) {
+      if (selectedPlace.status != PlaceStatus.active) {
+        throw const EventPlaceUnavailableException();
+      }
+      if (!selectedPlace.sports.contains(draft.sport)) {
+        throw const EventPlaceSportUnsupportedException();
+      }
+      if (draft.placeId != selectedPlace.id ||
+          draft.placeSnapshot != EventPlaceSnapshot.fromPlace(selectedPlace)) {
+        throw const EventPlaceChangedException();
+      }
       return InMemoryEventsStore.instance.add(draft);
     }
-    final docRef = await _remote.create(draft.toMap());
-    // Retorna o evento com o ID gerado pelo Firestore.
-    return Event(
-      id: docRef.id,
-      title: draft.title,
-      sport: draft.sport,
-      location: draft.location,
-      coordinates: draft.coordinates,
-      dateTime: draft.dateTime,
-      durationMinutes: draft.durationMinutes,
-      skillLevel: draft.skillLevel,
-      totalSpots: draft.totalSpots,
-      remainingSpots: draft.remainingSpots,
-      bannerUrl: draft.bannerUrl,
-      creator: draft.creator,
-      description: draft.description,
-      participants: draft.participants,
-    );
+    return _remote.create(draft, selectedPlace: selectedPlace);
   }
 }

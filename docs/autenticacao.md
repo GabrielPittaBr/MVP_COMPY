@@ -137,7 +137,7 @@ As regras usam a função auxiliar `signedIn()` que verifica `request.auth != nu
 - `users/{userId}/private/contact`: e-mail e demais dados de contato. Só o dono lê e escreve — o perfil é público, o contato não (RN-06).
 - `usernames/{username}`: leitura livre (a checagem de disponibilidade roda **antes** do login); criação só se `request.resource.data.uid == request.auth.uid`; atualização só do documento que já pertence ao mesmo uid.
 - `events`, `conversations`: escrita restrita por papel (criador do evento, membro da conversa) — ver os comentários no próprio `firestore.rules`.
-- `places`: não existe. O catálogo de locais é curado e vive em código (`SportPlace.all`).
+- `places/{placeId}`: leitura pública exige usuário autenticado; administradores com custom claim `admin == true` podem gerenciar documentos completos conforme whitelist e validações em `firestore.rules`. O mobile lê locais ativos do Firestore. Novas criações de eventos e mensagens de local exigem documento ativo e snapshot correspondente no commit; leituras e atualizações históricas compatíveis permanecem autorizadas.
 
 **Para publicar as regras:**
 

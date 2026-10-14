@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -10,15 +11,19 @@ import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/duration_format.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/event_place_snapshot.dart';
 import '../../../../shared/models/skill_level.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/sport_place.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../../shared/widgets/primary_button.dart';
+import '../../../maps/domain/repositories/places_repository.dart';
+import '../../../maps/presentation/providers/maps_providers.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/events_providers.dart';
+import '../../domain/repositories/events_repository.dart';
 import '../widgets/event_form_field.dart';
 
 /// Tela "4 Criar evento" — formulário com campos obrigatórios (RF07).
@@ -82,6 +87,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   /// _canSubmit() e nunca chega nula ao _submit().
   int _durationMinutes = Event.defaultDurationMinutes;
   bool _isLoading = false;
+  String? _placeMessage;
 
   @override
   void initState() {
@@ -90,7 +96,12 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     // O nº de participantes habilita/desabilita o botão "Criar evento";
     // sem isso o _canSubmit() só seria reavaliado nos setState dos pickers.
     _participantsCtrl.addListener(_onTypedFieldChanged);
-    _applyInitialPlace();
+    final placeId = widget.initialPlaceId;
+    if (placeId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _resolveInitialPlace(placeId);
+      });
+    }
   }
 
   @override
@@ -100,17 +111,45 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     // então chegar de novo pelo mapa reconstrói o widget sem passar pelo
     // initState. Sem isto, o segundo local escolhido no mapa seria
     // ignorado.
-    _applyInitialPlace();
+    if (oldWidget.initialPlaceId != widget.initialPlaceId &&
+        widget.initialPlaceId != null) {
+      _resolveInitialPlace(widget.initialPlaceId!);
+    }
   }
 
-  /// Pré-seleciona o local quando a tela foi aberta a partir de um pin.
-  void _applyInitialPlace() {
+  /// Resolve no repository o local escolhido no mapa; nunca consulta fixture
+  /// estática para preencher um novo Evento Esportivo.
+  Future<void> _resolveInitialPlace(String placeId) async {
+    try {
+      final lookup = await ref.read(placeByIdProvider(placeId).future);
+      if (!mounted) return;
+      final place = lookup.place;
+      if (place == null || place.status != PlaceStatus.active) {
+        setState(() {
+          _placeMessage = place == null
+              ? (lookup.isFromCache
+                  ? 'Reconecte-se para carregar o local escolhido.'
+                  : 'Local não encontrado. Escolha um local ativo.')
+              : 'Este local está inativo. Escolha outro local ativo.';
+        });
+        return;
+      }
+      _selectLocation(place);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _placeMessage = 'Não foi possível carregar o local. Tente novamente.';
+      });
+    }
+  }
+
+  void _retryPlacesLoad() {
+    ref.invalidate(placesProvider);
     final placeId = widget.initialPlaceId;
-    if (placeId == null || placeId == _location?.id) return;
-    final place = SportPlace.byId(placeId);
-    // Id desconhecido (local removido do catálogo): segue com o
-    // formulário em branco, o usuário escolhe na mão.
-    if (place != null) _selectLocation(place);
+    if (placeId != null && _location == null) {
+      ref.invalidate(placeByIdProvider(placeId));
+      _resolveInitialPlace(placeId);
+    }
   }
 
   void _onTypedFieldChanged() => setState(() {});
@@ -132,6 +171,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   @override
   Widget build(BuildContext context) {
+    final placesAsync = ref.watch(placesProvider);
+    final activePlaces =
+        placesAsync.valueOrNull?.places ?? const <SportPlace>[];
+    ref.listen<AsyncValue<PlacesStreamResult>>(placesProvider,
+        (previous, next) {
+      next.whenData(_reconcileSelectedPlace);
+    });
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.eventCreateTitle),
@@ -157,9 +203,32 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                 hint: AppStrings.eventSelectLocation,
                 controller: _locationCtrl,
                 readOnly: true,
-                onTap: _pickLocation,
+                onTap: placesAsync.isLoading && !placesAsync.hasValue
+                    ? null
+                    : () => _pickLocation(activePlaces),
                 suffix: const Icon(Icons.location_on_outlined),
               ),
+              if (placesAsync.isLoading && !placesAsync.hasValue)
+                const _PlaceStatusNotice(
+                  message: 'Carregando locais ativos…',
+                ),
+              if (_placeMessage != null || placesAsync.hasError)
+                _PlaceStatusNotice(
+                  message: _placeMessage ??
+                      'Não foi possível carregar os locais. Verifique a conexão.',
+                  onRetry: placesAsync.hasError ||
+                          (widget.initialPlaceId != null && _location == null)
+                      ? _retryPlacesLoad
+                      : null,
+                ),
+              if (placesAsync.valueOrNull?.isFromCache == true)
+                const _PlaceStatusNotice(
+                  message: 'Locais salvos neste dispositivo (offline).',
+                ),
+              if (placesAsync.valueOrNull != null && activePlaces.isEmpty)
+                const _PlaceStatusNotice(
+                  message: 'Nenhum local ativo disponível.',
+                ),
               _LocationMapPreview(location: _location),
               const SizedBox(height: 12),
               // 2) Esporte — restrito aos praticáveis no local escolhido.
@@ -221,32 +290,38 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     );
   }
 
-  bool _canSubmit() =>
-      _location != null &&
-      _sport != null &&
-      _date != null &&
-      _time != null &&
-      _skill != null &&
-      (int.tryParse(_participantsCtrl.text) ?? 0) >= 2;
+  bool _canSubmit() {
+    return _location?.status == PlaceStatus.active &&
+        _sport != null &&
+        _date != null &&
+        _time != null &&
+        _skill != null &&
+        (int.tryParse(_participantsCtrl.text) ?? 0) >= 2;
+  }
 
-  Future<void> _pickLocation() async {
+  Future<void> _pickLocation(List<SportPlace> activePlaces) async {
     final picked = await showModalBottomSheet<SportPlace>(
       context: context,
-      // Mesmo catálogo curado que alimenta os pins do mapa.
-      // ListView (e não Column) nos seletores desta tela: em tela baixa —
-      // janela do navegador, celular deitado — a lista passa da altura do
-      // sheet e precisa rolar em vez de estourar.
+      // Locais ativos do Firestore em um seletor rolável, inclusive em
+      // janelas baixas e dispositivos na horizontal.
       builder: (_) => SafeArea(
         child: ListView(
           shrinkWrap: true,
           children: <Widget>[
-            for (final loc in SportPlace.all)
-              ListTile(
-                leading: const Icon(Icons.location_on, color: AppColors.error),
-                title: Text(loc.name),
-                subtitle: Text(loc.city),
-                onTap: () => Navigator.of(context).pop(loc),
-              ),
+            if (activePlaces.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('Nenhum local ativo disponível.'),
+              )
+            else
+              for (final loc in activePlaces)
+                ListTile(
+                  leading:
+                      const Icon(Icons.location_on, color: AppColors.error),
+                  title: Text(loc.name),
+                  subtitle: Text(loc.address.formatted),
+                  onTap: () => Navigator.of(context).pop(loc),
+                ),
           ],
         ),
       ),
@@ -257,12 +332,56 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   void _selectLocation(SportPlace place) {
     setState(() {
       _location = place;
-      _locationCtrl.text = '${place.name} — ${place.city}';
+      _locationCtrl.text = '${place.name} — ${place.address.city}';
+      _placeMessage = null;
       // Descarta esporte incompatível com o novo local.
       if (_sport != null && !place.allowedSports.contains(_sport)) {
         _sport = null;
         _sportCtrl.clear();
       }
+    });
+  }
+
+  void _reconcileSelectedPlace(PlacesStreamResult result) {
+    if (result.isFromCache) return;
+    final selected = _location;
+    if (selected == null) return;
+    SportPlace? latest;
+    for (final candidate in result.places) {
+      if (candidate.id == selected.id) {
+        latest = candidate;
+        break;
+      }
+    }
+    if (latest == null) {
+      _invalidateLocation('O local foi desativado. Escolha outro local ativo.');
+      return;
+    }
+    final sportsChanged = latest.sports
+            .toSet()
+            .difference(selected.sports.toSet())
+            .isNotEmpty ||
+        selected.sports.toSet().difference(latest.sports.toSet()).isNotEmpty;
+    if (latest.name != selected.name ||
+        latest.address != selected.address ||
+        latest.coordinates != selected.coordinates ||
+        sportsChanged) {
+      _invalidateLocation(
+        'O local mudou. Revise e selecione novamente antes de criar o evento.',
+      );
+    } else if (latest != selected) {
+      setState(() => _location = latest);
+    }
+  }
+
+  void _invalidateLocation(String message) {
+    if (!mounted) return;
+    setState(() {
+      _location = null;
+      _sport = null;
+      _locationCtrl.clear();
+      _sportCtrl.clear();
+      _placeMessage = message;
     });
   }
 
@@ -441,7 +560,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     setState(() => _isLoading = true);
 
     try {
-      final authUser = ref.read(authStateProvider).valueOrNull;
+      final authUser = ref.read(authStateProvider).valueOrNull ??
+          await ref.read(authStateProvider.future);
       if (authUser == null) {
         throw StateError('Você precisa estar logado para criar um evento.');
       }
@@ -468,8 +588,10 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
             ? 'Partida de ${sport.label.toLowerCase()}'
             : _capitalizeFirst(typedTitle),
         sport: sport,
-        location: '${location.name}, ${location.city}',
+        location: '${location.name}, ${location.address.city}',
         coordinates: location.coordinates,
+        placeId: location.id,
+        placeSnapshot: EventPlaceSnapshot.fromPlace(location),
         dateTime: dateTime,
         durationMinutes: _durationMinutes,
         skillLevel: _skill!,
@@ -482,7 +604,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         participants: <UserSummary>[creator],
       );
 
-      await ref.read(createEventProvider).call(draft);
+      await ref.read(createEventProvider).call(draft, selectedPlace: location);
       // Recarrega as seções para o novo evento já aparecer em "Criados por
       // mim" (e em "Participando", já que o criador ocupa uma vaga).
       invalidateEventLists(ref);
@@ -494,6 +616,40 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         ),
       );
       context.go(AppRoutes.events);
+    } on EventPlaceChangedException {
+      _invalidateLocation(
+        'O local mudou. Revise e selecione novamente; os outros dados foram preservados.',
+      );
+    } on EventPlaceUnavailableException {
+      _invalidateLocation(
+        'O local foi desativado. Escolha outro local ativo; os outros dados foram preservados.',
+      );
+    } on EventPlaceSportUnsupportedException {
+      _invalidateLocation(
+        'A modalidade não é mais oferecida pelo local. Revise sua seleção.',
+      );
+    } on EventCreationOfflineException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Reconecte-se para criar o evento. Seus dados foram preservados.',
+            ),
+          ),
+        );
+      }
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      final offline = const <String>{'unavailable', 'network-request-failed'}
+          .contains(error.code);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(offline
+              ? 'Reconecte-se para criar o evento. Seus dados foram preservados.'
+              : 'Erro ao criar evento: ${error.message ?? error.code}'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -506,6 +662,36 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+}
+
+class _PlaceStatusNotice extends StatelessWidget {
+  const _PlaceStatusNotice({required this.message, this.onRetry});
+
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Material(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: <Widget>[
+                const Icon(Icons.info_outline),
+                const SizedBox(width: 8),
+                Expanded(child: Text(message)),
+                if (onRetry != null)
+                  TextButton(
+                      onPressed: onRetry,
+                      child: const Text('Tentar novamente')),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 /// Mapa com o pin fixo do local selecionado. Antes da seleção, mostra

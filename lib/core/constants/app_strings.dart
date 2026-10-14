@@ -163,8 +163,11 @@ abstract final class AppStrings {
   static const String chatShareTo = 'Enviar para';
   static const String chatShareNoConversations =
       'Você ainda não tem conversas. Comece uma para compartilhar o local.';
-  static const String chatShareError =
-      'Não foi possível compartilhar o local.';
+  static const String chatShareError = 'Não foi possível compartilhar o local.';
+  static const String chatShareNeedsConnection =
+      'Reconecte-se à internet para compartilhar este local. O envio não foi feito.';
+  static const String chatPlaceNoLongerActive =
+      'Este local não está mais ativo e não pode ser compartilhado.';
   static const String mapsShare = 'Compartilhar';
 
   // Auth — login / cadastro / username

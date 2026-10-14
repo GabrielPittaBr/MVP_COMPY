@@ -43,4 +43,19 @@ void main() {
       expect(profile.favoriteSports, isNotEmpty);
     });
   });
+
+  group('ProfileRepositoryImpl.searchByName', () {
+    test('busca no mock pelo prefixo normalizado sem acento', () async {
+      final results = await repository.searchByName('  HÉR  ');
+
+      expect(results, isNotEmpty);
+      expect(results.first.name, 'Hércules');
+    });
+
+    test('não retorna o próprio perfil quando ele é excluído', () async {
+      final results = await repository.searchByName('her', excludeUid: 'u_hercules');
+
+      expect(results.where((user) => user.id == 'u_hercules'), isEmpty);
+    });
+  });
 }

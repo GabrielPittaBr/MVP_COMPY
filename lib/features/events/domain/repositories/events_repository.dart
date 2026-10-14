@@ -1,5 +1,6 @@
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/paged_result.dart';
+import '../../../../shared/models/sport_place.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../entities/events_filter.dart';
 
@@ -38,7 +39,34 @@ abstract interface class EventsRepository {
   Future<Event> joinEvent(String eventId, UserSummary user);
 
   /// Cria um novo evento com os dados informados.
-  Future<Event> createEvent(Event draft);
+  Future<Event> createEvent(
+    Event draft, {
+    required SportPlace selectedPlace,
+  });
+}
+
+class EventPlaceUnavailableException implements Exception {
+  const EventPlaceUnavailableException();
+  @override
+  String toString() => 'O local não está mais ativo.';
+}
+
+class EventPlaceChangedException implements Exception {
+  const EventPlaceChangedException();
+  @override
+  String toString() => 'O local mudou. Revise e selecione novamente.';
+}
+
+class EventPlaceSportUnsupportedException implements Exception {
+  const EventPlaceSportUnsupportedException();
+  @override
+  String toString() => 'O local não oferece a modalidade selecionada.';
+}
+
+class EventCreationOfflineException implements Exception {
+  const EventCreationOfflineException();
+  @override
+  String toString() => 'Reconecte-se para criar o evento.';
 }
 
 /// Exceção lançada ao tentar entrar em um evento sem vagas (RN-05).

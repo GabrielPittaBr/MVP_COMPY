@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/utils/geohash.dart';
 import 'skill_level.dart';
 import 'sport.dart';
+import 'event_place_snapshot.dart';
 import 'user_summary.dart';
 
 /// Entidade central de evento esportivo.
@@ -27,6 +28,8 @@ class Event extends Equatable {
     required this.remainingSpots,
     required this.bannerUrl,
     required this.creator,
+    this.placeId,
+    this.placeSnapshot,
     this.durationMinutes = defaultDurationMinutes,
     this.description = '',
     this.participants = const <UserSummary>[],
@@ -48,6 +51,13 @@ class Event extends Equatable {
   final int remainingSpots;
   final String bannerUrl;
   final UserSummary creator;
+
+  /// Identidade estável do Local Esportivo para eventos novos. Nulo apenas
+  /// nos documentos legados que ainda não foram migrados.
+  final String? placeId;
+
+  /// Contexto histórico capturado na criação; não é re-resolvido ao ler.
+  final EventPlaceSnapshot? placeSnapshot;
 
   /// Duração informada pelo criador, em minutos.
   final int durationMinutes;
@@ -76,35 +86,44 @@ class Event extends Equatable {
 
   // ── Serialização Firestore ──────────────────────────────────────
 
-  Map<String, dynamic> toMap() => <String, dynamic>{
-        'title': title,
-        // Índice de busca por prefixo (Firestore não faz busca
-        // case-insensitive; gravamos a versão minúscula para consultar).
-        'titleLower': title.toLowerCase(),
-        'sport': sport.name,
-        'location': location,
-        'coordinates': GeoPoint(coordinates.latitude, coordinates.longitude),
-        // Índice geográfico para a busca por raio na Home (RF03).
-        'geohash': Geohash.encode(coordinates.latitude, coordinates.longitude),
-        'dateTime': Timestamp.fromDate(dateTime),
-        'durationMinutes': durationMinutes,
-        // Fim previsto desnormalizado: o Firestore não calcula nada em
-        // consulta, então "esconder eventos encerrados" e "acontecendo
-        // agora" (tarefa 14) precisam do campo gravado para filtrar no
-        // servidor sem quebrar a paginação.
-        'endsAt': Timestamp.fromDate(endsAt),
-        'skillLevel': skillLevel.name,
-        'totalSpots': totalSpots,
-        'remainingSpots': remainingSpots,
-        'bannerUrl': bannerUrl,
-        'creator': creator.toMap(),
-        'description': description,
-        'participants': participants.map((p) => p.toMap()).toList(),
-        // Espelho consultável de `participants` — ver [participantIds].
-        // A transação de `join()` mantém os dois em `arrayUnion` no mesmo
-        // update, e as regras exigem que cresçam juntos.
-        'participantIds': participantIds,
-      };
+  Map<String, dynamic> toMap() {
+    if ((placeId == null) != (placeSnapshot == null)) {
+      throw StateError('placeId e placeSnapshot devem existir juntos.');
+    }
+    return <String, dynamic>{
+      'title': title,
+      // Índice de busca por prefixo (Firestore não faz busca
+      // case-insensitive; gravamos a versão minúscula para consultar).
+      'titleLower': title.toLowerCase(),
+      'sport': sport.name,
+      'location': location,
+      'coordinates': GeoPoint(coordinates.latitude, coordinates.longitude),
+      // Índice geográfico para a busca por raio na Home (RF03).
+      'geohash': Geohash.encode(coordinates.latitude, coordinates.longitude),
+      'dateTime': Timestamp.fromDate(dateTime),
+      'durationMinutes': durationMinutes,
+      // Fim previsto desnormalizado: o Firestore não calcula nada em
+      // consulta, então "esconder eventos encerrados" e "acontecendo
+      // agora" (tarefa 14) precisam do campo gravado para filtrar no
+      // servidor sem quebrar a paginação.
+      'endsAt': Timestamp.fromDate(endsAt),
+      'skillLevel': skillLevel.name,
+      'totalSpots': totalSpots,
+      'remainingSpots': remainingSpots,
+      'bannerUrl': bannerUrl,
+      'creator': creator.toMap(),
+      'description': description,
+      'participants': participants.map((p) => p.toMap()).toList(),
+      // Espelho consultável de `participants` — ver [participantIds].
+      // A transação de `join()` mantém os dois em `arrayUnion` no mesmo
+      // update, e as regras exigem que cresçam juntos.
+      'participantIds': participantIds,
+      if (placeId != null && placeSnapshot != null) ...<String, dynamic>{
+        'placeId': placeId,
+        'placeSnapshot': placeSnapshot!.toMap(),
+      },
+    };
+  }
 
   factory Event.fromMap(String id, Map<String, dynamic> data) {
     final geoPoint = data['coordinates'] as GeoPoint?;
@@ -138,6 +157,8 @@ class Event extends Equatable {
       remainingSpots: (data['remainingSpots'] as int?) ?? 0,
       bannerUrl: (data['bannerUrl'] as String?) ?? '',
       creator: UserSummary.fromMap(data['creator']),
+      placeId: data['placeId'] as String?,
+      placeSnapshot: EventPlaceSnapshot.tryFromMap(data['placeSnapshot']),
       description: (data['description'] as String?) ?? '',
       participants: (data['participants'] as List<dynamic>? ?? <dynamic>[])
           .map((p) => UserSummary.fromMap(p))
@@ -148,16 +169,21 @@ class Event extends Equatable {
   // ── copyWith ────────────────────────────────────────────────────
 
   Event copyWith({
+    String? id,
+    String? location,
+    LatLng? coordinates,
     int? durationMinutes,
     int? remainingSpots,
     List<UserSummary>? participants,
+    String? placeId,
+    EventPlaceSnapshot? placeSnapshot,
   }) {
     return Event(
-      id: id,
+      id: id ?? this.id,
       title: title,
       sport: sport,
-      location: location,
-      coordinates: coordinates,
+      location: location ?? this.location,
+      coordinates: coordinates ?? this.coordinates,
       dateTime: dateTime,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       skillLevel: skillLevel,
@@ -165,6 +191,8 @@ class Event extends Equatable {
       remainingSpots: remainingSpots ?? this.remainingSpots,
       bannerUrl: bannerUrl,
       creator: creator,
+      placeId: placeId ?? this.placeId,
+      placeSnapshot: placeSnapshot ?? this.placeSnapshot,
       description: description,
       participants: participants ?? this.participants,
     );
@@ -184,6 +212,8 @@ class Event extends Equatable {
         remainingSpots,
         bannerUrl,
         creator,
+        placeId,
+        placeSnapshot,
         description,
         participants,
       ];

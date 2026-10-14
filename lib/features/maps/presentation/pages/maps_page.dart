@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,21 +9,18 @@ import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/sport_place.dart';
 import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../chat/presentation/widgets/share_place_sheet.dart';
+import '../../domain/repositories/places_repository.dart';
+import '../../domain/usecases/filter_map_places.dart';
 import '../providers/maps_providers.dart';
 import '../widgets/place_details_sheet.dart';
 
-/// Tela de mapa (RF04): exibe pins customizados para os locais
-/// esportivos cadastrados em Taquara/RS. Tocar num pin abre um bottom
-/// sheet com detalhes do local.
 class MapsPage extends ConsumerStatefulWidget {
   const MapsPage({this.initialPlaceId, super.key});
 
-  /// Local a abrir já selecionado — é assim que o card de local encaminhado
-  /// no chat traz o usuário de volta ao pin. Mesmo padrão do
-  /// `initialPlaceId` da criação de evento: viaja o id, não o objeto.
   final String? initialPlaceId;
 
   @override
@@ -30,59 +29,154 @@ class MapsPage extends ConsumerStatefulWidget {
 
 class _MapsPageState extends ConsumerState<MapsPage> {
   final MapController _mapController = MapController();
+  final TextEditingController _searchController = TextEditingController();
+  String? _resolvingSelectedId;
 
   @override
   void initState() {
     super.initState();
-    _focusInitialPlace();
+    _searchController.text = ref.read(mapsSearchQueryProvider);
   }
 
   @override
   void didUpdateWidget(MapsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Chegar aqui pelo card de local no chat nem sempre constrói a tela do
-    // zero: se o mapa já estiver na pilha da aba Início, o GoRouter reaproveita
-    // o elemento e só o `initialPlaceId` muda — o `initState` não roda de novo.
     if (oldWidget.initialPlaceId != widget.initialPlaceId) {
-      _focusInitialPlace();
+      ref.read(selectedPlaceProvider.notifier).state = null;
+      _clearDiscoveryFilters();
+      final id = widget.initialPlaceId;
+      if (id != null) ref.invalidate(placeByIdProvider(id));
     }
   }
 
-  void _focusInitialPlace() {
-    final place = widget.initialPlaceId == null
-        ? null
-        : SportPlace.byId(widget.initialPlaceId!);
-    if (place == null) return;
-    // Depois do quadro: `selectedPlaceProvider` não pode ser escrito durante
-    // a construção da árvore.
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _clearDiscoveryFilters() {
+    _searchController.clear();
+    ref.read(mapsSearchQueryProvider.notifier).state = '';
+    ref.read(mapsSportFilterProvider.notifier).state = null;
+  }
+
+  void _selectPlace(SportPlace place) {
+    ref.read(selectedPlaceProvider.notifier).state = place;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(selectedPlaceProvider.notifier).state = place;
       _mapController.move(place.coordinates, AppGeo.focusZoom);
     });
+  }
+
+  void _reconcileSelectedPlace(PlacesStreamResult snapshot) {
+    if (snapshot.isFromCache) return;
+    final selected = ref.read(selectedPlaceProvider);
+    if (selected == null) return;
+
+    SportPlace? current;
+    for (final place in snapshot.places) {
+      if (place.id == selected.id) {
+        current = place;
+        break;
+      }
+    }
+    if (current != null) {
+      if (current != selected) {
+        ref.read(selectedPlaceProvider.notifier).state = current;
+      }
+      return;
+    }
+    if (selected.status == PlaceStatus.inactive ||
+        _resolvingSelectedId == selected.id) {
+      return;
+    }
+
+    // A consulta de ativos deixou de incluir a seleção. Feche as ações
+    // imediatamente e atualize o contexto histórico pelo ID.
+    final placeId = selected.id;
+    ref.read(selectedPlaceProvider.notifier).state =
+        selected.copyWithStatus(PlaceStatus.inactive);
+    unawaited(_refreshSelectedPlace(placeId));
+  }
+
+  Future<void> _refreshSelectedPlace(String id) async {
+    _resolvingSelectedId = id;
+    ref.invalidate(placeByIdProvider(id));
+    try {
+      final result = await ref.read(placeByIdProvider(id).future);
+      if (!mounted || ref.read(selectedPlaceProvider)?.id != id) return;
+      ref.read(selectedPlaceProvider.notifier).state = result.place;
+    } catch (_) {
+      // Mantém a seleção provisoriamente inativa: falha de rede nunca reabre
+      // as ações com um estado ativo desatualizado.
+    } finally {
+      if (_resolvingSelectedId == id) _resolvingSelectedId = null;
+    }
+  }
+
+  void _retryPlaces() => ref.invalidate(placesProvider);
+
+  void _retryDeepLink() {
+    final id = widget.initialPlaceId;
+    if (id != null) ref.invalidate(placeByIdProvider(id));
   }
 
   @override
   Widget build(BuildContext context) {
     final placesAsync = ref.watch(placesProvider);
     final selectedPlace = ref.watch(selectedPlaceProvider);
+    final searchQuery = ref.watch(mapsSearchQueryProvider);
+    final sportFilter = ref.watch(mapsSportFilterProvider);
+    final lookupAsync = widget.initialPlaceId == null
+        ? null
+        : ref.watch(placeByIdProvider(widget.initialPlaceId!));
 
-    // O card do local vive dentro do Stack, não no back-stack: sem isso o
-    // voltar do Android sairia do mapa com o card aberto na frente.
+    final deepLinkId = widget.initialPlaceId;
+    if (deepLinkId != null) {
+      ref.listen<AsyncValue<PlaceLookupResult>>(placeByIdProvider(deepLinkId),
+          (previous, next) {
+        next.whenData((lookup) {
+          final place = lookup.place;
+          if (place != null && widget.initialPlaceId == place.id) {
+            _selectPlace(place);
+          }
+        });
+      });
+    }
+    ref.listen<AsyncValue<PlacesStreamResult>>(placesProvider,
+        (previous, next) {
+      next.whenData(_reconcileSelectedPlace);
+    });
+
+    final places = placesAsync.valueOrNull?.places ?? const <SportPlace>[];
+    final visiblePlaces = filterMapPlaces(
+      places,
+      query: searchQuery,
+      sport: sportFilter,
+    );
+
     return PopScope(
       canPop: selectedPlace == null,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        ref.read(selectedPlaceProvider.notifier).state = null;
+        if (!didPop) ref.read(selectedPlaceProvider.notifier).state = null;
       },
-      child: _buildScaffold(context, placesAsync, selectedPlace),
+      child: _buildScaffold(
+        context,
+        placesAsync,
+        visiblePlaces,
+        selectedPlace,
+        lookupAsync,
+      ),
     );
   }
 
   Widget _buildScaffold(
     BuildContext context,
-    AsyncValue<List<SportPlace>> placesAsync,
+    AsyncValue<PlacesStreamResult> placesAsync,
+    List<SportPlace> visiblePlaces,
     SportPlace? selectedPlace,
+    AsyncValue<PlaceLookupResult>? lookupAsync,
   ) {
     return Scaffold(
       body: Stack(
@@ -92,9 +186,6 @@ class _MapsPageState extends ConsumerState<MapsPage> {
             options: MapOptions(
               initialCenter: AppGeo.taquaraCenter,
               initialZoom: AppGeo.defaultZoom,
-              // Tocar no mapa fora do card desfaz a seleção. A câmera
-              // fica onde está: mover sozinha depois de um toque solto
-              // desorienta mais do que ajuda.
               onTap: (_, __) =>
                   ref.read(selectedPlaceProvider.notifier).state = null,
             ),
@@ -104,27 +195,17 @@ class _MapsPageState extends ConsumerState<MapsPage> {
                 userAgentPackageName: 'br.com.compy.mvp',
               ),
               placesAsync.when(
-                data: (places) => MarkerLayer(
+                data: (_) => MarkerLayer(
                   markers: <Marker>[
-                    for (final place in places)
+                    for (final place in visiblePlaces)
                       Marker(
                         point: place.coordinates,
                         width: place.id == selectedPlace?.id ? 56 : 40,
                         height: place.id == selectedPlace?.id ? 70 : 50,
-                        // Pin em forma de gota: o widget fica acima do
-                        // ponto para a ponta tocar a coordenada exata.
                         alignment: Alignment.topCenter,
                         child: GestureDetector(
-                          onTap: () {
-                            ref.read(selectedPlaceProvider.notifier).state = place;
-                            _mapController.move(
-                              place.coordinates,
-                              AppGeo.focusZoom,
-                            );
-                          },
+                          onTap: () => _selectPlace(place),
                           child: CustomSportMarker(
-                            // Locais aceitam vários esportes; o pin usa a
-                            // modalidade principal do local.
                             sport: place.primarySport,
                             selected: place.id == selectedPlace?.id,
                           ),
@@ -137,10 +218,6 @@ class _MapsPageState extends ConsumerState<MapsPage> {
               ),
             ],
           ),
-
-          // Barra de busca flutuante (mockup "2 / 2.1 Pesquisa de pontos")
-          // com o botão de voltar ao lado — o mapa é full-bleed, uma
-          // AppBar cobriria o mapa e destoaria do mockup.
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -153,12 +230,35 @@ class _MapsPageState extends ConsumerState<MapsPage> {
                       elevation: 4,
                       borderRadius: BorderRadius.circular(28),
                       child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) => ref
+                            .read(mapsSearchQueryProvider.notifier)
+                            .state = value,
                         decoration: InputDecoration(
                           hintText: AppStrings.mapsSearchHint,
                           prefixIcon: const Icon(Icons.search),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.more_vert),
-                            onPressed: () {},
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              if (_searchController.text.isNotEmpty)
+                                IconButton(
+                                  tooltip: 'Limpar busca',
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    ref
+                                        .read(mapsSearchQueryProvider.notifier)
+                                        .state = '';
+                                  },
+                                  icon: const Icon(Icons.close),
+                                ),
+                              _SportFilterMenu(
+                                selectedSport:
+                                    ref.watch(mapsSportFilterProvider),
+                                onSelected: (sport) => ref
+                                    .read(mapsSportFilterProvider.notifier)
+                                    .state = sport,
+                              ),
+                            ],
                           ),
                           filled: true,
                           fillColor: AppColors.surface,
@@ -174,35 +274,204 @@ class _MapsPageState extends ConsumerState<MapsPage> {
               ),
             ),
           ),
-
-          // Bottom sheet de detalhes — surge quando há pin selecionado.
-          // O Align é o par obrigatório do `expand: false` do sheet: sem
-          // ele o card iria para o topo do Stack.
+          Positioned(
+            top: 78,
+            left: 20,
+            right: 20,
+            child: _buildNotices(
+              placesAsync,
+              visiblePlaces,
+              lookupAsync,
+              selectedPlace,
+            ),
+          ),
           if (selectedPlace != null)
             Align(
               alignment: Alignment.bottomCenter,
               child: PlaceDetailsSheet(
                 place: selectedPlace,
-                // Vai para o formulário com o local já escolhido. Viaja
-                // o id (estável no catálogo), não o objeto.
                 onCreateEvent: () {
+                  if (selectedPlace.status != PlaceStatus.active) return;
                   final placeId = selectedPlace.id;
                   ref.read(selectedPlaceProvider.notifier).state = null;
                   context.go(AppRoutes.create, extra: placeId);
                 },
-                // O card segue aberto atrás do seletor: quem desiste de
-                // compartilhar volta para o local onde estava.
-                onShare: () => SharePlaceSheet.show(context, selectedPlace.id),
+                onShare: () {
+                  if (selectedPlace.status == PlaceStatus.active) {
+                    SharePlaceSheet.show(context, selectedPlace.id);
+                  }
+                },
               ),
             ),
         ],
       ),
     );
   }
+
+  Widget _buildNotices(
+    AsyncValue<PlacesStreamResult> placesAsync,
+    List<SportPlace> visiblePlaces,
+    AsyncValue<PlaceLookupResult>? lookupAsync,
+    SportPlace? selectedPlace,
+  ) {
+    final notices = <Widget>[];
+    if (placesAsync.hasError) {
+      notices.add(_MapNotice(
+        icon: Icons.cloud_off_outlined,
+        message: 'Não foi possível carregar os locais.',
+        actionLabel: 'Tentar novamente',
+        onAction: _retryPlaces,
+        isError: true,
+      ));
+    } else if (placesAsync.isLoading && !placesAsync.hasValue) {
+      notices.add(const _MapNotice(
+        icon: Icons.location_searching,
+        message: 'Carregando locais esportivos…',
+        isLoading: true,
+      ));
+    }
+
+    final result = placesAsync.valueOrNull;
+    if (result?.isFromCache == true) {
+      notices.add(const _MapNotice(
+        icon: Icons.cloud_off_outlined,
+        message: 'Exibindo locais salvos neste dispositivo (offline).',
+      ));
+    }
+    if (result != null && visiblePlaces.isEmpty && !placesAsync.hasError) {
+      final hasFilter = ref.read(mapsSearchQueryProvider).trim().isNotEmpty ||
+          ref.read(mapsSportFilterProvider) != null;
+      notices.add(_MapNotice(
+        icon: Icons.location_off_outlined,
+        message: hasFilter
+            ? 'Nenhum local encontrado com estes filtros.'
+            : 'Nenhum local ativo disponível no momento.',
+        actionLabel: hasFilter ? 'Limpar busca e filtros' : null,
+        onAction: hasFilter ? _clearDiscoveryFilters : null,
+      ));
+    }
+
+    final deepLinkId = widget.initialPlaceId;
+    if (deepLinkId != null && selectedPlace?.id != deepLinkId) {
+      if (lookupAsync?.hasError == true) {
+        notices.add(_MapNotice(
+          icon: Icons.cloud_off_outlined,
+          message: 'Não foi possível carregar o local. Verifique a conexão.',
+          actionLabel: 'Tentar novamente',
+          onAction: _retryDeepLink,
+          isError: true,
+        ));
+      } else if (lookupAsync?.isLoading == true) {
+        notices.add(const _MapNotice(
+          icon: Icons.location_searching,
+          message: 'Carregando local…',
+          isLoading: true,
+        ));
+      } else {
+        final lookup = lookupAsync?.valueOrNull;
+        if (lookup != null && lookup.place == null) {
+          notices.add(_MapNotice(
+            icon: lookup.isFromCache
+                ? Icons.cloud_off_outlined
+                : Icons.location_off_outlined,
+            message: lookup.isFromCache
+                ? 'Não foi possível carregar o local offline.'
+                : 'Local não encontrado.',
+            actionLabel: lookup.isFromCache ? 'Tentar novamente' : null,
+            onAction: lookup.isFromCache ? _retryDeepLink : null,
+            isError: lookup.isFromCache,
+          ));
+        }
+      }
+    }
+
+    if (notices.isEmpty) return const SizedBox.shrink();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: notices
+          .map((notice) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: notice,
+              ))
+          .toList(growable: false),
+    );
+  }
 }
 
-/// Botão flutuante de voltar, à esquerda da barra de busca. Mesma
-/// elevação do campo para os dois lerem como um par.
+class _SportFilterMenu extends StatelessWidget {
+  const _SportFilterMenu(
+      {required this.selectedSport, required this.onSelected});
+
+  final Sport? selectedSport;
+  final ValueChanged<Sport?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<Object>(
+      tooltip: 'Filtrar por modalidade',
+      icon: Icon(
+        Icons.tune,
+        color: selectedSport == null ? null : AppColors.primary,
+      ),
+      onSelected: (choice) => onSelected(choice is Sport ? choice : null),
+      itemBuilder: (context) => <PopupMenuEntry<Object>>[
+        const PopupMenuItem<Object>(
+            value: _AllSportsChoice.value, child: Text('Todas as modalidades')),
+        for (final sport in Sport.values)
+          PopupMenuItem<Object>(value: sport, child: Text(sport.label)),
+      ],
+    );
+  }
+}
+
+enum _AllSportsChoice { value }
+
+class _MapNotice extends StatelessWidget {
+  const _MapNotice({
+    required this.icon,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+    this.isError = false,
+    this.isLoading = false,
+  });
+
+  final IconData icon;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final bool isError;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isError ? AppColors.error : AppColors.onSurface;
+    return Material(
+      elevation: 3,
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: <Widget>[
+            if (isLoading)
+              const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(icon, color: color, size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message, style: TextStyle(color: color))),
+            if (actionLabel != null && onAction != null)
+              TextButton(onPressed: onAction, child: Text(actionLabel!)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _BackButton extends ConsumerWidget {
   const _BackButton();
 
@@ -214,11 +483,6 @@ class _BackButton extends ConsumerWidget {
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
-        // Mesma regra do voltar do Android (PopScope acima): com um local
-        // aberto, o primeiro voltar fecha o card; o segundo sai do mapa.
-        // A Home entra no mapa com `go`, que empilha /home/maps sobre
-        // /home — o pop volta para a Home com o bottom nav intacto. O
-        // fallback cobre quem chega direto por deep link.
         onTap: () {
           if (ref.read(selectedPlaceProvider) != null) {
             ref.read(selectedPlaceProvider.notifier).state = null;
