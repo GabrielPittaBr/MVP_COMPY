@@ -76,7 +76,7 @@ Every change you make to the repository gets a note in `docs/caderno_de_campo/` 
 | `lib/core/theme/app_colors.dart` | Color palette (WCAG AA — do not change arbitrarily) |
 | `lib/core/constants/app_strings.dart` | All UI strings in PT-BR (single source of truth) |
 | `firestore.rules` | Per-collection rules scoped by role (profile owner, event creator, conversation member) — see the comments in the file |
-| `docs/checklist-publicacao.md` | Blockers that must be handled before shipping — the app still uses the `com.example.*` template package, and changing it invalidates the Google Sign-In OAuth clients |
+| `docs/checklist-publicacao.md` | Release record — keystore, `br.com.compy.app` package, Google Sign-In SHA/OAuth setup, what's left for the Play Store, why iOS is still on the template. Read it before changing signing, package/bundle ids or `google-services.json`: each change means redoing the SHA/OAuth steps, or Google Sign-In breaks |
 
 ## Conventions
 
@@ -84,7 +84,7 @@ Every change you make to the repository gets a note in `docs/caderno_de_campo/` 
 - New shared widgets go in `lib/shared/widgets/`.
 - Models use `Equatable` for value equality (required for Riverpod provider caching).
 - Page transitions are platform-aware: FadeUpwards on Android/Windows/Linux; Cupertino on iOS/macOS — do not add explicit transitions on individual routes.
-- The app currently uses anonymous Firebase Auth by default; there is no login/signup UI yet.
+- Login is required (email/password or Google); `authRedirect()` in `app_router.dart` gates every route — see `docs/autenticacao.md` for the flow and troubleshooting.
 
 ## Agent skills
 
