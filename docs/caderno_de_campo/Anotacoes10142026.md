@@ -1,0 +1,3 @@
+Taquara, 14 de Outubro de 2026
+
+- Hoje preparamos o projeto para rodar no navegador (Chrome), para conseguir testar as telas sem precisar de celular nem do emulador do Android Studio, que é pesado. Criamos a pasta web com o nome, as cores e o ícone do Compy. O login com Google funciona de um jeito diferente na web: lá ele abre o popup do próprio Firebase, porque o plugin que usamos no celular exigiria configurações a mais no Google Cloud. Também passamos a tratar o fechamento desse popup como "login cancelado". Para funcionar de fato, ainda falta rodar o `flutterfire configure` marcando a plataforma web, que registra o app web no Firebase. O teste final continua sendo no celular, principalmente para o GPS e o login com Google.
