@@ -22,6 +22,10 @@ class FirebaseService {
         options: DefaultFirebaseOptions.currentPlatform,
       );
       _initialized = true;
+      if (kUseFirebaseEmulators) {
+        await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+      }
       // Na web o App Check exigiria um provider reCAPTCHA; sem ele o
       // `activate()` só falha. A imposição está desligada no Console (ver
       // docs/checklist-publicacao.md), então pular não bloqueia nada.

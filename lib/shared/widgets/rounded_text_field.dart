@@ -34,6 +34,9 @@ class RoundedTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       readOnly: readOnly,
+      // Campo só-leitura é um seletor: na web/desktop o foco devolvido ao
+      // fechar o sheet selecionava o texto escolhido inteiro.
+      selectAllOnFocus: readOnly ? false : null,
       onTap: onTap,
       keyboardType: keyboardType,
       maxLines: maxLines,

@@ -49,9 +49,17 @@ final categoriesProvider = Provider<List<SportCategory>>((ref) {
 /// Eventos próximos à posição real do usuário (RF03). Aguarda a
 /// resolução da localização (com fallback para o centro de Taquara —
 /// ver [userPositionProvider]) e então observa a consulta geográfica.
+///
+/// O uid só está aqui para refazer a consulta quando o usuário troca: no
+/// logout as regras do Firestore derrubam o stream com `permission-denied`,
+/// e sem isto quem entrava de novo via a Home presa no erro até reabrir o app.
 final nearbyEventsProvider = StreamProvider<List<Event>>((ref) async* {
+  ref.watch(authStateProvider.select((auth) => auth.valueOrNull?.uid));
+  // Antes do await: se o uid mudar enquanto a localização resolve, um
+  // `watch` depois dele dispara a asserção de dependência desatualizada.
+  final getNearbyEvents = ref.watch(getNearbyEventsProvider);
   final position = await ref.watch(userPositionProvider.future);
-  yield* ref.watch(getNearbyEventsProvider).call(position);
+  yield* getNearbyEvents(position);
 });
 
 /// Nome de exibição do usuário logado, vindo do AuthUser autenticado.
