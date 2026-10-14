@@ -22,13 +22,19 @@ class FirebaseService {
         options: DefaultFirebaseOptions.currentPlatform,
       );
       _initialized = true;
-      try {
-        await FirebaseAppCheck.instance.activate(
-          androidProvider:
-              kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-        );
-      } catch (e) {
-        if (kDebugMode) debugPrint('[FirebaseService] App Check: $e');
+      // Na web o App Check exigiria um provider reCAPTCHA; sem ele o
+      // `activate()` só falha. A imposição está desligada no Console (ver
+      // docs/checklist-publicacao.md), então pular não bloqueia nada.
+      if (!kIsWeb) {
+        try {
+          await FirebaseAppCheck.instance.activate(
+            androidProvider: kDebugMode
+                ? AndroidProvider.debug
+                : AndroidProvider.playIntegrity,
+          );
+        } catch (e) {
+          if (kDebugMode) debugPrint('[FirebaseService] App Check: $e');
+        }
       }
       if (kDebugMode) {
         debugPrint('[FirebaseService] Inicialização bem-sucedida.');

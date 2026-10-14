@@ -23,14 +23,19 @@ class AuthRemoteDataSource {
     GoogleSignIn? googleSignIn,
   })  : _auth = auth ?? FirebaseService.instance.auth,
         _firestore = firestore ?? FirebaseService.instance.firestore,
-        _googleSignIn = googleSignIn ??
-            GoogleSignIn(
-              scopes: <String>['email', 'profile'],
-            );
+        _googleSignInOverride = googleSignIn;
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
-  final GoogleSignIn _googleSignIn;
+  final GoogleSignIn? _googleSignInOverride;
+
+  /// Preguiçoso porque construir o `GoogleSignIn` já dispara a inicialização
+  /// do plugin, que na web exige Client ID — e a web nunca o usa (ver
+  /// [signInWithGoogle]).
+  late final GoogleSignIn _googleSignIn = _googleSignInOverride ??
+      GoogleSignIn(
+        scopes: <String>['email', 'profile'],
+      );
 
   static const Duration _profileLookupTimeout = Duration(seconds: 10);
 
