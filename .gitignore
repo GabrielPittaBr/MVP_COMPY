@@ -71,3 +71,6 @@ firebase-export-*/
 
 # Coverage
 coverage/
+
+# graphify (grafo de conhecimento gerado localmente)
+graphify-out/

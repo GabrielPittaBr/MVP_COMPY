@@ -190,6 +190,11 @@ String firebaseAuthErrorMessage(Object error) {
         return 'Sem conexão com a internet.';
       case 'requires-recent-login':
         return AppStrings.authErrorRequiresRecentLogin;
+      // Equivalentes web do [GoogleSignInCancelledException]: o usuário
+      // fechou o popup do Google.
+      case 'popup-closed-by-user':
+      case 'cancelled-popup-request':
+        return 'Login com Google cancelado.';
       default:
         return 'Erro de autenticação (${error.code}).';
     }

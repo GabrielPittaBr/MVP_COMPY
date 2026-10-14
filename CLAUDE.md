@@ -21,6 +21,10 @@ flutter pub get               # Install Dart dependencies
 flutterfire configure         # Regenerate lib/firebase_options.dart (required after cloning or changing Firebase project)
 dart analyze                  # Run the Dart analyzer (uses analysis_options.yaml)
 
+# Browser testing against local Auth + Firestore emulators (never touches compy-tcc data)
+firebase emulators:start --only auth,firestore
+flutter run -d chrome --dart-define=USE_FIREBASE_EMULATORS=true
+
 # Firestore security rules (needs JDK 21+ on PATH — see tools/firestore-rules-tests/README.md)
 npm install --prefix tools/firestore-rules-tests   # once
 npm test --prefix tools/firestore-rules-tests      # runs the rules suite against the emulator
@@ -57,6 +61,16 @@ Gitflow: `main` (stable) ← `develop` ← `feature/<name>` branches. PRs target
 
 Branch naming: `feature/`, `fix/`, `refactor/`, `chore/`, `style/` prefixes.
 
+Commits and PRs never carry a `Co-Authored-By: Claude` trailer or a Claude Code signature (also enforced by `attribution` in `.claude/settings.json`).
+
+## Caderno de campo
+
+Every change you make to the repository gets a note in `docs/caderno_de_campo/` — without being asked, in the same commit as the change.
+
+- One file per day, named `AnotacoesMMDDYYYY.md` (e.g. `Anotacoes09272026.md` for 27/09/2026). If today's file already exists, add a new bullet to it instead of creating another file.
+- File starts with the header `Taquara, 27 de Setembro de 2026`, then one `- ` bullet per task done that day.
+- Written in PT-BR, simple and direct, first person plural, like a notebook entry ("Hoje ajustamos..."): what was done and why. Length follows the task — detail it when needed, just don't turn it into a huge text. Avoid dumping file lists or code.
+
 ## Key Files
 
 | File | Purpose |
@@ -66,7 +80,7 @@ Branch naming: `feature/`, `fix/`, `refactor/`, `chore/`, `style/` prefixes.
 | `lib/core/theme/app_colors.dart` | Color palette (WCAG AA — do not change arbitrarily) |
 | `lib/core/constants/app_strings.dart` | All UI strings in PT-BR (single source of truth) |
 | `firestore.rules` | Per-collection rules scoped by role (profile owner, event creator, conversation member) — see the comments in the file |
-| `docs/checklist-publicacao.md` | Blockers that must be handled before shipping — the app still uses the `com.example.*` template package, and changing it invalidates the Google Sign-In OAuth clients |
+| `docs/checklist-publicacao.md` | Release record — keystore, `br.com.compy.app` package, Google Sign-In SHA/OAuth setup, what's left for the Play Store, why iOS is still on the template. Read it before changing signing, package/bundle ids or `google-services.json`: each change means redoing the SHA/OAuth steps, or Google Sign-In breaks |
 
 ## Conventions
 
@@ -74,7 +88,7 @@ Branch naming: `feature/`, `fix/`, `refactor/`, `chore/`, `style/` prefixes.
 - New shared widgets go in `lib/shared/widgets/`.
 - Models use `Equatable` for value equality (required for Riverpod provider caching).
 - Page transitions are platform-aware: FadeUpwards on Android/Windows/Linux; Cupertino on iOS/macOS — do not add explicit transitions on individual routes.
-- The app currently uses anonymous Firebase Auth by default; there is no login/signup UI yet.
+- Login is required (email/password or Google); `authRedirect()` in `app_router.dart` gates every route — see `docs/autenticacao.md` for the flow and troubleshooting.
 
 ## Agent skills
 

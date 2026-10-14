@@ -302,26 +302,27 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   Future<void> _pickLocation(List<SportPlace> activePlaces) async {
     final picked = await showModalBottomSheet<SportPlace>(
       context: context,
+      // Locais ativos do Firestore em um seletor rolável, inclusive em
+      // janelas baixas e dispositivos na horizontal.
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: activePlaces.isEmpty
-              ? const <Widget>[
-                  Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('Nenhum local ativo disponível.'),
-                  ),
-                ]
-              : <Widget>[
-                  for (final loc in activePlaces)
-                    ListTile(
-                      leading:
-                          const Icon(Icons.location_on, color: AppColors.error),
-                      title: Text(loc.name),
-                      subtitle: Text(loc.address.formatted),
-                      onTap: () => Navigator.of(context).pop(loc),
-                    ),
-                ],
+        child: ListView(
+          shrinkWrap: true,
+          children: <Widget>[
+            if (activePlaces.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('Nenhum local ativo disponível.'),
+              )
+            else
+              for (final loc in activePlaces)
+                ListTile(
+                  leading:
+                      const Icon(Icons.location_on, color: AppColors.error),
+                  title: Text(loc.name),
+                  subtitle: Text(loc.address.formatted),
+                  onTap: () => Navigator.of(context).pop(loc),
+                ),
+          ],
         ),
       ),
     );
@@ -395,8 +396,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     final picked = await showModalBottomSheet<Sport>(
       context: context,
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
           children: <Widget>[
             // Apenas esportes praticáveis no local selecionado.
             for (final s in location.allowedSports)
@@ -450,8 +451,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     final picked = await showModalBottomSheet<int>(
       context: context,
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
           children: <Widget>[
             for (final minutes in _durationOptions)
               ListTile(
@@ -528,8 +529,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     final picked = await showModalBottomSheet<SkillLevel>(
       context: context,
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
           children: <Widget>[
             for (final lvl in SkillLevel.values)
               ListTile(

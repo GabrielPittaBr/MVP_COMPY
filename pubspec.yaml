@@ -10,6 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Textos nativos (calendário, relógio, menus de texto) em pt-BR
+  flutter_localizations:
+    sdk: flutter
   cupertino_icons: ^1.0.8
 
   # Estado
@@ -41,7 +44,7 @@ dependencies:
   cached_network_image: ^3.3.1
 
   # Util
-  intl: ^0.19.0
+  intl: ^0.20.2
   equatable: ^2.0.5
 
 dev_dependencies:

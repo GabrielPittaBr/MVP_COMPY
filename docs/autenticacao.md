@@ -33,37 +33,6 @@ conta. Se o sinal exigisse ao menos um esporte, o "pular" viraria um loop.
 
 ---
 
-## Arquivos Criados / Modificados
-
-### Novos
-
-| Arquivo | Função |
-|---|---|
-| `lib/features/auth/domain/entities/auth_user.dart` | Entidade `AuthUser` (uid, email, displayName, hasUsername) |
-| `lib/features/auth/domain/repositories/auth_repository.dart` | Interface do repositório |
-| `lib/features/auth/data/datasources/auth_remote_datasource.dart` | FirebaseAuth + GoogleSignIn + Firestore |
-| `lib/features/auth/data/repositories/auth_repository_impl.dart` | Implementação concreta |
-| `lib/features/auth/presentation/providers/auth_providers.dart` | Providers Riverpod + AuthController |
-| `lib/features/auth/presentation/widgets/auth_text_field.dart` | Campo de texto com obscureText + validator |
-| `lib/features/auth/presentation/pages/login_page.dart` | Tela de login (carrossel + logo + botões) |
-| `lib/features/auth/presentation/pages/signup_page.dart` | Tela de cadastro manual |
-| `lib/features/auth/presentation/pages/username_page.dart` | Tela intermediária (escolha de username, pós-Google) |
-| `lib/core/routes/go_router_refresh_stream.dart` | Adaptador Stream → ChangeNotifier para o router |
-| `assets/images/` | Pasta para assets de imagem |
-
-### Modificados
-
-| Arquivo | O que mudou |
-|---|---|
-| `firestore.rules` | Substituído `if false` por regras baseadas em `request.auth` |
-| `pubspec.yaml` | Adicionado `google_sign_in: ^6.2.1` + seção `assets:` |
-| `lib/core/routes/app_router.dart` | Rotas `/login`, `/signup`, `/username`; redirect + refreshListenable |
-| `lib/main.dart` | Removido sign-in anônimo automático; gate delegado ao router |
-| `lib/core/constants/app_strings.dart` | Seção `// Auth` com strings PT-BR |
-| `lib/core/constants/app_assets.dart` | `loginCarousel` (4 URLs) + `logoAsset` |
-
----
-
 ## Coleções Firestore
 
 ```
@@ -182,15 +151,7 @@ firebase deploy --only firestore:rules
 
 ## Passos Manuais (pré-launch)
 
-### 1. Logo
-
-Salve o arquivo `logo.png` (Image #2 do mockup) em:
-```
-assets/images/logo.png
-```
-O app usa `Image.asset('assets/images/logo.png')` com um fallback em código caso o arquivo não exista.
-
-### 2. SHA-1 / SHA-256 para Google Sign-In (Android)
+### 1. SHA-1 / SHA-256 para Google Sign-In (Android)
 
 No Firebase Console (`compy-tcc` → Configurações do projeto → Apps Android):
 
@@ -201,7 +162,7 @@ keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -sto
 
 Adicione o SHA-1/SHA-256 ao app Android no Console e baixe o `google-services.json` atualizado para `android/app/`.
 
-### 3. URL Scheme no iOS (para Google Sign-In)
+### 2. URL Scheme no iOS (para Google Sign-In)
 
 Em `ios/Runner/Info.plist`, adicione o `REVERSED_CLIENT_ID` que está no `GoogleService-Info.plist`:
 
@@ -217,7 +178,7 @@ Em `ios/Runner/Info.plist`, adicione o `REVERSED_CLIENT_ID` que está no `Google
 </array>
 ```
 
-### 4. Deploy das Security Rules
+### 3. Deploy das Security Rules
 
 ```bash
 firebase deploy --only firestore:rules
@@ -250,7 +211,28 @@ Checklist manual:
 
 ---
 
-## Próximos Passos Recomendados
+## Solução de problemas
 
-- Adicionar botão de logout na tela de Perfil.
-- Índice composto para a query de chat (`members arrayContains + orderBy lastMessageAt`) — o Firestore mostra o link para criar quando rodar pela primeira vez.
+Absorve o antigo `debug-auth-login.md` (incidentes de 2026-06-28 e 2026-08-09).
+
+### Login com Google falha: `DEVELOPER_ERROR` / `ApiException: 10`
+
+O seletor de conta abre, fecha e nada acontece. Nenhuma chamada ao Firestore chega a sair, então **não é problema de regra**.
+
+**Causa:** a SHA-1 do keystore não está cadastrada no Firebase Console, ou foi cadastrada *depois* de gerar o `android/app/google-services.json`. Nesse caso o arquivo vem com `oauth_client: []`, e como ele é gitignored nada no repositório denuncia.
+
+**Conserto:** cadastrar SHA-1 e SHA-256 no Console (Configurações do projeto → app Android → Impressões digitais), **depois** baixar o `google-services.json` de novo e recompilar. O provedor Google também precisa estar habilitado em Authentication → Sign-in method.
+
+```bash
+keytool -J-Duser.language=en -list -v -alias androiddebugkey   -keystore ~/.android/debug.keystore -storepass android
+```
+
+O `-J-Duser.language=en` contorna o keytool do Temurin 25, que quebra com locale pt-BR (`MissingFormatArgumentException`).
+
+**Proteções que ficaram no código:** `test/android_google_services_test.dart` falha quando `oauth_client` está vazio, e `GoogleSignInMisconfiguredException` separa esse erro de configuração da falha transitória (antes caía no genérico "Tente novamente", que nunca resolve).
+
+### `PERMISSION_DENIED` em qualquer operação
+
+Quase sempre as regras locais não foram publicadas: o Console continua com as antigas. Rodar `firebase deploy --only firestore:rules` e confirmar com a suíte de `tools/firestore-rules-tests/`.
+
+Caso específico já resolvido: a checagem de username disponível roda **antes** do login, por isso `usernames` tem leitura pública. Se essa regra voltar a exigir `signedIn()`, o cadastro por e-mail quebra no primeiro passo.

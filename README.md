@@ -6,7 +6,7 @@
   <img src="docs/assets/banner-light.png" alt="COMPY — Come Play." width="760">
 </picture>
 
-### Marcou o jogo? Agora é só aparecer.
+### Marcou o jogo? Come play.
 
 Aplicativo móvel que conecta praticantes de esporte em **Taquara/RS**.
 
@@ -188,7 +188,7 @@ main  ←  develop  ←  feature/… · fix/… · refactor/… · chore/… · 
 - Ampliação do catálogo de locais esportivos da cidade
 - Telas de configurações e de insígnias, hoje em construção
 
-O planejamento completo, com tamanho e critério de aceite de cada tarefa, está em [`docs/roadmap-prioridade-alta.md`](docs/roadmap-prioridade-alta.md).
+O planejamento completo, com tamanho e critério de aceite de cada tarefa, está em [`docs/roadmap.md`](docs/roadmap.md).
 
 ---
 
