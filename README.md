@@ -40,7 +40,7 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 | | Tela | Recursos |
 |:--:|---|---|
 | 🏠 | **Início** | Saudação com o nome de quem entrou, categorias por modalidade, prévia do mapa e os **eventos próximos** — busca real por raio de 10 km a partir da sua localização. Campo de busca por nome do evento ou modalidade. |
-| 🗺️ | **Mapa** | Locais esportivos da cidade em um mapa OpenStreetMap, com ficha do local (modalidades aceitas, avaliação e atalho para criar um evento ali). |
+| 🗺️ | **Mapa** | Locais esportivos da cidade em um mapa OpenStreetMap, com ficha do local (modalidades aceitas e atalho para criar um evento ali). |
 | 📅 | **Eventos** | Lista em três seções — *Criados por mim*, *Participando* e *Todos os eventos* — com filtros de modalidade, nível de habilidade e data. O detalhe traz local, horário, duração, vagas restantes e a lista de participantes. |
 | ➕ | **Criar** | Título, modalidade, local, data, horário, duração, nível de habilidade, número de participantes e descrição. |
 | 💬 | **Chat** | Conversas em tempo real entre os participantes, direto sobre os streams do Firestore, com envio do local do evento como cartão na conversa. |
@@ -164,6 +164,9 @@ npm test --prefix tools/firestore-rules-tests      # 83 casos
 | `assets/images/` | Logo e ícone do app |
 | `firestore.rules` · `firestore.indexes.json` | Regras de segurança e índices do Firestore |
 | `tools/firestore-rules-tests/` | Suíte Node que exercita as regras no emulador |
+| `admin/` | Painel administrativo (Flutter Web) para locais esportivos e contas — ver [`docs/admin/painel-administrativo.md`](docs/admin/painel-administrativo.md) |
+| `functions/` | Cloud Functions do painel (TypeScript) |
+| `tools/firebase-admin/` | Scripts locais com Admin SDK (bootstrap do administrador, migrações) |
 | `docs/` | Roadmap, checklist de publicação, decisões de produto e notas de depuração |
 
 ---
