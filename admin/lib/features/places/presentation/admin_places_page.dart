@@ -56,6 +56,10 @@ class _AdminPlacesPageState extends State<AdminPlacesPage> {
   @override
   Widget build(BuildContext context) {
     final state = _controller.state;
+    // Lista vazia vinda do cache significa falta de conexão sem nada salvo,
+    // não ausência de locais cadastrados.
+    final offlineWithoutCache =
+        state.isFromCache && state.places.isEmpty && !state.isLoading;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: <Widget>[
@@ -74,7 +78,7 @@ class _AdminPlacesPageState extends State<AdminPlacesPage> {
         ),
         const SizedBox(height: 16),
         _buildFilters(state.filters),
-        if (state.isFromCache) ...<Widget>[
+        if (state.isFromCache && !offlineWithoutCache) ...<Widget>[
           const SizedBox(height: 12),
           const _OfflineBanner(),
         ],
@@ -83,6 +87,11 @@ class _AdminPlacesPageState extends State<AdminPlacesPage> {
           const _PlacesSkeleton()
         else if (state.error != null && state.places.isEmpty)
           _PlacesError(onRetry: _controller.retry)
+        else if (offlineWithoutCache)
+          _PlacesError(
+            onRetry: _controller.retry,
+            message: 'Sem conexão e nenhum local salvo neste navegador.',
+          )
         else if (state.places.isEmpty)
           _PlacesEmpty(filters: state.filters)
         else ...<Widget>[
@@ -344,9 +353,13 @@ class _PlacesEmpty extends StatelessWidget {
 }
 
 class _PlacesError extends StatelessWidget {
-  const _PlacesError({required this.onRetry});
+  const _PlacesError({
+    required this.onRetry,
+    this.message = 'Não foi possível carregar os locais.',
+  });
 
   final VoidCallback onRetry;
+  final String message;
 
   @override
   Widget build(BuildContext context) => Center(
@@ -356,7 +369,7 @@ class _PlacesError extends StatelessWidget {
         children: <Widget>[
           const Icon(Icons.cloud_off_outlined, size: 40),
           const SizedBox(height: 8),
-          const Text('Não foi possível carregar os locais.'),
+          Text(message),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: onRetry,

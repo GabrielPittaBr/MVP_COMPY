@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mvp_compy/core/constants/app_strings.dart';
 import 'package:mvp_compy/features/maps/domain/repositories/places_repository.dart';
 import 'package:mvp_compy/features/maps/domain/usecases/filter_map_places.dart';
 import 'package:mvp_compy/features/maps/presentation/pages/maps_page.dart';
@@ -179,6 +180,35 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('(offline)'), findsNothing);
+  });
+
+  testWidgets('offline sem cache exibe erro e opção de tentar novamente',
+      (tester) async {
+    var subscriptions = 0;
+    await tester.pumpWidget(ProviderScope(
+      overrides: <Override>[
+        placesProvider.overrideWith((ref) {
+          subscriptions++;
+          return Stream<PlacesStreamResult>.value(
+            const PlacesStreamResult(
+                places: <SportPlace>[], isFromCache: true),
+          );
+        }),
+      ],
+      child: const MaterialApp(home: MapsPage()),
+    ));
+    await tester.pump();
+
+    expect(find.text(AppStrings.mapsOfflineNoCache), findsOneWidget);
+    expect(
+      find.text('Nenhum local ativo disponível no momento.'),
+      findsNothing,
+    );
+    expect(find.textContaining('(offline)'), findsNothing);
+
+    await tester.tap(find.text('Tentar novamente'));
+    await tester.pump();
+    expect(subscriptions, 2);
   });
 
   testWidgets('dados em cache são exibidos com indicação de offline',

@@ -280,7 +280,29 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('lista diferencia cache, resultado vazio e erro com retry', (
+    testWidgets('cache com locais exibe a lista com aviso de cache', (
+      tester,
+    ) async {
+      final repository = _FakePlacesRepository();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: AdminPlacesPage(repository: repository)),
+        ),
+      );
+      repository.streams.first.add(
+        AdminPlacesPageSnapshot(
+          places: <AdminPlaceSummary>[_place('cached')],
+          cursor: null,
+          isFromCache: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Exibindo dados em cache'), findsOneWidget);
+      expect(find.text('Local cached'), findsOneWidget);
+      expect(find.text('Tentar novamente'), findsNothing);
+    });
+
+    testWidgets('lista diferencia offline sem cache e erro, ambos com retry', (
       tester,
     ) async {
       final repository = _FakePlacesRepository();
@@ -301,8 +323,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.textContaining('Exibindo dados em cache'), findsOneWidget);
-      expect(find.text('Nenhum Local Esportivo cadastrado.'), findsOneWidget);
+      expect(
+        find.text('Sem conexão e nenhum local salvo neste navegador.'),
+        findsOneWidget,
+      );
+      expect(find.text('Tentar novamente'), findsOneWidget);
+      expect(find.textContaining('Exibindo dados em cache'), findsNothing);
+      expect(find.text('Nenhum Local Esportivo cadastrado.'), findsNothing);
 
       repository.streams.first.addError(StateError('offline'));
       await tester.pumpAndSettle();

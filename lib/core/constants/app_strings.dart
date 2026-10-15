@@ -40,6 +40,8 @@ abstract final class AppStrings {
   // Maps
   static const String mapsSearchHint = 'Encontre esportes';
   static const String mapsPlaceInfo = 'Informações';
+  static const String mapsOfflineNoCache =
+      'Sem conexão e nenhum local salvo neste dispositivo.';
 
   // Events
   static const String eventsTitle = 'Eventos';

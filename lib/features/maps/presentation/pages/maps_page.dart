@@ -332,13 +332,30 @@ class _MapsPageState extends ConsumerState<MapsPage> {
     }
 
     final result = placesAsync.valueOrNull;
-    if (result?.isFromCache == true) {
+    // Offline sem nada em cache, o Firestore entrega uma lista vazia marcada
+    // como cache: isso é falta de conexão, não ausência de locais.
+    final offlineWithoutCache = result != null &&
+        result.isFromCache &&
+        result.places.isEmpty &&
+        !placesAsync.hasError;
+    if (offlineWithoutCache) {
+      notices.add(_MapNotice(
+        icon: Icons.cloud_off_outlined,
+        message: AppStrings.mapsOfflineNoCache,
+        actionLabel: 'Tentar novamente',
+        onAction: _retryPlaces,
+        isError: true,
+      ));
+    } else if (result?.isFromCache == true) {
       notices.add(const _MapNotice(
         icon: Icons.cloud_off_outlined,
         message: 'Exibindo locais salvos neste dispositivo (offline).',
       ));
     }
-    if (result != null && visiblePlaces.isEmpty && !placesAsync.hasError) {
+    if (result != null &&
+        visiblePlaces.isEmpty &&
+        !placesAsync.hasError &&
+        !offlineWithoutCache) {
       final hasFilter = ref.read(mapsSearchQueryProvider).trim().isNotEmpty ||
           ref.read(mapsSportFilterProvider) != null;
       notices.add(_MapNotice(
