@@ -12,59 +12,64 @@ import 'package:mvp_compy/shared/models/paged_result.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
 
 void main() {
-  testWidgets('offline keeps share sheet open and asks to reconnect',
-      (tester) async {
-    const peer = UserSummary(
-      id: 'peer',
-      name: 'Pessoa',
-      handle: '@pessoa',
-      avatarUrl: '',
-    );
-    final conversation = Conversation(
-      id: 'conversation',
-      peer: peer,
-      lastMessage: '',
-      unreadCount: 0,
-      lastMessageAt: DateTime(2026),
-    );
-    final router = GoRouter(
-      routes: <RouteBase>[
-        GoRoute(
-          path: '/',
-          builder: (context, state) => Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () => SharePlaceSheet.show(context, 'place-1'),
-                child: const Text('Abrir compartilhamento'),
+  // `network-request-failed` é o código que a criação de evento já tratava
+  // como offline; o compartilhamento passou a reconhecer o mesmo conjunto.
+  for (final code in <String>['unavailable', 'network-request-failed']) {
+    testWidgets('offline ($code) keeps share sheet open and asks to reconnect',
+        (tester) async {
+      const peer = UserSummary(
+        id: 'peer',
+        name: 'Pessoa',
+        handle: '@pessoa',
+        avatarUrl: '',
+      );
+      final conversation = Conversation(
+        id: 'conversation',
+        peer: peer,
+        lastMessage: '',
+        unreadCount: 0,
+        lastMessageAt: DateTime(2026),
+      );
+      final router = GoRouter(
+        routes: <RouteBase>[
+          GoRoute(
+            path: '/',
+            builder: (context, state) => Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => SharePlaceSheet.show(context, 'place-1'),
+                  child: const Text('Abrir compartilhamento'),
+                ),
               ),
             ),
           ),
-        ),
-        GoRoute(path: '/chat/:id', builder: (_, __) => const Text('Chat')),
-      ],
-    );
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          chatRepositoryProvider.overrideWithValue(_OfflineChatRepository()),
-          paginatedConversationsProvider.overrideWith(
-            () => _StaticConversationsController(conversation),
-          ),
+          GoRoute(path: '/chat/:id', builder: (_, __) => const Text('Chat')),
         ],
-        child: MaterialApp.router(routerConfig: router),
-      ),
-    );
-    await tester.tap(find.text('Abrir compartilhamento'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(ListTile));
-    await tester.pumpAndSettle();
+      );
+      addTearDown(router.dispose);
 
-    expect(find.text('Enviar para'), findsOneWidget);
-    expect(find.textContaining('Reconecte-se à internet'), findsOneWidget);
-    expect(find.text('Encaminhou um local...'), findsNothing);
-  });
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            chatRepositoryProvider
+                .overrideWithValue(_OfflineChatRepository(code)),
+            paginatedConversationsProvider.overrideWith(
+              () => _StaticConversationsController(conversation),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.tap(find.text('Abrir compartilhamento'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(ListTile));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enviar para'), findsOneWidget);
+      expect(find.textContaining('Reconecte-se à internet'), findsOneWidget);
+      expect(find.text('Encaminhou um local...'), findsNothing);
+    });
+  }
 }
 
 class _StaticConversationsController extends PaginatedConversationsController {
@@ -77,6 +82,10 @@ class _StaticConversationsController extends PaginatedConversationsController {
 }
 
 class _OfflineChatRepository implements ChatRepository {
+  _OfflineChatRepository(this.code);
+
+  final String code;
+
   @override
   Future<void> sendMessage({
     required String conversationId,
@@ -86,7 +95,7 @@ class _OfflineChatRepository implements ChatRepository {
   }) async {
     throw FirebaseException(
       plugin: 'cloud_firestore',
-      code: 'unavailable',
+      code: code,
       message: 'offline',
     );
   }

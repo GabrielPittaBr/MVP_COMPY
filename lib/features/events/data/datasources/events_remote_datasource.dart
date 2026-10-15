@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/utils/firebase_errors.dart';
 import '../../../../core/utils/geohash.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_place_snapshot.dart';
@@ -200,8 +201,7 @@ class EventsRemoteDataSource {
         return event;
       });
     } on FirebaseException catch (error) {
-      if (const <String>{'unavailable', 'network-request-failed'}
-          .contains(error.code)) {
+      if (FirebaseErrors.isOffline(error)) {
         throw const EventCreationOfflineException();
       }
       rethrow;

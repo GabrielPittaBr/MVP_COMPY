@@ -1,4 +1,3 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/firebase_errors.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/entities/place_cannot_be_shared_exception.dart';
 import '../providers/chat_providers.dart';
@@ -69,9 +69,7 @@ class _SharePlaceSheetState extends ConsumerState<SharePlaceSheet> {
   }
 
   String _errorMessage(Object error) {
-    if (error is FirebaseException &&
-        const <String>{'unavailable', 'deadline-exceeded'}
-            .contains(error.code)) {
+    if (FirebaseErrors.isOffline(error)) {
       return AppStrings.chatShareNeedsConnection;
     }
     if (error is PlaceCannotBeSharedException) {
