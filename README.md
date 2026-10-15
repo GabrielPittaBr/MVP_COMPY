@@ -21,8 +21,8 @@ Aplicativo móvel que conecta praticantes de esporte em **Taquara/RS**.
 [![Android](https://img.shields.io/badge/Android-br.com.compy.app-3DDC84?style=for-the-badge&logo=android&logoColor=white)](android/app/build.gradle.kts)
 
 ![Versão](https://img.shields.io/badge/Vers%C3%A3o-v0.1.0-1F3A8A?style=for-the-badge)
-![Testes](https://img.shields.io/badge/Testes-169%20passando-10B981?style=for-the-badge)
-![Regras](https://img.shields.io/badge/Regras%20do%20Firestore-83%20casos-F59E0B?style=for-the-badge)
+![Testes](https://img.shields.io/badge/Testes-208%20passando-10B981?style=for-the-badge)
+![Regras](https://img.shields.io/badge/Regras%20do%20Firestore-132%20casos-F59E0B?style=for-the-badge)
 ![Licença](https://img.shields.io/badge/Uso-acad%C3%AAmico-6B7280?style=for-the-badge)
 
 </div>
@@ -142,7 +142,7 @@ flutter run
 ## Testes e qualidade
 
 ```bash
-flutter test     # 169 testes de unidade e de widget
+flutter test     # 208 testes de unidade e de widget
 dart analyze     # analisador estático — sem erros (só sugestões de estilo)
 ```
 
@@ -150,7 +150,7 @@ As regras do Firestore têm suíte própria, em Node, porque não há como test�
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 83 casos
+npm test --prefix tools/firestore-rules-tests      # 132 casos
 ```
 
 ---
