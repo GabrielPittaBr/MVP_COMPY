@@ -9,10 +9,13 @@ abstract final class AdminTheme {
       onPrimary: Colors.white,
       secondary: AdminColors.secondary,
       onSecondary: Colors.white,
+      secondaryContainer: AdminColors.secondaryContainer,
+      onSecondaryContainer: AdminColors.onSecondaryContainer,
       surface: AdminColors.surface,
       onSurface: AdminColors.onSurface,
       error: AdminColors.error,
       outline: AdminColors.outline,
+      outlineVariant: AdminColors.outlineVariant,
     );
 
     return ThemeData(
