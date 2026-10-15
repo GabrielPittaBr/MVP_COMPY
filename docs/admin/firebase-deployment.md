@@ -55,9 +55,12 @@ de exclusão irreversível sem prazo autorizado. Defina explicitamente uma
 retenção adequada ao rollback ou decida manter os artefatos, considerando
 custo de armazenamento. Não escolher prazo financeiro/destrutivo silenciosamente.
 
-Node 20 é o runtime atual; sua desativação está prevista para 2026-10-30 na
+Node 20 tem desativação prevista para 2026-10-30 na
 [tabela oficial de runtimes](https://docs.cloud.google.com/run/docs/runtimes/function-runtimes).
-Planejar migração validada para runtime suportado antes de concluir o gate.
+Em 2026-10-14 a configuração do repositório passou para Node 22 (`firebase.json`
+e `functions/package.json`); as Callables em produção só mudam de runtime no
+próximo deploy do codebase `administrative`, que precisa acontecer antes de
+2026-10-30.
 
 O login hospedado renderiza e o guard redireciona `/dashboard` sem sessão para
 `/login`. Não há administrador com claim registrado na consulta atual; antes
