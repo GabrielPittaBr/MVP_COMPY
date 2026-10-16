@@ -472,3 +472,9 @@ expand–contract da spec.
 - O Flutter instalado agora é o 3.44.4 (Dart 3.12.2), abaixo do `sdk: ^3.13.3` do Admin; o 3.47.7 citado acima não está mais na máquina. Testes (57/57) e build rodaram com a restrição de SDK rebaixada só na cópia local, sem commit.
 - Build de release via `admin/tool/build_web.ps1` com a mesma site key pública reCAPTCHA v3 do bundle anterior, sem token de debug no ambiente: exit code 0. Deploy `hosting:admin` concluído. O `main.dart.js` servido confere byte a byte com o build; `/`, `/login`, `/dashboard`, `/places`, `/users` e as fontes Barlow respondem HTTP 200. A tela de login abriu com o visual novo e sem erros no console, depois de um recarregamento sem cache.
 - Para voltar ao visual anterior, use o rollback da release anterior na página Hosting do console.
+
+## Visual novo publicado a partir da develop — 2026-10-16
+
+- O visual novo entrou na `develop` (`0eaa211`), então o aviso da seção anterior não vale mais: um deploy feito a partir da `develop` mantém o visual novo.
+- O Flutter 3.47.7 (Dart 3.13.5) voltou a ser o instalado e atende o `sdk: ^3.13.3` do Admin; o build rodou sem rebaixar a restrição de SDK.
+- Build de release via `admin/tool/build_web.ps1` com a mesma site key pública reCAPTCHA v3 do bundle anterior, sem token de debug no ambiente: exit code 0. Deploy `hosting:admin` concluído (só 2 dos 47 arquivos mudaram em relação à release anterior). O `main.dart.js` servido confere byte a byte com o build; `/`, `/login`, `/dashboard`, `/places` e `/users` respondem HTTP 200.
