@@ -465,3 +465,10 @@ expand–contract da spec.
 - Novo teste de widget simula o engine web (cada rota informada pelo app vira a URL) e reproduziu o bug antes da correção (`from=/dashboard`); depois dela, o destino chega em `from`. Admin: `flutter analyze --no-pub` sem issues e 57/57 testes.
 - Build de release servido pelo emulador do Hosting (`127.0.0.1:5000`), sem sessão: `/places?status=inactive` → `/login?from=/places?status=inactive`; `/users/a-user` → `/login?from=/users/a-user`; `/` → `/login?from=/dashboard`; sem erros no console.
 - Depois do merge na `develop` (PRs #15 e #16), o painel passou de novo por analyze (sem issues) e testes (57/57), e o build de release foi publicado com `firebase deploy --only hosting:admin`. O `main.dart.js` servido confere byte a byte com o build (o CDN pode entregar a versão anterior por até 1 hora, `max-age=3600`). A conferência no ar — destino depois do login e refresh com sessão ativa — fica com o responsável.
+
+## Visual novo do painel no ar, ainda fora da develop — 2026-10-16
+
+- **O Hosting está com a branch `style/visual-painel-admin`, que ainda não entrou na `develop`.** Publicamos a pedido do responsável, para ele testar o visual novo no site. Até o merge, um deploy feito a partir da `develop` volta o visual antigo.
+- O Flutter instalado agora é o 3.44.4 (Dart 3.12.2), abaixo do `sdk: ^3.13.3` do Admin; o 3.47.7 citado acima não está mais na máquina. Testes (57/57) e build rodaram com a restrição de SDK rebaixada só na cópia local, sem commit.
+- Build de release via `admin/tool/build_web.ps1` com a mesma site key pública reCAPTCHA v3 do bundle anterior, sem token de debug no ambiente: exit code 0. Deploy `hosting:admin` concluído. O `main.dart.js` servido confere byte a byte com o build; `/`, `/login`, `/dashboard`, `/places`, `/users` e as fontes Barlow respondem HTTP 200. A tela de login abriu com o visual novo e sem erros no console, depois de um recarregamento sem cache.
+- Para voltar ao visual anterior, use o rollback da release anterior na página Hosting do console.
