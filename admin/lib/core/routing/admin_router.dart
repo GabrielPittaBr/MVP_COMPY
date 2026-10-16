@@ -46,6 +46,20 @@ String? _validatedAdminDestination(String? value) {
   return isKnownProtectedRoute ? uri.toString() : null;
 }
 
+/// Rota que o navegador abriu, lida antes do primeiro `runApp`.
+///
+/// Na web, as telas de carregamento (um `MaterialApp` sem router) gravam `/`
+/// na barra de endereço; sem guardar a URL original aqui, o deep link se perde
+/// antes de o GoRouter existir. Fora das rotas do painel, retorna `null`.
+String? adminInitialLocationFromUrl(Uri url) {
+  final location = Uri(
+    path: url.path,
+    query: url.hasQuery ? url.query : null,
+  ).toString();
+  if (_publicRoutes.contains(url.path)) return location;
+  return _validatedAdminDestination(location);
+}
+
 /// Decisão pura para testar redirecionamentos e deep links sem Firebase.
 String? redirectForAdminRoute({
   required String location,
@@ -85,6 +99,9 @@ GoRouter createAdminRouter({
 }) {
   return GoRouter(
     initialLocation: initialLocation ?? '/dashboard',
+    // Na web, a URL atual já pode ter sido trocada por `/` pelas telas de
+    // carregamento; a rota capturada no início vale mais que ela.
+    overridePlatformDefaultLocation: initialLocation != null,
     refreshListenable: authController,
     redirect: (context, state) {
       final location = state.uri.path;

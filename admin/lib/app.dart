@@ -19,11 +19,15 @@ class CompyAdminBootstrap extends StatefulWidget {
   const CompyAdminBootstrap({
     required this.initialize,
     this.authGatewayFactory = FirebaseAdminAuthGateway.new,
+    this.initialLocation,
     super.key,
   });
 
   final FirebaseInitializer initialize;
   final AdminAuthGateway Function() authGatewayFactory;
+
+  /// Deep link lido da URL antes de as telas de carregamento a sobrescreverem.
+  final String? initialLocation;
 
   @override
   State<CompyAdminBootstrap> createState() => _CompyAdminBootstrapState();
@@ -38,10 +42,8 @@ class _CompyAdminBootstrapState extends State<CompyAdminBootstrap> {
       future: _initialization,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return MaterialApp(
-            title: AdminStrings.appTitle,
-            theme: AdminTheme.light,
-            home: const _AdminStartupScreen(
+          return const _AdminStartupApp(
+            screen: _AdminStartupScreen(
               title: AdminStrings.initializationErrorTitle,
               body: AdminStrings.initializationErrorBody,
               icon: Icons.cloud_off_outlined,
@@ -50,10 +52,8 @@ class _CompyAdminBootstrapState extends State<CompyAdminBootstrap> {
         }
 
         if (snapshot.connectionState != ConnectionState.done) {
-          return MaterialApp(
-            title: AdminStrings.appTitle,
-            theme: AdminTheme.light,
-            home: const _AdminStartupScreen(
+          return const _AdminStartupApp(
+            screen: _AdminStartupScreen(
               title: AdminStrings.initializingTitle,
               body: AdminStrings.initializingBody,
               showProgress: true,
@@ -61,7 +61,10 @@ class _CompyAdminBootstrapState extends State<CompyAdminBootstrap> {
           );
         }
 
-        return CompyAdminApp(authGateway: widget.authGatewayFactory());
+        return CompyAdminApp(
+          authGateway: widget.authGatewayFactory(),
+          initialLocation: widget.initialLocation,
+        );
       },
     );
   }
@@ -122,11 +125,8 @@ class _CompyAdminAppState extends State<CompyAdminApp> {
   @override
   Widget build(BuildContext context) {
     if (_authController.state == AdminAccessState.loading) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: AdminStrings.appTitle,
-        theme: AdminTheme.light,
-        home: const _AdminStartupScreen(
+      return const _AdminStartupApp(
+        screen: _AdminStartupScreen(
           title: AdminStrings.authorizationLoadingTitle,
           body: AdminStrings.authorizationLoadingBody,
           showProgress: true,
@@ -141,6 +141,30 @@ class _CompyAdminAppState extends State<CompyAdminApp> {
       routerConfig: _router,
     );
   }
+}
+
+/// App das telas de carregamento, exibido antes de o GoRouter existir.
+///
+/// Abre sempre a própria tela: sem router, não deve tentar a rota da URL (que
+/// chega ao GoRouter por `initialLocation`, capturada no `main`).
+class _AdminStartupApp extends StatelessWidget {
+  const _AdminStartupApp({required this.screen});
+
+  final Widget screen;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: AdminStrings.appTitle,
+      theme: AdminTheme.light,
+      onGenerateRoute: _route,
+      onGenerateInitialRoutes: (_) => <Route<void>>[_route(null)],
+    );
+  }
+
+  Route<void> _route(RouteSettings? settings) =>
+      MaterialPageRoute<void>(settings: settings, builder: (_) => screen);
 }
 
 class _AdminStartupScreen extends StatelessWidget {
