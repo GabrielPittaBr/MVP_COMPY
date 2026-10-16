@@ -58,9 +58,8 @@ custo de armazenamento. Não escolher prazo financeiro/destrutivo silenciosament
 Node 20 tem desativação prevista para 2026-10-30 na
 [tabela oficial de runtimes](https://docs.cloud.google.com/run/docs/runtimes/function-runtimes).
 Em 2026-10-14 a configuração do repositório passou para Node 22 (`firebase.json`
-e `functions/package.json`); as Callables em produção só mudam de runtime no
-próximo deploy do codebase `administrative`, que precisa acontecer antes de
-2026-10-30.
+e `functions/package.json`). Em 2026-10-15 o responsável fez o deploy do codebase
+`administrative`; as três Callables estão em `nodejs22`.
 
 O login hospedado renderiza e o guard redireciona `/dashboard` sem sessão para
 `/login`. Não há administrador com claim registrado na consulta atual; antes
@@ -450,3 +449,11 @@ expand–contract da spec.
 - App Check do recurso Web Admin registrou 248 verificações `ALLOW/VALID` na semana. O agregado de serviços do projeto também teve 66 `ALLOW/INVALID`; é um agregado de múltiplos clientes/serviços, não uma contagem comprovada de bloqueios do painel. Firestore registrou 257 leituras e 26 escritas no projeto inteiro; são métricas, não valor faturado nem uso isolado do Admin.
 - Billing API confirma Blaze e conta vinculada. Budget API retorna 403 para a identidade atual; o responsável confirma orçamento/alertas. Não há custo monetário efetivo disponível por esta identidade e nenhuma configuração de billing foi alterada.
 - Três avisos `UNAVAILABLE` de agregação Firestore apareceram durante reloads rápidos do Dashboard em teste; depois os indicadores e as listas Users/Places carregaram pela navegação normal. A origem transitória ainda não foi provada. Não houve deploy, mudança de Rules, Functions, índices, contas ou dados na retomada. Ver ticket 18 para a lista de bloqueios vigentes.
+
+## Node 22, release do Admin e segunda conta Admin — 2026-10-15
+
+- O responsável fez `firebase deploy --only functions:administrative`. `firebase functions:list` confirma `getAdminUserAuthDetails`, `getAdminUsersAuthStatus` e `setUserSuspension` em v2, `southamerica-east1`, runtime `nodejs22`.
+- O Flutter local foi atualizado para 3.47.7 (Dart 3.13.5), que atende o `sdk: ^3.13.3` do Admin; não é mais preciso validar o painel numa cópia com SDK rebaixado. No SDK novo: mobile 208/208 e analyze sem erros/avisos; Admin `flutter analyze --no-pub` sem issues e 55/55. O `flutter pub get` do SDK novo acrescentou `web/**` às exclusões do `analysis_options.yaml` da raiz.
+- Build de release via `admin/tool/build_web.ps1` com a site key pública reCAPTCHA v3 já usada em produção (a mesma presente no bundle anterior), sem token de debug no ambiente: exit code 0. Deploy `hosting:admin` concluído. O `main.dart.js`, o `favicon.png` e o `manifest.json` (`theme_color` `#1F3A8A`) servidos conferem byte a byte com o build; `/`, `/login`, `/dashboard`, `/places`, `/users` e a imagem do Parque respondem HTTP 200. A tela de login abriu sem erros no console.
+- **Deep link ainda falha em produção.** Abrindo `/places?status=active` sem sessão, a URL vira `/` e termina em `/login?from=/dashboard`: o destino se perde antes do guard. Causa provável: enquanto o Firebase inicializa e a sessão é restaurada, o painel mostra um `MaterialApp` sem router, que na web grava `/` na barra de endereço; quando o `MaterialApp.router` sobe, o GoRouter já não vê a URL original e usa `initialLocation` (`/dashboard`). Os testes passam porque injetam `initialLocation` em vez de ler a URL do navegador. O mesmo deve acontecer no refresh com sessão ativa. Correção pendente.
+- Conta Admin adicional: por pedido explícito do responsável, uma conta já existente (provider `password`, senha conferida por login) recebeu `emailVerified: true` e a claim `admin: true` pela API admin do Identity Toolkit, autenticada pelo Firebase CLI — não havia ADC para o script `tools/firebase-admin`. Não havia outras claims a preservar e a senha não foi alterada. Um login real emitiu ID token com `admin: true`, `email_verified: true` e provider `password`. Nenhuma credencial foi gravada.
