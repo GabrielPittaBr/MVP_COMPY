@@ -163,9 +163,10 @@ código.
   - **Offline sem cache** (mapa do app e lista de locais do painel): agora
     mostra erro com "Tentar novamente".
   - **Contraste WCAG AA** do tema do painel.
-- **Correção pronta, mas fora do ar:** o deep link (abrir ou dar refresh numa
-  rota do painel) se perdia na web e caía no Dashboard. Corrigido em 16/10/2026
-  no código, com teste que simula a URL do navegador; falta publicar.
+- **Corrigido e publicado:** o deep link (abrir ou dar refresh numa rota do
+  painel) se perdia na web e caía no Dashboard. Corrigido e publicado em
+  16/10/2026, com teste que simula a URL do navegador; falta a conferência no
+  ar com sessão.
 - **Operacional:** o gate de produção (ticket 18) segue `blocked`.
 
 **Pendências:**
@@ -174,9 +175,10 @@ código.
   Node 20 em 30/10).
 - [x] Novo build de release do painel e deploy do Hosting (15/10/2026): ícones
   novos e contraste no ar.
-- [ ] Novo build de release e deploy do Hosting para publicar a correção do
-  deep link (16/10/2026); depois, conferir no ar com e sem sessão. Detalhes no
-  runbook.
+- [x] Build de release e deploy do Hosting com a correção do deep link
+  (16/10/2026).
+- [ ] Conferir no ar, com sessão, a volta ao destino depois do login e o
+  refresh numa rota do painel.
 - [ ] Ticket 18:
   - testar em produção o limite do token já emitido;
   - testar o caso de perfil sem conta Auth, sem criar dado artificial;
