@@ -163,17 +163,20 @@ código.
   - **Offline sem cache** (mapa do app e lista de locais do painel): agora
     mostra erro com "Tentar novamente".
   - **Contraste WCAG AA** do tema do painel.
-- **Correção pronta, mas fora do ar:** o retorno à rota depois de um refresh
-  logado (deep link) está no código e testado, mas ainda não foi publicado no
-  Hosting.
+- **Ainda falha em produção:** o retorno à rota depois de um refresh
+  logado (deep link) foi publicado em 15/10/2026, mas no ar o destino ainda se
+  perde (ver pendências).
 - **Operacional:** o gate de produção (ticket 18) segue `blocked`.
 
 **Pendências:**
 
-- [ ] **Deploy das Functions com Node 22 antes de 30/10/2026**, quando o Google
-  desliga o Node 20.
-- [ ] Novo build de release do painel e deploy do Hosting. Isso publica a
-  correção de deep link, os ícones novos e o contraste.
+- [x] Deploy das Functions com Node 22 (15/10/2026, antes do desligamento do
+  Node 20 em 30/10).
+- [x] Novo build de release do painel e deploy do Hosting (15/10/2026): ícones
+  novos e contraste no ar.
+- [ ] **Deep link na web:** a tela de carregamento (um `MaterialApp` sem router)
+  grava `/` na barra de endereço antes de o GoRouter ler a URL, e o painel cai
+  no Dashboard. Detalhes no runbook, entrada de 15/10/2026.
 - [ ] Ticket 18:
   - testar em produção o limite do token já emitido;
   - testar o caso de perfil sem conta Auth, sem criar dado artificial;
