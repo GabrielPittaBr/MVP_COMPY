@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/shell/admin_shell.dart';
+import '../../../core/theme/admin_colors.dart';
+import '../../../core/widgets/admin_status_pill.dart';
 import '../data/admin_places_repository.dart';
 import 'admin_places_controller.dart';
 
@@ -61,28 +64,32 @@ class _AdminPlacesPageState extends State<AdminPlacesPage> {
     final offlineWithoutCache =
         state.isFromCache && state.places.isEmpty && !state.isLoading;
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: adminPagePadding(context),
       children: <Widget>[
-        Text(
-          'Locais Esportivos',
-          style: Theme.of(context).textTheme.headlineMedium,
+        Wrap(
+          spacing: 16,
+          runSpacing: 12,
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: <Widget>[
+            Text(
+              'Locais Esportivos',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            FilledButton.icon(
+              onPressed: () => context.go('/places/new'),
+              icon: const Icon(Icons.add_location_alt_outlined),
+              label: const Text('Cadastrar local'),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton.icon(
-            onPressed: () => context.go('/places/new'),
-            icon: const Icon(Icons.add_location_alt_outlined),
-            label: const Text('Cadastrar local'),
-          ),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         _buildFilters(state.filters),
         if (state.isFromCache && !offlineWithoutCache) ...<Widget>[
           const SizedBox(height: 12),
           const _OfflineBanner(),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         if (state.isLoading && state.places.isEmpty)
           const _PlacesSkeleton()
         else if (state.error != null && state.places.isEmpty)
@@ -96,11 +103,19 @@ class _AdminPlacesPageState extends State<AdminPlacesPage> {
           _PlacesEmpty(filters: state.filters)
         else ...<Widget>[
           if (state.error != null) _InlineError(onRetry: _controller.retry),
-          ...state.places.map(
-            (place) => _PlaceTile(
-              place: place,
-              onTap: () =>
-                  context.go('/places/${Uri.encodeComponent(place.id)}'),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: <Widget>[
+                for (final (index, place) in state.places.indexed) ...<Widget>[
+                  if (index > 0) const Divider(),
+                  _PlaceTile(
+                    place: place,
+                    onTap: () =>
+                        context.go('/places/${Uri.encodeComponent(place.id)}'),
+                  ),
+                ],
+              ],
             ),
           ),
           if (state.isLoadingMore)
@@ -109,11 +124,13 @@ class _AdminPlacesPageState extends State<AdminPlacesPage> {
               child: Center(child: CircularProgressIndicator()),
             ),
           if (state.hasMore && !state.isLoadingMore)
-            Align(
-              alignment: Alignment.center,
-              child: OutlinedButton(
-                onPressed: _controller.loadNextPage,
-                child: const Text('Carregar mais locais'),
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Center(
+                child: OutlinedButton(
+                  onPressed: _controller.loadNextPage,
+                  child: const Text('Carregar mais locais'),
+                ),
               ),
             ),
         ],
@@ -239,7 +256,7 @@ class _AdminPlacesPageState extends State<AdminPlacesPage> {
           ),
         ),
       ),
-      OutlinedButton.icon(
+      TextButton.icon(
         onPressed: () {
           _searchDebounce?.cancel();
           _searchController.clear();
@@ -261,20 +278,55 @@ class _PlaceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final active = place.status == 'active';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        onTap: onTap,
-        leading: Icon(
-          active ? Icons.place_outlined : Icons.location_off_outlined,
+    final pill = AdminStatusPill(
+      label: active ? 'Ativo' : 'Inativo',
+      tone: active ? AdminStatusTone.positive : AdminStatusTone.neutral,
+    );
+    // Em telas estreitas o estado vai junto das modalidades, sob o nome.
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(place.name, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${place.city}, ${place.state}',
+                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  if (place.sports.isNotEmpty || compact) ...<Widget>[
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: <Widget>[
+                        if (compact) pill,
+                        ...place.sports.map(
+                          (sport) => _SportTag(_sportLabel(sport)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (!compact) ...<Widget>[const SizedBox(width: 16), pill],
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
-        title: Text(place.name),
-        subtitle: Text(
-          '${place.city}, ${place.state} · ${place.sports.map(_sportLabel).join(', ')}',
-        ),
-        trailing: Chip(label: Text(active ? 'Ativo' : 'Inativo')),
-        isThreeLine: false,
       ),
     );
   }
@@ -292,34 +344,104 @@ class _PlaceTile extends StatelessWidget {
   };
 }
 
+class _SportTag extends StatelessWidget {
+  const _SportTag(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+    ),
+  );
+}
+
 class _PlacesSkeleton extends StatelessWidget {
   const _PlacesSkeleton();
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    label: 'Carregando Locais Esportivos',
-    child: Column(
-      children: <Widget>[
-        LinearProgressIndicator(),
-        SizedBox(height: 16),
-        ListTile(
-          leading: CircleAvatar(),
-          title: Text(' '),
-          subtitle: Text(' '),
+  Widget build(BuildContext context) {
+    final block = Theme.of(context).colorScheme.surfaceContainerHighest;
+    Widget bar(double width, double height) => Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: block,
+        borderRadius: BorderRadius.circular(4),
+      ),
+    );
+    return Semantics(
+      label: 'Carregando Locais Esportivos',
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const LinearProgressIndicator(),
+            for (var row = 0; row < 3; row++)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    bar(220, 14),
+                    const SizedBox(height: 10),
+                    bar(120, 12),
+                  ],
+                ),
+              ),
+          ],
         ),
-        ListTile(
-          leading: CircleAvatar(),
-          title: Text(' '),
-          subtitle: Text(' '),
+      ),
+    );
+  }
+}
+
+/// Mensagem de estado vazio ou de falha, com a ação que resolve.
+class _PlacesMessage extends StatelessWidget {
+  const _PlacesMessage({
+    required this.icon,
+    required this.message,
+    this.action,
+  });
+
+  final IconData icon;
+  final String message;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        child: Column(
+          children: <Widget>[
+            Icon(icon, size: 36, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium,
+            ),
+            if (action != null) ...<Widget>[
+              const SizedBox(height: 16),
+              action!,
+            ],
+          ],
         ),
-        ListTile(
-          leading: CircleAvatar(),
-          title: Text(' '),
-          subtitle: Text(' '),
-        ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _PlacesEmpty extends StatelessWidget {
@@ -328,28 +450,22 @@ class _PlacesEmpty extends StatelessWidget {
   final AdminPlacesFilters filters;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 36),
-    child: Column(
-      children: <Widget>[
-        const Icon(Icons.search_off, size: 40),
-        const SizedBox(height: 8),
-        Text(
-          filters == const AdminPlacesFilters()
-              ? 'Nenhum Local Esportivo cadastrado.'
-              : 'Nenhum local corresponde aos filtros.',
-        ),
-        if (filters == const AdminPlacesFilters()) ...<Widget>[
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: () => context.go('/places/new'),
-            icon: const Icon(Icons.add_location_alt_outlined),
-            label: const Text('Cadastrar primeiro local'),
-          ),
-        ],
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    final unfiltered = filters == const AdminPlacesFilters();
+    return _PlacesMessage(
+      icon: Icons.search_off,
+      message: unfiltered
+          ? 'Nenhum Local Esportivo cadastrado.'
+          : 'Nenhum local corresponde aos filtros.',
+      action: unfiltered
+          ? FilledButton.icon(
+              onPressed: () => context.go('/places/new'),
+              icon: const Icon(Icons.add_location_alt_outlined),
+              label: const Text('Cadastrar primeiro local'),
+            )
+          : null,
+    );
+  }
 }
 
 class _PlacesError extends StatelessWidget {
@@ -362,22 +478,13 @@ class _PlacesError extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        children: <Widget>[
-          const Icon(Icons.cloud_off_outlined, size: 40),
-          const SizedBox(height: 8),
-          Text(message),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Tentar novamente'),
-          ),
-        ],
-      ),
+  Widget build(BuildContext context) => _PlacesMessage(
+    icon: Icons.cloud_off_outlined,
+    message: message,
+    action: OutlinedButton.icon(
+      onPressed: onRetry,
+      icon: const Icon(Icons.refresh),
+      label: const Text('Tentar novamente'),
     ),
   );
 }
@@ -403,16 +510,18 @@ class _OfflineBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Material(
-    color: Color(0xFFFFF3CD),
+    color: AdminColors.warningContainer,
+    borderRadius: BorderRadius.all(Radius.circular(10)),
     child: Padding(
-      padding: EdgeInsets.all(12),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: <Widget>[
-          Icon(Icons.cloud_off_outlined),
-          SizedBox(width: 8),
+          Icon(Icons.cloud_off_outlined, color: AdminColors.onWarningContainer),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               'Exibindo dados em cache; conecte-se para ver atualizações.',
+              style: TextStyle(color: AdminColors.onWarningContainer),
             ),
           ),
         ],

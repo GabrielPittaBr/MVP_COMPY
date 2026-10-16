@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/shell/admin_shell.dart';
 import '../data/admin_dashboard_repository.dart';
 
 class AdminDashboardPage extends StatefulWidget {
@@ -25,11 +26,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: adminPagePadding(context),
       children: <Widget>[
-        Text('Visão geral', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 20),
+        Text('Visão geral', style: textTheme.headlineMedium),
+        const SizedBox(height: 24),
         FutureBuilder<AdminDashboardMetrics>(
           future: _metrics,
           builder: (context, snapshot) {
@@ -38,45 +40,39 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             }
             if (!snapshot.hasData) return const _DashboardSkeleton();
             final metrics = snapshot.data!;
+            final users = _UsersMetric(value: metrics.profileCount);
+            final places = _PlacesMetric(
+              active: metrics.activePlaceCount,
+              inactive: metrics.inactivePlaceCount,
+            );
             return LayoutBuilder(
               builder: (context, constraints) {
-                final columns = constraints.maxWidth >= 920
-                    ? 3
-                    : constraints.maxWidth >= 580
-                    ? 2
-                    : 1;
-                return GridView.count(
-                  crossAxisCount: columns,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: columns == 1 ? 3.3 : 1.9,
-                  children: <Widget>[
-                    _MetricCard(
-                      title: 'Usuários cadastrados',
-                      value: metrics.profileCount,
-                      icon: Icons.people_outline,
-                      help: 'Total de perfis cadastrados no Firestore; pode diferir das contas do Firebase Auth.',
-                    ),
-                    _MetricCard(
-                      title: 'Locais ativos',
-                      value: metrics.activePlaceCount,
-                      icon: Icons.place_outlined,
-                    ),
-                    _MetricCard(
-                      title: 'Locais inativos',
-                      value: metrics.inactivePlaceCount,
-                      icon: Icons.location_off_outlined,
-                    ),
-                  ],
+                if (constraints.maxWidth < 720) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      users,
+                      const SizedBox(height: 16),
+                      places,
+                    ],
+                  );
+                }
+                return IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Expanded(flex: 2, child: users),
+                      const SizedBox(width: 16),
+                      Expanded(flex: 3, child: places),
+                    ],
+                  ),
                 );
               },
             );
           },
         ),
-        const SizedBox(height: 28),
-        Text('Atalhos', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 40),
+        Text('Atalhos', style: textTheme.titleLarge),
         const SizedBox(height: 12),
         Wrap(
           spacing: 12,
@@ -104,51 +100,183 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 }
 
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    this.help,
-  });
+class _UsersMetric extends StatelessWidget {
+  const _UsersMetric({required this.value});
 
-  final String title;
   final int value;
-  final IconData icon;
-  final String? help;
+
+  static const _help =
+      'Total de perfis cadastrados no Firestore; pode diferir das contas do Firebase Auth.';
+
+  @override
+  Widget build(BuildContext context) => _MetricPanel(
+    title: 'Usuários cadastrados',
+    icon: Icons.people_outline,
+    children: <Widget>[
+      _MetricNumber(value: value, semanticsLabel: 'Usuários cadastrados'),
+      const SizedBox(height: 12),
+      Tooltip(
+        message: _help,
+        child: Semantics(
+          label: _help,
+          child: const Text('Contagem de perfis Firestore'),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Locais ativos e inativos lado a lado, com a proporção entre eles.
+class _PlacesMetric extends StatelessWidget {
+  const _PlacesMetric({required this.active, required this.inactive});
+
+  final int active;
+  final int inactive;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
+    final colors = Theme.of(context).colorScheme;
+    return _MetricPanel(
+      title: 'Locais esportivos',
+      icon: Icons.place_outlined,
+      children: <Widget>[
+        Wrap(
+          spacing: 40,
+          runSpacing: 16,
           children: <Widget>[
-            Icon(icon, size: 32, semanticLabel: title),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(title, style: Theme.of(context).textTheme.titleMedium),
-                  Text(
-                    value.toString(),
-                    semanticsLabel: '$title: $value',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  if (help != null)
-                    Tooltip(
-                      message: help!,
-                      child: Semantics(
-                        label: help,
-                        child: const Text('Contagem de perfis Firestore'),
-                      ),
-                    ),
-                ],
-              ),
+            _PlaceCount(
+              value: active,
+              label: 'ativos',
+              semanticsLabel: 'Locais ativos',
+              color: colors.secondary,
+            ),
+            _PlaceCount(
+              value: inactive,
+              label: 'inativos',
+              semanticsLabel: 'Locais inativos',
+              color: colors.outline,
             ),
           ],
+        ),
+        const SizedBox(height: 16),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: SizedBox(
+            height: 8,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                if (active > 0)
+                  Expanded(
+                    flex: active,
+                    child: ColoredBox(color: colors.secondary),
+                  ),
+                if (active > 0 && inactive > 0) const SizedBox(width: 2),
+                if (inactive > 0 || active == 0)
+                  Expanded(
+                    flex: inactive == 0 ? 1 : inactive,
+                    child: ColoredBox(color: colors.outline),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text('Só os locais ativos aparecem no mapa do app.'),
+      ],
+    );
+  }
+}
+
+class _PlaceCount extends StatelessWidget {
+  const _PlaceCount({
+    required this.value,
+    required this.label,
+    required this.semanticsLabel,
+    required this.color,
+  });
+
+  final int value;
+  final String label;
+  final String semanticsLabel;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      _MetricNumber(value: value, semanticsLabel: semanticsLabel),
+      const SizedBox(height: 6),
+      ExcludeSemantics(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(label, style: Theme.of(context).textTheme.titleSmall),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class _MetricNumber extends StatelessWidget {
+  const _MetricNumber({required this.value, required this.semanticsLabel});
+
+  final int value;
+  final String semanticsLabel;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    value.toString(),
+    semanticsLabel: '$semanticsLabel: $value',
+    style: Theme.of(context).textTheme.displaySmall,
+  );
+}
+
+class _MetricPanel extends StatelessWidget {
+  const _MetricPanel({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: DefaultTextStyle.merge(
+          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Icon(icon, size: 20, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(title, style: theme.textTheme.titleMedium),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              ...children,
+            ],
+          ),
         ),
       ),
     );
@@ -161,7 +289,7 @@ class _DashboardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Carregando indicadores do painel',
-    child: SizedBox(
+    child: const SizedBox(
       height: 180,
       child: Center(child: CircularProgressIndicator()),
     ),
@@ -176,12 +304,12 @@ class _DashboardError extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(
     child: Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Text('Não foi possível carregar os indicadores.'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh),

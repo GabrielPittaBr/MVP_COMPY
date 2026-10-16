@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'core/constants/admin_strings.dart';
 import 'core/routing/admin_router.dart';
+import 'core/theme/admin_court.dart';
 import 'core/theme/admin_theme.dart';
 import 'features/auth/presentation/admin_auth_feature.dart';
 import 'features/dashboard/data/admin_dashboard_repository.dart';
@@ -182,31 +183,50 @@ class _AdminStartupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const onCourt = Colors.white;
     return Scaffold(
-      body: Center(
-        child: Semantics(
-          liveRegion: true,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Icon(icon, size: 48),
-                  const SizedBox(height: 20),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(body, textAlign: TextAlign.center),
-                  if (showProgress) ...<Widget>[
-                    const SizedBox(height: 24),
-                    const CircularProgressIndicator(),
+      body: AdminCourtSurface(
+        horizontal: MediaQuery.sizeOf(context).aspectRatio > 1,
+        child: Center(
+          child: Semantics(
+            liveRegion: true,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(icon, size: 40, color: onCourt),
+                    const SizedBox(height: 20),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineSmall?.copyWith(color: onCourt),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      body,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: onCourt.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    if (showProgress) ...<Widget>[
+                      const SizedBox(height: 28),
+                      const SizedBox.square(
+                        dimension: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: onCourt,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

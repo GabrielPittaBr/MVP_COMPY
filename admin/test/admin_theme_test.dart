@@ -1,3 +1,4 @@
+import 'package:compy_admin/core/theme/admin_colors.dart';
 import 'package:compy_admin/core/theme/admin_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,6 +24,24 @@ void main() {
         scheme.secondaryContainer,
       ),
       'onSurface/surface': (scheme.onSurface, scheme.surface),
+      'onSurfaceVariant/surface': (scheme.onSurfaceVariant, scheme.surface),
+      'onSurfaceVariant/background': (
+        scheme.onSurfaceVariant,
+        AdminColors.background,
+      ),
+      'onSurfaceVariant/surfaceContainerHighest': (
+        scheme.onSurfaceVariant,
+        scheme.surfaceContainerHighest,
+      ),
+      'onErrorContainer/errorContainer': (
+        scheme.onErrorContainer,
+        scheme.errorContainer,
+      ),
+      'onWarningContainer/warningContainer': (
+        AdminColors.onWarningContainer,
+        AdminColors.warningContainer,
+      ),
+      'secondary/surface': (scheme.secondary, scheme.surface),
       'error/surface': (scheme.error, scheme.surface),
     };
     for (final MapEntry(key: name, value: (foreground, background))

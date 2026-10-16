@@ -7,6 +7,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/shell/admin_shell.dart';
+import '../../../core/theme/admin_colors.dart';
+import '../../../core/widgets/admin_status_pill.dart';
 import '../data/admin_place_model.dart';
 import '../data/admin_places_repository.dart';
 
@@ -441,323 +444,390 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
       canPop: !_dirty,
       onPopInvokedWithResult: (didPop, _) => _onPopInvoked(didPop),
       child: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: adminPagePadding(context),
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              IconButton(
-                tooltip: 'Voltar para locais',
-                onPressed: _dirty ? _requestLeave : () => context.go('/places'),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              Expanded(
-                child: Text(
-                  _isCreating
-                      ? 'Cadastrar Local Esportivo'
-                      : widget.place!.name,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-              ),
-              if (!_isCreating)
-                Chip(
-                  label: Text(widget.place!.isActive ? 'Ativo' : 'Inativo'),
-                  avatar: Icon(
-                    widget.place!.isActive
-                        ? Icons.check_circle_outline
-                        : Icons.pause_circle_outline,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (widget.place?.isFromCache == true) const _CachedPlaceBanner(),
-          if (remoteChanged)
-            _FormMessage(
-              message: 'Outra alteração foi recebida do servidor. Seus campos foram preservados; recarregue para usar a versão atual.',
-              actionLabel: 'Recarregar dados',
-              onAction: _reloadLatest,
-            ),
-          if (_submitted && fieldErrors.isNotEmpty)
-            _ValidationSummary(errors: fieldErrors),
-          const SizedBox(height: 12),
-          Form(
-            key: _formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Informações do local',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                _textField(
-                  controller: _name,
-                  focusNode: _nameFocus,
-                  label: 'Nome',
-                  keyName: 'name',
-                  maxLength: 120,
-                  onChanged: (_) => _markDirty(),
-                ),
-                _textField(
-                  controller: _description,
-                  label: 'Descrição',
-                  keyName: 'description',
-                  maxLength: 1500,
-                  maxLines: 4,
-                  onChanged: (_) => _markDirty(),
-                ),
-                const SizedBox(height: 10),
-                Text('Endereço', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 12),
-                _textField(
-                  controller: _street,
-                  label: 'Rua',
-                  keyName: 'street',
-                  maxLength: 160,
-                  onChanged: (_) => _markDirty(),
-                ),
-                _textField(
-                  controller: _number,
-                  label: 'Número (opcional)',
-                  keyName: 'number',
-                  maxLength: 20,
-                  onChanged: (_) => _markDirty(),
-                ),
-                _textField(
-                  controller: _complement,
-                  label: 'Complemento (opcional)',
-                  keyName: 'complement',
-                  maxLength: 120,
-                  onChanged: (_) => _markDirty(),
-                ),
-                _textField(
-                  controller: _neighborhood,
-                  label: 'Bairro (opcional)',
-                  keyName: 'neighborhood',
-                  maxLength: 100,
-                  onChanged: (_) => _markDirty(),
-                ),
-                _textField(
-                  controller: _city,
-                  label: 'Cidade',
-                  keyName: 'city',
-                  maxLength: 100,
-                  onChanged: (_) => _markDirty(),
-                ),
-                Semantics(
-                  label: 'UF brasileira',
-                  container: true,
-                  explicitChildNodes: true,
-                  child: _statePicker(),
-                ),
-                _textField(
-                  controller: _postalCode,
-                  label: 'CEP (opcional)',
-                  keyName: 'postalCode',
-                  keyboardType: TextInputType.number,
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(8),
-                  ],
-                  onChanged: (_) => _markDirty(),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Modalidades',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 6),
-                Semantics(
-                  // Give keyboard users a direct focus target for the choice set.
-                  child: Focus(
-                    focusNode: _fieldFocusNodes['sports'],
-                    child: Semantics(
-                      label: 'Modalidades disponíveis',
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: adminPlaceSports.map((sport) {
-                          final selected = _sports.contains(sport);
-                          return FilterChip(
-                            label: Text(_sportLabel(sport)),
-                            selected: selected,
-                            onSelected: _submitting
-                                ? null
-                                : (value) {
-                                    setState(() {
-                                      if (value) {
-                                        _sports = <String>[..._sports, sport];
-                                        _primarySport ??= sport;
-                                      } else {
-                                        _sports = _sports
-                                            .where((item) => item != sport)
-                                            .toList();
-                                        if (_primarySport == sport) {
-                                          _primarySport = _sports.isEmpty
-                                              ? null
-                                              : _sports.first;
-                                        }
-                                      }
-                                      _dirty = true;
-                                    });
-                                  },
-                          );
-                        }).toList(),
+          Align(
+            alignment: Alignment.topLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 840),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      IconButton(
+                        tooltip: 'Voltar para locais',
+                        onPressed: _dirty
+                            ? _requestLeave
+                            : () => context.go('/places'),
+                        icon: const Icon(Icons.arrow_back),
                       ),
-                    ),
-                  ),
-                ),
-                if (_draftError('sports') case final message?)
-                  _InlineFieldError(message: message),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: 330,
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey<String>(
-                      'primary-${_primarySport ?? ''}-${_sports.join(',')}',
-                    ),
-                    initialValue: _sports.contains(_primarySport)
-                        ? _primarySport
-                        : null,
-                    focusNode: _fieldFocusNodes['primarySport'],
-                    decoration: InputDecoration(
-                      labelText: 'Modalidade principal',
-                      errorText: _draftError('primarySport'),
-                    ),
-                    items: _sports
-                        .map(
-                          (sport) => DropdownMenuItem<String>(
-                            value: sport,
-                            child: Text(_sportLabel(sport)),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: _submitting
-                        ? null
-                        : (value) => setState(() {
-                            _primarySport = value;
-                            _dirty = true;
-                          }),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Localização',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Toque no mapa para posicionar o marcador ou edite latitude e longitude.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 10),
-                _buildMapPicker(draft),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Expanded(
-                      child: _coordinateField(
-                        controller: _latitude,
-                        label: 'Latitude',
-                        keyName: 'latitude',
-                        onChanged: _updateCoordinatesFromText,
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          _isCreating
+                              ? 'Cadastrar Local Esportivo'
+                              : widget.place!.name,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _coordinateField(
-                        controller: _longitude,
-                        label: 'Longitude',
-                        keyName: 'longitude',
-                        onChanged: _updateCoordinatesFromText,
-                      ),
-                    ),
-                  ],
-                ),
-                if (draft.isFarFromTaquara)
-                  const _FormMessage(
-                    message: 'Este ponto está a mais de 50 km de Taquara. Confira se as coordenadas estão corretas; o aviso não impede o cadastro.',
-                    isWarning: true,
+                      if (!_isCreating) ...<Widget>[
+                        const SizedBox(width: 12),
+                        AdminStatusPill(
+                          label: widget.place!.isActive ? 'Ativo' : 'Inativo',
+                          tone: widget.place!.isActive
+                              ? AdminStatusTone.positive
+                              : AdminStatusTone.neutral,
+                        ),
+                      ],
+                    ],
                   ),
-                const SizedBox(height: 12),
-                Text('Imagem', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 8),
-                _textField(
-                  controller: _imageUrl,
-                  label: 'URL HTTPS da imagem',
-                  keyName: 'imageUrl',
-                  maxLength: 2048,
-                  keyboardType: TextInputType.url,
-                  onChanged: (_) => _markDirty(),
-                ),
-                _ImagePreview(url: _imageUrl.text),
-                const SizedBox(height: 24),
-                if (_operationError != null)
-                  _FormMessage(
-                    message: _operationError!,
-                    actionLabel:
-                        _lastOperationError ==
-                                AdminPlaceOperationErrorCode.conflict ||
-                            _lastOperationError ==
-                                AdminPlaceOperationErrorCode.notFound
-                        ? 'Recarregar dados'
-                        : null,
-                    onAction:
-                        _lastOperationError ==
-                                AdminPlaceOperationErrorCode.conflict ||
-                            _lastOperationError ==
-                                AdminPlaceOperationErrorCode.notFound
-                        ? _reloadLatest
-                        : null,
-                  ),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: <Widget>[
-                    FilledButton.icon(
-                      onPressed: _submitting ? null : _submit,
-                      icon: _submitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.save_outlined),
-                      label: Text(
-                        _isCreating ? 'Cadastrar inativo' : 'Salvar alterações',
-                      ),
+                  const SizedBox(height: 20),
+                  if (widget.place?.isFromCache == true)
+                    const _CachedPlaceBanner(),
+                  if (remoteChanged)
+                    _FormMessage(
+                      message:
+                          'Outra alteração foi recebida do servidor. Seus campos foram preservados; recarregue para usar a versão atual.',
+                      actionLabel: 'Recarregar dados',
+                      onAction: _reloadLatest,
                     ),
-                    if (!_isCreating)
-                      OutlinedButton.icon(
-                        onPressed: _submitting || _dirty
-                            ? null
-                            : () => _changeStatus(
-                                widget.place!.isActive ? 'inactive' : 'active',
+                  if (_submitted && fieldErrors.isNotEmpty)
+                    _ValidationSummary(errors: fieldErrors),
+                  Form(
+                    key: _formKey,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        _FormSection(
+                          title: 'Informações do local',
+                          children: <Widget>[
+                            _textField(
+                              controller: _name,
+                              focusNode: _nameFocus,
+                              label: 'Nome',
+                              keyName: 'name',
+                              maxLength: 120,
+                              onChanged: (_) => _markDirty(),
+                            ),
+                            _textField(
+                              controller: _description,
+                              label: 'Descrição',
+                              keyName: 'description',
+                              maxLength: 1500,
+                              maxLines: 4,
+                              onChanged: (_) => _markDirty(),
+                            ),
+                          ],
+                        ),
+                        _FormSection(
+                          title: 'Endereço',
+                          children: <Widget>[
+                            _FieldRow(<(int, Widget)>[
+                              (
+                                3,
+                                _textField(
+                                  controller: _street,
+                                  label: 'Rua',
+                                  keyName: 'street',
+                                  maxLength: 160,
+                                  onChanged: (_) => _markDirty(),
+                                ),
                               ),
-                        icon: Icon(
-                          widget.place!.isActive
-                              ? Icons.pause_circle_outline
-                              : Icons.check_circle_outline,
+                              (
+                                1,
+                                _textField(
+                                  controller: _number,
+                                  label: 'Número (opcional)',
+                                  keyName: 'number',
+                                  maxLength: 20,
+                                  onChanged: (_) => _markDirty(),
+                                ),
+                              ),
+                            ]),
+                            _FieldRow(<(int, Widget)>[
+                              (
+                                1,
+                                _textField(
+                                  controller: _complement,
+                                  label: 'Complemento (opcional)',
+                                  keyName: 'complement',
+                                  maxLength: 120,
+                                  onChanged: (_) => _markDirty(),
+                                ),
+                              ),
+                              (
+                                1,
+                                _textField(
+                                  controller: _neighborhood,
+                                  label: 'Bairro (opcional)',
+                                  keyName: 'neighborhood',
+                                  maxLength: 100,
+                                  onChanged: (_) => _markDirty(),
+                                ),
+                              ),
+                            ]),
+                            _FieldRow(<(int, Widget)>[
+                              (
+                                2,
+                                _textField(
+                                  controller: _city,
+                                  label: 'Cidade',
+                                  keyName: 'city',
+                                  maxLength: 100,
+                                  onChanged: (_) => _markDirty(),
+                                ),
+                              ),
+                              (
+                                1,
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Semantics(
+                                    label: 'UF brasileira',
+                                    container: true,
+                                    explicitChildNodes: true,
+                                    child: _statePicker(),
+                                  ),
+                                ),
+                              ),
+                              (
+                                1,
+                                _textField(
+                                  controller: _postalCode,
+                                  label: 'CEP (opcional)',
+                                  keyName: 'postalCode',
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: <TextInputFormatter>[
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(8),
+                                  ],
+                                  onChanged: (_) => _markDirty(),
+                                ),
+                              ),
+                            ]),
+                          ],
                         ),
-                        label: Text(
-                          widget.place!.isActive
-                              ? 'Desativar local'
-                              : 'Ativar local',
+                        _FormSection(
+                          title: 'Modalidades',
+                          children: <Widget>[
+                            Semantics(
+                              // Give keyboard users a direct focus target for the choice set.
+                              child: Focus(
+                                focusNode: _fieldFocusNodes['sports'],
+                                child: Semantics(
+                                  label: 'Modalidades disponíveis',
+                                  child: Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: adminPlaceSports.map((sport) {
+                                      final selected = _sports.contains(sport);
+                                      return FilterChip(
+                                        label: Text(_sportLabel(sport)),
+                                        selected: selected,
+                                        onSelected: _submitting
+                                            ? null
+                                            : (value) {
+                                                setState(() {
+                                                  if (value) {
+                                                    _sports = <String>[
+                                                      ..._sports,
+                                                      sport,
+                                                    ];
+                                                    _primarySport ??= sport;
+                                                  } else {
+                                                    _sports = _sports
+                                                        .where(
+                                                          (item) =>
+                                                              item != sport,
+                                                        )
+                                                        .toList();
+                                                    if (_primarySport ==
+                                                        sport) {
+                                                      _primarySport =
+                                                          _sports.isEmpty
+                                                          ? null
+                                                          : _sports.first;
+                                                    }
+                                                  }
+                                                  _dirty = true;
+                                                });
+                                              },
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_draftError('sports') case final message?)
+                              _InlineFieldError(message: message),
+                            const SizedBox(height: 20),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: SizedBox(
+                                width: 330,
+                                child: DropdownButtonFormField<String>(
+                                  key: ValueKey<String>(
+                                    'primary-${_primarySport ?? ''}-${_sports.join(',')}',
+                                  ),
+                                  initialValue: _sports.contains(_primarySport)
+                                      ? _primarySport
+                                      : null,
+                                  focusNode: _fieldFocusNodes['primarySport'],
+                                  decoration: InputDecoration(
+                                    labelText: 'Modalidade principal',
+                                    errorText: _draftError('primarySport'),
+                                  ),
+                                  items: _sports
+                                      .map(
+                                        (sport) => DropdownMenuItem<String>(
+                                          value: sport,
+                                          child: Text(_sportLabel(sport)),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: _submitting
+                                      ? null
+                                      : (value) => setState(() {
+                                          _primarySport = value;
+                                          _dirty = true;
+                                        }),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    OutlinedButton(
-                      onPressed: _submitting
-                          ? null
-                          : (_dirty
-                                ? _requestLeave
-                                : () => context.go('/places')),
-                      child: const Text('Cancelar'),
+                        _FormSection(
+                          title: 'Localização',
+                          description:
+                              'Toque no mapa para posicionar o marcador ou edite latitude e longitude.',
+                          children: <Widget>[
+                            _buildMapPicker(draft),
+                            const SizedBox(height: 16),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Expanded(
+                                  child: _coordinateField(
+                                    controller: _latitude,
+                                    label: 'Latitude',
+                                    keyName: 'latitude',
+                                    onChanged: _updateCoordinatesFromText,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _coordinateField(
+                                    controller: _longitude,
+                                    label: 'Longitude',
+                                    keyName: 'longitude',
+                                    onChanged: _updateCoordinatesFromText,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (draft.isFarFromTaquara) ...<Widget>[
+                              const SizedBox(height: 12),
+                              const _FormMessage(
+                                message:
+                                    'Este ponto está a mais de 50 km de Taquara. Confira se as coordenadas estão corretas; o aviso não impede o cadastro.',
+                                isWarning: true,
+                              ),
+                            ],
+                          ],
+                        ),
+                        _FormSection(
+                          title: 'Imagem',
+                          children: <Widget>[
+                            _textField(
+                              controller: _imageUrl,
+                              label: 'URL HTTPS da imagem',
+                              keyName: 'imageUrl',
+                              maxLength: 2048,
+                              keyboardType: TextInputType.url,
+                              onChanged: (_) => _markDirty(),
+                            ),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: _ImagePreview(url: _imageUrl.text),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (_operationError != null)
+                          _FormMessage(
+                            message: _operationError!,
+                            actionLabel:
+                                _lastOperationError ==
+                                        AdminPlaceOperationErrorCode.conflict ||
+                                    _lastOperationError ==
+                                        AdminPlaceOperationErrorCode.notFound
+                                ? 'Recarregar dados'
+                                : null,
+                            onAction:
+                                _lastOperationError ==
+                                        AdminPlaceOperationErrorCode.conflict ||
+                                    _lastOperationError ==
+                                        AdminPlaceOperationErrorCode.notFound
+                                ? _reloadLatest
+                                : null,
+                          ),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: <Widget>[
+                            FilledButton.icon(
+                              onPressed: _submitting ? null : _submit,
+                              icon: _submitting
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.save_outlined),
+                              label: Text(
+                                _isCreating
+                                    ? 'Cadastrar inativo'
+                                    : 'Salvar alterações',
+                              ),
+                            ),
+                            if (!_isCreating)
+                              OutlinedButton.icon(
+                                onPressed: _submitting || _dirty
+                                    ? null
+                                    : () => _changeStatus(
+                                        widget.place!.isActive
+                                            ? 'inactive'
+                                            : 'active',
+                                      ),
+                                icon: Icon(
+                                  widget.place!.isActive
+                                      ? Icons.pause_circle_outline
+                                      : Icons.check_circle_outline,
+                                ),
+                                label: Text(
+                                  widget.place!.isActive
+                                      ? 'Desativar local'
+                                      : 'Ativar local',
+                                ),
+                              ),
+                            TextButton(
+                              onPressed: _submitting
+                                  ? null
+                                  : (_dirty
+                                        ? _requestLeave
+                                        : () => context.go('/places')),
+                              child: const Text('Cancelar'),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1042,21 +1112,20 @@ class _ValidationSummary extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     liveRegion: true,
     label: 'Resumo de erros do formulário',
-    child: Card(
-      color: Theme.of(context).colorScheme.errorContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              'Revise os campos destacados:',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 6),
-            ...errors.values.map((error) => Text('• $error')),
-          ],
-        ),
+    child: _Notice(
+      color: AdminColors.errorContainer,
+      foreground: AdminColors.onErrorContainer,
+      icon: Icons.error_outline,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'Revise os campos destacados:',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          ...errors.values.map((error) => Text('• $error')),
+        ],
       ),
     ),
   );
@@ -1091,23 +1160,18 @@ class _FormMessage extends StatelessWidget {
   final bool isWarning;
 
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => _Notice(
     color: isWarning
-        ? const Color(0xFFFFF3CD)
-        : Theme.of(context).colorScheme.errorContainer,
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Icon(isWarning ? Icons.warning_amber_outlined : Icons.info_outline),
-          const SizedBox(width: 8),
-          Expanded(child: Text(message)),
-          if (actionLabel != null && onAction != null)
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
-        ],
-      ),
-    ),
+        ? AdminColors.warningContainer
+        : AdminColors.errorContainer,
+    foreground: isWarning
+        ? AdminColors.onWarningContainer
+        : AdminColors.onErrorContainer,
+    icon: isWarning ? Icons.warning_amber_outlined : Icons.info_outline,
+    trailing: actionLabel != null && onAction != null
+        ? TextButton(onPressed: onAction, child: Text(actionLabel!))
+        : null,
+    child: Text(message),
   );
 }
 
@@ -1115,13 +1179,125 @@ class _CachedPlaceBanner extends StatelessWidget {
   const _CachedPlaceBanner();
 
   @override
-  Widget build(BuildContext context) => const Card(
-    child: Padding(
-      padding: EdgeInsets.all(12),
-      child: Text(
-        'Dados carregados do cache. Conecte-se para salvar alterações.',
+  Widget build(BuildContext context) => const _Notice(
+    color: AdminColors.warningContainer,
+    foreground: AdminColors.onWarningContainer,
+    icon: Icons.cloud_off_outlined,
+    child: Text(
+      'Dados carregados do cache. Conecte-se para salvar alterações.',
+    ),
+  );
+}
+
+/// Aviso em faixa colorida, acima do conteúdo a que se refere.
+class _Notice extends StatelessWidget {
+  const _Notice({
+    required this.color,
+    required this.foreground,
+    required this.icon,
+    required this.child,
+    this.trailing,
+  });
+
+  final Color color;
+  final Color foreground;
+  final IconData icon;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: Material(
+      color: color,
+      borderRadius: const BorderRadius.all(Radius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(icon, color: foreground),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DefaultTextStyle.merge(
+                style: TextStyle(color: foreground),
+                child: child,
+              ),
+            ),
+            ?trailing,
+          ],
+        ),
       ),
     ),
+  );
+}
+
+/// Grupo de campos do formulário, com título.
+class _FormSection extends StatelessWidget {
+  const _FormSection({
+    required this.title,
+    required this.children,
+    this.description,
+  });
+
+  final String title;
+  final String? description;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(title, style: theme.textTheme.titleLarge),
+              if (description != null) ...<Widget>[
+                const SizedBox(height: 4),
+                Text(
+                  description!,
+                  style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
+              const SizedBox(height: 20),
+              ...children,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Campos lado a lado (com pesos), empilhados em telas estreitas.
+class _FieldRow extends StatelessWidget {
+  const _FieldRow(this.fields);
+
+  final List<(int, Widget)> fields;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxWidth < 560) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[for (final (_, field) in fields) field],
+        );
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          for (final (index, (flex, field)) in fields.indexed) ...<Widget>[
+            if (index > 0) const SizedBox(width: 12),
+            Expanded(flex: flex, child: field),
+          ],
+        ],
+      );
+    },
   );
 }
 

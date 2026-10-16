@@ -4,6 +4,9 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/shell/admin_shell.dart';
+import '../../../core/theme/admin_theme.dart';
+import '../../../core/widgets/admin_status_pill.dart';
 import '../data/admin_users_repository.dart';
 import 'admin_users_controller.dart';
 
@@ -60,10 +63,10 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         _selectedType == AdminUserSearchType.uid ||
         _selectedType == AdminUserSearchType.email;
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: adminPagePadding(context),
       children: <Widget>[
         Text('Usuários', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         Wrap(
           spacing: 12,
           runSpacing: 12,
@@ -144,9 +147,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         if (state.isFromCache) const _UserOfflineBanner(),
-        const SizedBox(height: 12),
         if (state.isLoading && state.items.isEmpty)
           const _UsersSkeleton()
         else if (state.error != null && state.items.isEmpty)
@@ -168,11 +170,20 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         else ...<Widget>[
           if (state.error != null)
             _UsersInlineError(onRetry: _controller.retry),
-          ...state.items.map(
-            (item) => _AdminUserTile(
-              item: item,
-              onTap: () =>
-                  context.go('/users/${Uri.encodeComponent(item.profile.uid)}'),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: <Widget>[
+                for (final (index, item) in state.items.indexed) ...<Widget>[
+                  if (index > 0) const Divider(),
+                  _AdminUserTile(
+                    item: item,
+                    onTap: () => context.go(
+                      '/users/${Uri.encodeComponent(item.profile.uid)}',
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           if (state.isLoadingMore)
@@ -181,11 +192,13 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               child: Center(child: CircularProgressIndicator()),
             ),
           if (state.hasMore && !state.isLoadingMore)
-            Align(
-              alignment: Alignment.center,
-              child: OutlinedButton(
-                onPressed: _controller.loadNextPage,
-                child: const Text('Carregar mais usuários'),
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Center(
+                child: OutlinedButton(
+                  onPressed: _controller.loadNextPage,
+                  child: const Text('Carregar mais usuários'),
+                ),
               ),
             ),
         ],
@@ -225,7 +238,7 @@ class _AdminUserDetailsPageState extends State<AdminUserDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: adminPagePadding(context),
       children: <Widget>[
         Row(
           children: <Widget>[
@@ -234,7 +247,7 @@ class _AdminUserDetailsPageState extends State<AdminUserDetailsPage> {
               onPressed: () => context.go('/users'),
               icon: const Icon(Icons.arrow_back),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             Expanded(
               child: Text(
                 'Detalhes do Usuário',
@@ -243,7 +256,7 @@ class _AdminUserDetailsPageState extends State<AdminUserDetailsPage> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         FutureBuilder<AdminUserDetailsResult>(
           future: _details,
           builder: (context, snapshot) {
@@ -340,6 +353,12 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
             child: const Text('Cancelar'),
           ),
           FilledButton(
+            style: action == AdminUserSuspensionAction.suspend
+                ? FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                    foregroundColor: Theme.of(context).colorScheme.onError,
+                  )
+                : null,
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(
               action == AdminUserSuspensionAction.suspend
@@ -472,6 +491,7 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
     final profile = result.profile;
     final auth = result.auth;
     final textTheme = Theme.of(context).textTheme;
+    final colors = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -485,27 +505,29 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
         if (profile != null) ...<Widget>[
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               child: Row(
                 children: <Widget>[
-                  _UserAvatar(profile: profile, radius: 30),
-                  const SizedBox(width: 16),
+                  _UserAvatar(profile: profile, radius: 32),
+                  const SizedBox(width: 20),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
                           profile.name.isEmpty ? 'Sem nome' : profile.name,
-                          style: textTheme.titleLarge,
+                          style: textTheme.headlineSmall,
                         ),
                         Text(
                           profile.handle.isEmpty
                               ? 'Sem handle'
                               : profile.handle,
+                          style: TextStyle(color: colors.onSurfaceVariant),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          'Modalidades favoritas: ${_sportsLabel(profile.favoriteSports)}',
+                        _DetailLine(
+                          label: 'Modalidades favoritas',
+                          value: _sportsLabel(profile.favoriteSports),
                         ),
                       ],
                     ),
@@ -519,7 +541,7 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
           const SizedBox(height: 16),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -551,6 +573,7 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
                   _DetailLine(
                     label: 'Estado',
                     value: auth.disabled ? 'Suspensa' : 'Ativa',
+                    valueColor: auth.disabled ? colors.error : colors.secondary,
                   ),
                 ],
               ),
@@ -581,9 +604,11 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
         : reason.length < 10 || reason.length > 500
         ? 'Informe um motivo com 10 a 500 caracteres após normalização.'
         : null;
+    final colors = Theme.of(context).colorScheme;
+    final suspending = action == AdminUserSuspensionAction.suspend;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -592,33 +617,40 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Suspender impede novos logins e revoga refresh tokens. Um ID token já emitido pode continuar válido até expirar; isto não é um bloqueio instantâneo.',
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680),
+              child: Text(
+                'Suspender impede novos logins e revoga refresh tokens. Um ID token já emitido pode continuar válido até expirar; isto não é um bloqueio instantâneo.',
+                style: TextStyle(color: colors.onSurfaceVariant),
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Semantics(
               label: 'Motivo obrigatório',
               textField: true,
-              child: TextField(
-                controller: _reasonController,
-                enabled:
-                    !_submitting &&
-                    !_actionsBlocked &&
-                    _pendingOperationId == null,
-                minLines: 2,
-                maxLines: 4,
-                maxLength: 500,
-                textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(
-                  labelText: 'Motivo obrigatório',
-                  hintText: 'Descreva o motivo da ação administrativa',
-                  errorText: reasonError,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: TextField(
+                  controller: _reasonController,
+                  enabled:
+                      !_submitting &&
+                      !_actionsBlocked &&
+                      _pendingOperationId == null,
+                  minLines: 2,
+                  maxLines: 4,
+                  maxLength: 500,
+                  textInputAction: TextInputAction.newline,
+                  decoration: InputDecoration(
+                    labelText: 'Motivo obrigatório',
+                    hintText: 'Descreva o motivo da ação administrativa',
+                    errorText: reasonError,
+                  ),
+                  onChanged: (_) {
+                    if (_actionError != null || _showReasonError) {
+                      setState(() => _actionError = null);
+                    }
+                  },
                 ),
-                onChanged: (_) {
-                  if (_actionError != null || _showReasonError) {
-                    setState(() => _actionError = null);
-                  }
-                },
               ),
             ),
             if (_actionError != null) ...<Widget>[
@@ -644,6 +676,12 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: <Widget>[
                 FilledButton.icon(
+                  style: suspending
+                      ? FilledButton.styleFrom(
+                          backgroundColor: colors.error,
+                          foregroundColor: colors.onError,
+                        )
+                      : null,
                   onPressed: _submitting || _actionsBlocked
                       ? null
                       : () => _requestAction(action),
@@ -723,25 +761,61 @@ class _AdminUserTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = TextStyle(color: theme.colorScheme.onSurfaceVariant);
     final profile = item.profile;
-    final status = switch (item.authState) {
-      AdminUserAuthState.active => 'Ativa',
-      AdminUserAuthState.suspended => 'Suspensa',
-      AdminUserAuthState.notFound => 'Conta não encontrada',
-      AdminUserAuthState.unavailable => 'Estado indisponível',
+    final (status, tone) = switch (item.authState) {
+      AdminUserAuthState.active => ('Ativa', AdminStatusTone.positive),
+      AdminUserAuthState.suspended => ('Suspensa', AdminStatusTone.negative),
+      AdminUserAuthState.notFound => (
+        'Conta não encontrada',
+        AdminStatusTone.neutral,
+      ),
+      AdminUserAuthState.unavailable => (
+        'Estado indisponível',
+        AdminStatusTone.neutral,
+      ),
     };
-    return Card(
-      child: ListTile(
-        onTap: onTap,
-        leading: _UserAvatar(profile: profile),
-        title: Text(profile.name.isEmpty ? 'Sem nome' : profile.name),
-        subtitle: Text(
-          '${profile.handle.isEmpty ? 'Sem handle' : profile.handle}\n'
-          'Modalidades favoritas: ${_sportsLabel(profile.favoriteSports)}\n'
-          'Estado: $status',
+    final pill = AdminStatusPill(label: status, tone: tone);
+    // Em telas estreitas o estado desce para não espremer o nome.
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
+        child: Row(
+          children: <Widget>[
+            _UserAvatar(profile: profile),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    profile.name.isEmpty ? 'Sem nome' : profile.name,
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  Text(
+                    profile.handle.isEmpty ? 'Sem handle' : profile.handle,
+                    style: muted,
+                  ),
+                  if (profile.favoriteSports.isNotEmpty)
+                    Text(
+                      _sportsLabel(profile.favoriteSports),
+                      style: muted.copyWith(fontSize: 13),
+                    ),
+                  if (compact) ...<Widget>[const SizedBox(height: 8), pill],
+                ],
+              ),
+            ),
+            if (!compact) ...<Widget>[const SizedBox(width: 16), pill],
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
-        isThreeLine: true,
-        trailing: const Icon(Icons.chevron_right),
       ),
     );
   }
@@ -758,47 +832,109 @@ class _UserAvatar extends StatelessWidget {
     final url = Uri.tryParse(profile.avatarUrl);
     final hasImage =
         url != null && url.scheme == 'https' && url.host.isNotEmpty;
+    final initials = profile.name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .map((word) => word.characters.first.toUpperCase())
+        .take(2)
+        .join();
     return CircleAvatar(
       radius: radius,
       backgroundImage: hasImage ? NetworkImage(profile.avatarUrl) : null,
-      child: hasImage ? null : const Icon(Icons.person_outline),
+      child: hasImage
+          ? null
+          : initials.isEmpty
+          ? const Icon(Icons.person_outline)
+          : ExcludeSemantics(
+              child: Text(
+                initials,
+                style: TextStyle(
+                  fontFamily: AdminTheme.displayFamily,
+                  fontWeight: FontWeight.w600,
+                  fontSize: radius * 0.8,
+                ),
+              ),
+            ),
     );
   }
 }
 
+/// "Rótulo: valor" num só texto selecionável, com o rótulo esmaecido.
 class _DetailLine extends StatelessWidget {
-  const _DetailLine({required this.label, required this.value});
+  const _DetailLine({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
 
   final String label;
   final String value;
+  final Color? valueColor;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 5),
-    child: SelectableText('$label: $value'),
-  );
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: SelectableText.rich(
+        TextSpan(
+          children: <TextSpan>[
+            TextSpan(
+              text: '$label: ',
+              style: TextStyle(color: colors.onSurfaceVariant),
+            ),
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: valueColor ?? colors.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _UsersSkeleton extends StatelessWidget {
   const _UsersSkeleton();
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    label: 'Carregando usuários',
-    liveRegion: true,
-    child: Column(
-      children: List<Widget>.generate(
-        4,
-        (index) => const Card(
-          child: ListTile(
-            leading: CircleAvatar(child: Icon(Icons.person_outline)),
-            title: LinearProgressIndicator(),
-            subtitle: Text(' '),
-          ),
+  Widget build(BuildContext context) {
+    final block = Theme.of(context).colorScheme.surfaceContainerHighest;
+    return Semantics(
+      label: 'Carregando usuários',
+      liveRegion: true,
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: <Widget>[
+            const LinearProgressIndicator(),
+            for (var row = 0; row < 4; row++)
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: <Widget>[
+                    CircleAvatar(radius: 22, backgroundColor: block),
+                    const SizedBox(width: 16),
+                    Container(
+                      width: 180,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: block,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _UsersEmpty extends StatelessWidget {
@@ -880,11 +1016,24 @@ class _StatusBanner extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) => Card(
-    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Semantics(liveRegion: true, child: Text(message)),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: const BorderRadius.all(Radius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              Icons.info_outline,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Semantics(liveRegion: true, child: Text(message))),
+          ],
+        ),
+      ),
     ),
   );
 }
