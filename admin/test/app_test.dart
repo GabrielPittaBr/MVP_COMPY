@@ -156,6 +156,71 @@ void main() {
     },
   );
 
+  testWidgets(
+    'deep link aberto no navegador sobrevive às telas de carregamento',
+    (tester) async {
+      // Como o engine web: cada rota que o app informa vira a URL do navegador.
+      const browserUrl =
+          'https://compy-tcc-admin.web.app/places?status=inactive';
+      final dispatcher = tester.binding.platformDispatcher;
+      dispatcher.defaultRouteNameTestValue = '/places?status=inactive';
+      addTearDown(dispatcher.clearDefaultRouteNameTestValue);
+      String? browserLocation;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.navigation,
+        (call) async {
+          if (call.method == 'routeInformationUpdated') {
+            final arguments = call.arguments as Map<Object?, Object?>;
+            browserLocation =
+                (arguments['uri'] ?? arguments['location']) as String;
+            dispatcher.defaultRouteNameTestValue = browserLocation!;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.navigation,
+          null,
+        ),
+      );
+
+      final initialization = Completer<void>();
+      await tester.pumpWidget(
+        CompyAdminBootstrap(
+          initialize: () => initialization.future,
+          initialLocation: adminInitialLocationFromUrl(Uri.parse(browserUrl)),
+          authGatewayFactory: () => _FakeAdminAuthGateway(candidate: null),
+        ),
+      );
+      await tester.pump();
+      initialization.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text(AdminStrings.loginTitle), findsOneWidget);
+      final reported = Uri.parse(browserLocation!);
+      expect(reported.path, '/login');
+      expect(reported.queryParameters['from'], '/places?status=inactive');
+    },
+  );
+
+  test('URL inicial do navegador vira destino só quando é rota do painel', () {
+    String? fromUrl(String url) => adminInitialLocationFromUrl(Uri.parse(url));
+
+    expect(
+      fromUrl('https://admin.example/places?status=inactive'),
+      '/places?status=inactive',
+    );
+    expect(fromUrl('https://admin.example/users/a-user'), '/users/a-user');
+    expect(
+      fromUrl('https://admin.example/login?from=%2Fusers'),
+      '/login?from=%2Fusers',
+    );
+    expect(fromUrl('https://admin.example/'), isNull);
+    expect(fromUrl('https://admin.example'), isNull);
+    expect(fromUrl('https://admin.example/rota-inexistente'), isNull);
+  });
+
   testWidgets('login usa somente e-mail e senha e libera o shell autorizado', (
     tester,
   ) async {
