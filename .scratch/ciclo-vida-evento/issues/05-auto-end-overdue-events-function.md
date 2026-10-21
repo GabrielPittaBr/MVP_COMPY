@@ -1,6 +1,6 @@
 # 05: Encerramento automático de eventos esquecidos
 
-Status: open
+Status: resolved
 
 Blocked by: None (can start immediately)
 
@@ -12,18 +12,24 @@ O emulador de Functions entra na configuração, para o E2E. Ele não dispara ag
 
 ## Acceptance criteria
 
-- [ ] Só eventos vencidos e abertos são encerrados. Evento que já tem `endedAt` é ignorado.
-- [ ] O valor gravado é `endsAt + 1h`, com `endedAutomatically = true`.
-- [ ] Uma corrida simulada, em que a transação encontra o evento já encerrado, não conta como encerramento.
-- [ ] A janela inclui a borda exata de agora − 1h e olha até 2 dias para trás. Eventos legados sem `endsAt` ficam de fora.
-- [ ] A consulta não depende de `endedAt == null`, porque o campo fica ausente nos eventos abertos.
-- [ ] A Function é exportada no índice das Functions, e o teste de região confere `southamerica-east1`.
-- [ ] O emulador de Functions está configurado na porta 5001.
+- [x] Só eventos vencidos e abertos são encerrados. Evento que já tem `endedAt` é ignorado.
+- [x] O valor gravado é `endsAt + 1h`, com `endedAutomatically = true`.
+- [x] Uma corrida simulada, em que a transação encontra o evento já encerrado, não conta como encerramento.
+- [x] A janela inclui a borda exata de agora − 1h e olha até 2 dias para trás. Eventos legados sem `endsAt` ficam de fora.
+- [x] A consulta não depende de `endedAt == null`, porque o campo fica ausente nos eventos abertos.
+- [x] A Function é exportada no índice das Functions, e o teste de região confere `southamerica-east1`.
+- [x] O emulador de Functions está configurado na porta 5001.
 
 ## Verification
 
-- [ ] `npm run lint --prefix functions` verde.
-- [ ] `npm test --prefix functions` verde (build + `node --test`).
-- [ ] Bullet no caderno do dia, no mesmo commit, e o ticket em `Status: resolved`.
+- [x] `npm run lint --prefix functions` verde.
+- [x] `npm test --prefix functions` verde (build + `node --test`).
+- [x] Bullet no caderno do dia, no mesmo commit, e o ticket em `Status: resolved`.
+
+Notas:
+
+- A suíte das Functions foi de 21 para 30 testes: 8 do encerramento automático e 1 que confere região, agenda e fuso no `__endpoint`.
+- A consulta lê até 500 eventos por execução, do `endsAt` mais antigo para o mais novo, como no plano. Os já encerrados continuam na janela de 2 dias e ocupam lugar no lote. Só faria diferença com mais de 500 eventos terminando em 2 dias, longe do volume de Taquara.
+- O emulador de Functions entrou na porta 5001 e ainda não foi subido. Ele é exercitado no E2E (ticket 14).
 
 Commit sugerido: `feat: function agendada encerra eventos esquecidos`
