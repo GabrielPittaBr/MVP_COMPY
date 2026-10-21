@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/user_avatar.dart';
 import '../../domain/entities/conversation.dart';
 
 class ConversationTile extends StatelessWidget {
@@ -19,10 +19,7 @@ class ConversationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: onTap,
-      leading: CircleAvatar(
-        radius: 24,
-        backgroundImage: CachedNetworkImageProvider(conversation.peer.avatarUrl),
-      ),
+      leading: UserAvatar(user: conversation.peer, radius: 24),
       title: Text(
         conversation.peer.name,
         style: const TextStyle(fontWeight: FontWeight.w700),

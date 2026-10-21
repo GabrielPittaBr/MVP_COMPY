@@ -10,6 +10,7 @@ import '../../../../core/utils/duration_format.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../../shared/widgets/primary_button.dart';
+import '../../../../shared/widgets/user_avatar.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../providers/events_providers.dart';
@@ -259,10 +260,7 @@ class _CreatorTile extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          CircleAvatar(
-            radius: 18,
-            backgroundImage: CachedNetworkImageProvider(event.creator.avatarUrl),
-          ),
+          UserAvatar(user: event.creator, radius: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

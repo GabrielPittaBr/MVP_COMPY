@@ -1,6 +1,6 @@
 # 02: Avatar de Usuário compartilhado
 
-Status: open
+Status: resolved
 
 Blocked by: None (can start immediately)
 
@@ -10,15 +10,17 @@ Spec: docs/tarefa-14-ciclo-de-vida-do-evento.md §4.5 (avatar seguro) e §8.5 (�
 
 ## Acceptance criteria
 
-- [ ] Existe um widget compartilhado de avatar de Usuário com o mesmo comportamento do avatar do chat, inclusive o fallback para URL vazia.
-- [ ] Todas as telas do chat usam o widget compartilhado, e o widget antigo deixa de existir.
-- [ ] A pilha de avatares de participantes usa o widget compartilhado, e o detalhe de um evento com participante sem foto abre sem erro.
-- [ ] Testes de widget cobrem o fallback de URL vazia, no widget compartilhado e na pilha de participantes.
+- [x] Existe um widget compartilhado de avatar de Usuário com o mesmo comportamento do avatar do chat, inclusive o fallback para URL vazia.
+- [x] Todas as telas do chat usam o widget compartilhado, e o widget antigo deixa de existir.
+- [x] A pilha de avatares de participantes usa o widget compartilhado, e o detalhe de um evento com participante sem foto abre sem erro.
+- [x] Testes de widget cobrem o fallback de URL vazia, no widget compartilhado e na pilha de participantes.
 
 ## Verification
 
-- [ ] `flutter test` verde.
-- [ ] `dart analyze` com 0 erros e sem infos novas além das 10 da linha de base.
-- [ ] Bullet no caderno do dia, no mesmo commit, e o ticket em `Status: resolved`.
+- [x] `flutter test` verde.
+- [x] `dart analyze` com 0 erros e sem infos novas além das 10 da linha de base.
+- [x] Bullet no caderno do dia, no mesmo commit, e o ticket em `Status: resolved`.
+
+Nota: o tile da lista de conversas e o criador no detalhe do evento também desenhavam a foto direto com `CachedNetworkImageProvider` e quebravam com URL vazia; passaram a usar o `UserAvatar`.
 
 Commit sugerido: `refactor: avatar de usuario compartilhado entre chat e eventos`

@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/user_summary.dart';
+import '../../../../shared/widgets/user_avatar.dart';
 
 /// Pilha sobreposta de avatares dos participantes (mockup "3.1 Evento detalhes").
 class ParticipantsAvatars extends StatelessWidget {
@@ -30,11 +30,7 @@ class ParticipantsAvatars extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.surface, width: 2),
                 ),
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: AppColors.surfaceMuted,
-                  backgroundImage: CachedNetworkImageProvider(visible[i].avatarUrl),
-                ),
+                child: UserAvatar(user: visible[i]),
               ),
             ),
         ],

@@ -1,3 +1,4 @@
+import '../../../../shared/widgets/user_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,7 +11,6 @@ import '../../../../shared/models/user_summary.dart';
 import '../../../profile/domain/usecases/search_users.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/chat_providers.dart';
-import '../widgets/peer_avatar.dart';
 
 /// Busca por handle para iniciar uma conversa.
 ///
@@ -104,7 +104,7 @@ class _NewConversationPageState extends ConsumerState<NewConversationPage> {
                     final user = users[i];
                     return ListTile(
                       onTap: _opening ? null : () => _open(user),
-                      leading: PeerAvatar(peer: user, radius: 24),
+                      leading: UserAvatar(user: user, radius: 24),
                       title: Text(
                         user.name,
                         style: const TextStyle(fontWeight: FontWeight.w700),
