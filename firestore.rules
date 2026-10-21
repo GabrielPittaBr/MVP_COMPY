@@ -216,9 +216,35 @@ service cloud.firestore {
         return resource.data.get('participantIds', []);
       }
 
-      // TODO(tarefa 14): abrir a exceção do encerramento automático —
-      // qualquer participante pode gravar `endedAt`/`endedAutomatically`
-      // desde que `endsAt` + 1h já tenha passado e `endedAt` ainda seja nulo.
+      // Tarefa 14 — ciclo de vida. Os três campos só o servidor grava (o
+      // criador ao encerrar, a Function `autoEndOverdueEvents` 1h depois do
+      // fim previsto e a callable da avaliação), então um evento não pode
+      // nascer com eles. O encerramento automático fica com a Function, e não
+      // com uma exceção aqui que deixasse qualquer participante gravar
+      // `endedAt`.
+      function lifecycleFields() {
+        return ['endedAt', 'endedAutomatically', 'ratedBy'];
+      }
+
+      function isEnded() {
+        return resource.data.get('endedAt', null) != null;
+      }
+
+      // Documentos anteriores à tarefa 3 não têm `endsAt`; o app assume 1h.
+      function plannedEnd() {
+        return resource.data.get('endsAt',
+                                 resource.data.dateTime + duration.value(60, 'm'));
+      }
+
+      // A mesma folga de 1h de `kEventEndTolerance` (app) e da Function:
+      // passado o fim previsto + 1h, o evento está encerrado mesmo antes de a
+      // Function gravar `endedAt`.
+      function withinTolerance() {
+        return request.time < plannedEnd() + duration.value(1, 'h');
+      }
+
+      // Entrar só enquanto o evento está agendado ou acontecendo: depois do
+      // fim, ninguém entra só para poder avaliar.
       function isJoin() {
         return signedIn()
             && changed().hasOnly(
@@ -234,7 +260,9 @@ service cloud.firestore {
                  .participantIds[joinedIdsBefore().size()] == request.auth.uid
             && request.resource.data.remainingSpots
                == resource.data.remainingSpots - 1
-            && request.resource.data.remainingSpots >= 0;
+            && request.resource.data.remainingSpots >= 0
+            && !isEnded()
+            && withinTolerance();
       }
 
       allow read: if signedIn();
@@ -248,7 +276,8 @@ service cloud.firestore {
                     && request.resource.data.totalSpots is int
                     && request.resource.data.totalSpots > 0
                     && spotsCoherent()
-                    && newPlaceSnapshotMatchesCurrentPlace();
+                    && newPlaceSnapshotMatchesCurrentPlace()
+                    && !request.resource.data.keys().hasAny(lifecycleFields());
       allow update: if (isCreator()
                        && ownerUnchanged()
                        && spotsCoherent()

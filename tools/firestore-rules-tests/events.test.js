@@ -28,6 +28,7 @@ import {
 
 const CRIADOR = 'uid_criador';
 const VISITANTE = 'uid_visitante';
+const OUTRO = 'uid_outro';
 const EVENTO = 'evento_1';
 
 let testEnv;
@@ -61,16 +62,30 @@ const resumo = (uid) => ({
   avatarUrl: '',
 });
 
-/** Espelha `Event.toMap()`: o criador já entra como participante. */
-function eventoNovo(criador = CRIADOR, { totalSpots = 4 } = {}) {
+const MINUTO = 60 * 1000;
+
+/** Instante relativo a agora: `daquiA(-90)` é 90 minutos atrás. */
+const daquiA = (minutos) => new Date(Date.now() + minutos * MINUTO);
+
+/**
+ * Espelha `Event.toMap()`: o criador já entra como participante.
+ *
+ * As datas são relativas a agora (tarefa 14): com o join fechado depois do
+ * fim previsto + 1h, um evento de data fixa no passado passaria a contar
+ * como encerrado. O padrão começa daqui a 1h.
+ */
+function eventoNovo(
+  criador = CRIADOR,
+  { totalSpots = 4, inicio = daquiA(60), duracaoMin = 60 } = {},
+) {
   return {
     title: 'Pelada de quinta',
     titleLower: 'pelada de quinta',
     sport: 'futebol',
     location: 'Ginásio Municipal, Taquara',
-    dateTime: new Date('2026-09-01T19:00:00Z'),
-    durationMinutes: 60,
-    endsAt: new Date('2026-09-01T20:00:00Z'),
+    dateTime: inicio,
+    durationMinutes: duracaoMin,
+    endsAt: new Date(inicio.getTime() + duracaoMin * MINUTO),
     skillLevel: 'todos',
     totalSpots,
     remainingSpots: totalSpots - 1,
@@ -245,6 +260,25 @@ describe('events — criar', () => {
     );
   });
 
+  // Tarefa 14: endedAt, endedAutomatically e ratedBy só o servidor grava.
+  for (const [campo, valor] of [
+    ['endedAt', new Date()],
+    ['endedAutomatically', false],
+    ['ratedBy', []],
+  ]) {
+    it(`nega evento que já nasce com ${campo}`, async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'places', PLACE), placeDocument());
+      });
+      await assertFails(
+        addDoc(collection(as(CRIADOR), 'events'), {
+          ...eventoComLocal(),
+          [campo]: valor,
+        }),
+      );
+    });
+  }
+
   it('leitura histórica mantém snapshot após alterar e inativar o local', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'places', PLACE), placeDocument());
@@ -324,6 +358,49 @@ describe('events — participar', () => {
     // Sem o default do `resource.data.get('participantIds', [])` a regra
     // estouraria e o evento ficaria impossível de participar.
     await assertSucceeds(entrar(as(VISITANTE), VISITANTE, { remainingSpots: 3 }));
+  });
+
+  // Tarefa 14: entrar só enquanto o evento está agendado ou acontecendo.
+  it('evento encerrado (com endedAt) não aceita mais ninguém', async () => {
+    await semear({
+      ...eventoNovo(CRIADOR, { inicio: daquiA(-30) }),
+      endedAt: daquiA(-5),
+      endedAutomatically: false,
+    });
+    await assertFails(entrar(as(VISITANTE), VISITANTE, { remainingSpots: 3 }));
+  });
+
+  it('depois do fim previsto + 1h ninguém entra, mesmo sem endedAt', async () => {
+    // Terminou há 1h01: a Function ainda pode não ter gravado endedAt.
+    await semear(eventoNovo(CRIADOR, { inicio: daquiA(-121), duracaoMin: 60 }));
+    await assertFails(entrar(as(VISITANTE), VISITANTE, { remainingSpots: 3 }));
+  });
+
+  it('durante o evento ainda dá para entrar', async () => {
+    await semear(eventoNovo(CRIADOR, { inicio: daquiA(-30), duracaoMin: 60 }));
+    await assertSucceeds(entrar(as(VISITANTE), VISITANTE, { remainingSpots: 3 }));
+  });
+
+  it('na folga depois do fim previsto ainda dá para entrar', async () => {
+    // Fim previsto há 30 min: o evento segue acontecendo até fim + 1h.
+    await semear(eventoNovo(CRIADOR, { inicio: daquiA(-90), duracaoMin: 60 }));
+    await assertSucceeds(entrar(as(VISITANTE), VISITANTE, { remainingSpots: 3 }));
+  });
+
+  it('documento legado sem endsAt assume início + 60 min', async () => {
+    const legado = (inicio) => {
+      const antigo = eventoNovo(CRIADOR, { inicio });
+      delete antigo.endsAt;
+      delete antigo.durationMinutes;
+      return antigo;
+    };
+    // Começou há 1h40: fim assumido há 40 min, ainda dentro da folga.
+    await semear(legado(daquiA(-100)));
+    await assertSucceeds(entrar(as(VISITANTE), VISITANTE, { remainingSpots: 3 }));
+
+    // Começou há 2h10: fim assumido há 1h10, fora da folga.
+    await semear(legado(daquiA(-130)));
+    await assertFails(entrar(as(OUTRO), OUTRO, { remainingSpots: 3 }));
   });
 });
 

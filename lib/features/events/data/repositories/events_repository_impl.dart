@@ -4,6 +4,7 @@ import '../../../../core/constants/app_flags.dart';
 import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_place_snapshot.dart';
+import '../../../../shared/models/event_status.dart';
 import '../../../../shared/models/paged_result.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/sport_place.dart';
@@ -13,9 +14,15 @@ import '../../domain/repositories/events_repository.dart';
 import '../datasources/events_remote_datasource.dart';
 import '../datasources/in_memory_events_store.dart';
 
+/// D17 (tarefa 14): nenhuma lista devolve evento encerrado. As consultas
+/// do Firestore ganham o limite inferior [openEventsNotBefore], e o que
+/// passar dele já encerrado sai no cliente com [withoutEnded], usando o
+/// [_clock] — o mesmo "agora" da tela e dos testes.
 class EventsRepositoryImpl implements EventsRepository {
-  EventsRepositoryImpl(this._remote);
+  EventsRepositoryImpl(this._remote, {DateTime Function() clock = DateTime.now})
+      : _clock = clock;
   final EventsRemoteDataSource? _remote;
+  final DateTime Function() _clock;
 
   @override
   Future<PagedResult<Event>> fetchPage({
@@ -23,9 +30,13 @@ class EventsRepositoryImpl implements EventsRepository {
     int pageSize = 10,
     EventsFilter filter = const EventsFilter(),
   }) async {
+    final now = _clock();
     if (!kUseFirebaseRepos || _remote == null) {
       // Mock: o cursor é o offset na lista (já filtrada) em memória.
-      final all = InMemoryEventsStore.instance.snapshotMatching(filter);
+      final all = withoutEnded(
+        InMemoryEventsStore.instance.snapshotMatching(filter),
+        now,
+      );
       final offset = (cursor as int?) ?? 0;
       final items = all.skip(offset).take(pageSize).toList();
       final nextOffset = offset + items.length;
@@ -45,11 +56,16 @@ class EventsRepositoryImpl implements EventsRepository {
       ],
       dayStart: filter.dayStart,
       dayEnd: filter.dayEnd,
+      notBefore: openEventsNotBefore(now),
     );
-    final items =
-        snapshot.docs.map((doc) => Event.fromMap(doc.id, doc.data())).toList();
     return PagedResult<Event>(
-      items: items,
+      // A página pode encolher (ou esvaziar) com o filtro; o cursor e o
+      // hasMore continuam olhando os documentos lidos, e quem pagina é que
+      // decide buscar a próxima.
+      items: withoutEnded(
+        snapshot.docs.map((doc) => Event.fromMap(doc.id, doc.data())),
+        now,
+      ),
       // Último documento da página — cursor do startAfterDocument.
       cursor: snapshot.docs.isNotEmpty ? snapshot.docs.last : cursor,
       hasMore: snapshot.docs.length == pageSize,
@@ -61,10 +77,16 @@ class EventsRepositoryImpl implements EventsRepository {
     String uid, {
     EventsFilter filter = const EventsFilter(),
   }) async {
+    final now = _clock();
     if (!kUseFirebaseRepos || _remote == null) {
-      return InMemoryEventsStore.instance.createdBy(uid, filter);
+      return withoutEnded(
+          InMemoryEventsStore.instance.createdBy(uid, filter), now);
     }
-    return _matching(await _remote.fetchCreatedBy(uid), filter);
+    return _matching(
+      await _remote.fetchCreatedBy(uid, notBefore: openEventsNotBefore(now)),
+      filter,
+      now,
+    );
   }
 
   @override
@@ -72,10 +94,16 @@ class EventsRepositoryImpl implements EventsRepository {
     String uid, {
     EventsFilter filter = const EventsFilter(),
   }) async {
+    final now = _clock();
     if (!kUseFirebaseRepos || _remote == null) {
-      return InMemoryEventsStore.instance.joinedBy(uid, filter);
+      return withoutEnded(
+          InMemoryEventsStore.instance.joinedBy(uid, filter), now);
     }
-    return _matching(await _remote.fetchJoinedBy(uid), filter);
+    return _matching(
+      await _remote.fetchJoinedBy(uid, notBefore: openEventsNotBefore(now)),
+      filter,
+      now,
+    );
   }
 
   /// Aplica o filtro depois de buscar — legítimo aqui porque as duas seções
@@ -84,11 +112,14 @@ class EventsRepositoryImpl implements EventsRepository {
   List<Event> _matching(
     QuerySnapshot<Map<String, dynamic>> snapshot,
     EventsFilter filter,
+    DateTime now,
   ) {
-    return snapshot.docs
-        .map((doc) => Event.fromMap(doc.id, doc.data()))
-        .where(filter.matches)
-        .toList();
+    return withoutEnded(
+      snapshot.docs
+          .map((doc) => Event.fromMap(doc.id, doc.data()))
+          .where(filter.matches),
+      now,
+    );
   }
 
   @override
@@ -102,12 +133,17 @@ class EventsRepositoryImpl implements EventsRepository {
         .map((s) => s.name)
         .toList();
 
+    // A busca filtra os encerrados só no cliente: a consulta por prefixo do
+    // título já usa o intervalo em `titleLower`, e um segundo intervalo em
+    // `dateTime` pediria um índice novo.
+    final now = _clock();
     if (!kUseFirebaseRepos || _remote == null) {
-      return InMemoryEventsStore.instance.snapshot
-          .where((e) =>
-              TextNormalizer.normalize(e.title).contains(normalized) ||
-              matchedSports.contains(e.sport.name))
-          .toList();
+      return withoutEnded(
+        InMemoryEventsStore.instance.snapshot.where((e) =>
+            TextNormalizer.normalize(e.title).contains(normalized) ||
+            matchedSports.contains(e.sport.name)),
+        now,
+      );
     }
 
     // Duas consultas em paralelo: prefixo do título + modalidades.
@@ -124,7 +160,7 @@ class EventsRepositoryImpl implements EventsRepository {
         byId[doc.id] = Event.fromMap(doc.id, doc.data());
       }
     }
-    final results = byId.values.toList()
+    final results = withoutEnded(byId.values, now)
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
     return results;
   }

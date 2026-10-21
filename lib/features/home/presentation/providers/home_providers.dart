@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_flags.dart';
+import '../../../../core/providers/clock_providers.dart';
 import '../../../../core/providers/location_providers.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/sport.dart';
@@ -21,7 +22,10 @@ final homeRemoteDataSourceProvider = Provider<HomeRemoteDataSource?>(
 );
 
 final homeRepositoryProvider = Provider<HomeRepository>(
-  (ref) => HomeRepositoryImpl(ref.watch(homeRemoteDataSourceProvider)),
+  (ref) => HomeRepositoryImpl(
+    ref.watch(homeRemoteDataSourceProvider),
+    clock: ref.watch(clockProvider),
+  ),
 );
 
 final getCategoriesProvider = Provider<GetCategories>(

@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_flags.dart';
+import '../../../../core/providers/clock_providers.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/paged_result.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/events_remote_datasource.dart';
 import '../../data/repositories/events_repository_impl.dart';
@@ -17,7 +19,10 @@ final eventsRemoteDataSourceProvider = Provider<EventsRemoteDataSource?>(
 );
 
 final eventsRepositoryProvider = Provider<EventsRepository>(
-  (ref) => EventsRepositoryImpl(ref.watch(eventsRemoteDataSourceProvider)),
+  (ref) => EventsRepositoryImpl(
+    ref.watch(eventsRemoteDataSourceProvider),
+    clock: ref.watch(clockProvider),
+  ),
 );
 
 final getEventDetailProvider = Provider<GetEventDetail>(
@@ -46,6 +51,13 @@ final eventsFilterProvider =
 class PaginatedEventsController extends AsyncNotifier<List<Event>> {
   static const int pageSize = 10;
 
+  /// Teto de páginas lidas numa carga só. O repositório tira os eventos
+  /// encerrados (tarefa 14), então uma página pode chegar vazia com mais
+  /// páginas pela frente; sem buscar a próxima, a lista ficaria num spinner
+  /// sem fim quando a tela não chega a rolar. O teto evita um laço de
+  /// leituras se houver muitos encerrados seguidos.
+  static const int maxPagesPerLoad = 5;
+
   Object? _cursor;
   bool _hasMore = true;
   bool _isLoadingMore = false;
@@ -62,9 +74,11 @@ class PaginatedEventsController extends AsyncNotifier<List<Event>> {
     // Observar o filtro aqui faz o controller ser reconstruído a cada
     // mudança — a paginação reseta naturalmente, sem estado órfão.
     _filter = ref.watch(eventsFilterProvider);
-    final page = await ref
-        .watch(eventsRepositoryProvider)
-        .fetchPage(pageSize: pageSize, filter: _filter);
+    final page = await _fetchVisible(
+      ref.watch(eventsRepositoryProvider),
+      cursor: null,
+      filter: _filter,
+    );
     _cursor = page.cursor;
     _hasMore = page.hasMore;
     return page.items;
@@ -77,11 +91,11 @@ class PaginatedEventsController extends AsyncNotifier<List<Event>> {
     _isLoadingMore = true;
     final requestedFilter = _filter;
     try {
-      final page = await ref.read(eventsRepositoryProvider).fetchPage(
-            cursor: _cursor,
-            pageSize: pageSize,
-            filter: requestedFilter,
-          );
+      final page = await _fetchVisible(
+        ref.read(eventsRepositoryProvider),
+        cursor: _cursor,
+        filter: requestedFilter,
+      );
       // O filtro pode ter mudado durante a busca — nesse caso o build()
       // já repopulou o estado e esta página é lixo.
       if (requestedFilter != _filter) return;
@@ -91,6 +105,36 @@ class PaginatedEventsController extends AsyncNotifier<List<Event>> {
     } finally {
       _isLoadingMore = false;
     }
+  }
+
+  /// Busca a partir de [cursor] até vir algum evento, acabarem as páginas
+  /// ou bater [maxPagesPerLoad].
+  Future<PagedResult<Event>> _fetchVisible(
+    EventsRepository repository, {
+    required Object? cursor,
+    required EventsFilter filter,
+  }) async {
+    var page = await repository.fetchPage(
+      cursor: cursor,
+      pageSize: pageSize,
+      filter: filter,
+    );
+    final items = <Event>[...page.items];
+    for (var loaded = 1;
+        items.isEmpty && page.hasMore && loaded < maxPagesPerLoad;
+        loaded++) {
+      page = await repository.fetchPage(
+        cursor: page.cursor,
+        pageSize: pageSize,
+        filter: filter,
+      );
+      items.addAll(page.items);
+    }
+    return PagedResult<Event>(
+      items: items,
+      cursor: page.cursor,
+      hasMore: page.hasMore,
+    );
   }
 }
 

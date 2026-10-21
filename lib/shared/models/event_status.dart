@@ -16,6 +16,14 @@ const Duration kEventEndTolerance = Duration(hours: 1);
 /// mesmo teto para saber até quando um evento ainda pode estar aberto.
 const int kMaxEventDurationMinutes = 720;
 
+/// Início mais antigo de um evento que ainda pode estar aberto em [now]:
+/// a duração máxima mais a folga. As consultas de listas usam como limite
+/// inferior de `dateTime` (D17: encerrados somem das listas), o que também
+/// impede os eventos passados de empurrarem os atuais para fora do `limit`.
+DateTime openEventsNotBefore(DateTime now) => now.subtract(
+      const Duration(minutes: kMaxEventDurationMinutes) + kEventEndTolerance,
+    );
+
 extension EventLifecycle on Event {
   /// Fase do evento no instante [now]:
   /// - `endedAt` gravado → encerrado, mesmo que antes do início;
@@ -39,3 +47,11 @@ extension EventLifecycle on Event {
   /// Se [uid] já enviou a avaliação deste evento.
   bool hasRated(String uid) => ratedBy.contains(uid);
 }
+
+/// Tira de [events] os encerrados em [now], mantendo a ordem. É o filtro de
+/// cliente que completa o limite inferior das consultas: um evento de 15 min
+/// que terminou de manhã, ou um encerrado à mão, ainda cai dentro da janela.
+List<Event> withoutEnded(Iterable<Event> events, DateTime now) => <Event>[
+      for (final event in events)
+        if (event.statusAt(now) != EventStatus.ended) event,
+    ];

@@ -20,6 +20,11 @@ class EventsRemoteDataSource {
   /// `SkillLevel`) filtram modalidade e nível; [dayStart]/[dayEnd] recortam
   /// um dia. Cada combinação de igualdade com o `orderBy('dateTime')` exige
   /// um índice composto — todos declarados em `firestore.indexes.json`.
+  ///
+  /// [notBefore] é o limite inferior de `dateTime` que esconde os eventos
+  /// que já não podem estar abertos (tarefa 14). Com dia escolhido, vale o
+  /// maior dos dois. Como o limite fica no mesmo campo do `orderBy`, os
+  /// índices de sempre continuam servindo.
   Future<QuerySnapshot<Map<String, dynamic>>> fetchPage({
     DocumentSnapshot<Map<String, dynamic>>? startAfter,
     int limit = 10,
@@ -27,6 +32,7 @@ class EventsRemoteDataSource {
     List<String> skillLevelNames = const <String>[],
     DateTime? dayStart,
     DateTime? dayEnd,
+    DateTime? notBefore,
   }) {
     Query<Map<String, dynamic>> query = _firestore.collection('events');
     if (sportName != null) {
@@ -35,11 +41,14 @@ class EventsRemoteDataSource {
     if (skillLevelNames.isNotEmpty) {
       query = query.where('skillLevel', whereIn: skillLevelNames);
     }
-    if (dayStart != null && dayEnd != null) {
-      query = query
-          .where('dateTime',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart))
-          .where('dateTime', isLessThan: Timestamp.fromDate(dayEnd));
+    final hasDay = dayStart != null && dayEnd != null;
+    final from = hasDay ? _latest(dayStart, notBefore) : notBefore;
+    if (from != null) {
+      query = query.where('dateTime',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(from));
+    }
+    if (hasDay) {
+      query = query.where('dateTime', isLessThan: Timestamp.fromDate(dayEnd));
     }
     query = query.orderBy('dateTime').limit(limit);
     if (startAfter != null) {
@@ -60,13 +69,12 @@ class EventsRemoteDataSource {
   Future<QuerySnapshot<Map<String, dynamic>>> fetchCreatedBy(
     String uid, {
     int limit = 50,
+    DateTime? notBefore,
   }) {
-    return _firestore
-        .collection('events')
-        .where('creator.id', isEqualTo: uid)
-        .orderBy('dateTime')
-        .limit(limit)
-        .get();
+    return _since(
+      _firestore.collection('events').where('creator.id', isEqualTo: uid),
+      notBefore,
+    ).orderBy('dateTime').limit(limit).get();
   }
 
   /// Eventos em que [uid] está inscrito — seção "Participando".
@@ -79,14 +87,30 @@ class EventsRemoteDataSource {
   Future<QuerySnapshot<Map<String, dynamic>>> fetchJoinedBy(
     String uid, {
     int limit = 50,
+    DateTime? notBefore,
   }) {
-    return _firestore
-        .collection('events')
-        .where('participantIds', arrayContains: uid)
-        .orderBy('dateTime')
-        .limit(limit)
-        .get();
+    return _since(
+      _firestore
+          .collection('events')
+          .where('participantIds', arrayContains: uid),
+      notBefore,
+    ).orderBy('dateTime').limit(limit).get();
   }
+
+  /// Aplica o limite inferior de `dateTime`, se houver. Os índices
+  /// `creator.id + dateTime` e `participantIds + dateTime` já cobrem o
+  /// intervalo, porque ele fica no campo do `orderBy`.
+  static Query<Map<String, dynamic>> _since(
+    Query<Map<String, dynamic>> query,
+    DateTime? notBefore,
+  ) {
+    if (notBefore == null) return query;
+    return query.where('dateTime',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(notBefore));
+  }
+
+  static DateTime _latest(DateTime a, DateTime? b) =>
+      b != null && b.isAfter(a) ? b : a;
 
   /// Busca por prefixo do título (campo `titleLower`, minúsculo).
   Future<QuerySnapshot<Map<String, dynamic>>> searchByTitlePrefix(
