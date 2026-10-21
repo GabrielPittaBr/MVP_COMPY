@@ -89,9 +89,16 @@ class InMemoryEventsStore {
     return updated;
   }
 
+  /// Grava [draft] como o Firestore faria: rascunho sem id (o formulário
+  /// manda `id: ''`) ganha um id gerado, senão a rota de detalhe do evento
+  /// recém-criado não teria o que abrir.
   Event add(Event draft) {
-    _events = <Event>[draft, ..._events];
+    final event =
+        draft.id.isEmpty ? draft.copyWith(id: 'evt_local_${++_lastId}') : draft;
+    _events = <Event>[event, ..._events];
     _controller.add(List<Event>.unmodifiable(_events));
-    return draft;
+    return event;
   }
+
+  int _lastId = 0;
 }

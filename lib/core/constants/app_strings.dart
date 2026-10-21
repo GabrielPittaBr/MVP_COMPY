@@ -84,6 +84,8 @@ abstract final class AppStrings {
       'Selecione o local do evento primeiro.';
   static const String eventDate = 'Data';
   static const String eventTime = 'Horário';
+  static const String eventStartInPast =
+      'Esse horário já passou. Escolha um início a partir de agora.';
   static const String eventDuration = 'Duração';
   static const String eventDurationOther = 'Outro';
   static const String eventDurationCustomTitle = 'Duração personalizada';
