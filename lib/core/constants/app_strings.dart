@@ -143,6 +143,23 @@ abstract final class AppStrings {
       'Vamos abrir o Google para você confirmar que é você mesmo.';
   static const String profileDeleteAccountConfirm = 'Excluir conta';
 
+  // Foto de perfil — cadastro, pós-Google e edição do perfil
+  static const String photoAdd = 'Adicionar foto';
+  static const String photoChange = 'Trocar foto';
+  static const String photoRemove = 'Remover foto';
+  static const String photoGallery = 'Escolher da galeria';
+  static const String photoCamera = 'Tirar uma foto';
+  static const String photoCropTitle = 'Ajustar foto';
+  static const String photoCropHint =
+      'Arraste para posicionar. Use a pinça ou a roda do mouse para dar zoom.';
+  static const String photoUse = 'Usar foto';
+  static String photoTooLarge(int maxMb) =>
+      'Imagem muito grande. Escolha uma de até $maxMb MB.';
+  static const String photoNotImage =
+      'Esse arquivo não é uma imagem. Escolha uma foto JPG, PNG, WebP ou GIF.';
+  static const String photoPickError =
+      'Não foi possível abrir a galeria ou a câmera.';
+
   // Chat
   static const String chatTitle = 'Chat';
   static const String chatFindMore = 'Encontre mais companheiros...';
