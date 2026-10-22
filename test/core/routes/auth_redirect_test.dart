@@ -36,6 +36,7 @@ void main() {
     AppRoutes.maps,
     '/events/abc',
     '/events/abc/ao-vivo',
+    '/avaliacao/abc',
   ];
 
   const List<String> todasAsRotas = <String>[

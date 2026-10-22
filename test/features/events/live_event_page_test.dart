@@ -93,6 +93,10 @@ Future<void> _abrir(
     initialLocation: '/events/evt_ao_vivo/ao-vivo',
     routes: <RouteBase>[
       GoRoute(
+        path: '/avaliacao/:eventId',
+        builder: (_, __) => const Scaffold(body: Text('avaliação do evento')),
+      ),
+      GoRoute(
         path: '/events/:id',
         builder: (_, __) => const Scaffold(body: Text('detalhe do evento')),
         routes: <RouteBase>[
@@ -179,7 +183,8 @@ void main() {
       expect(find.text(AppStrings.eventLiveTitle), findsOneWidget);
     });
 
-    testWidgets('confirmar encerra e leva ao detalhe', (tester) async {
+    testWidgets('confirmar encerra e leva o criador à avaliação',
+        (tester) async {
       final repositorio = _Repositorio();
       await _abrir(tester, _dono, repositorio: repositorio);
 
@@ -189,7 +194,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repositorio.encerrados, <String>['evt_ao_vivo']);
-      expect(find.text('detalhe do evento'), findsOneWidget);
+      expect(find.text('avaliação do evento'), findsOneWidget);
     });
 
     testWidgets('evento que já tinha sido encerrado mostra a mensagem certa',
@@ -227,6 +232,11 @@ void main() {
 
       expect(find.text(AppStrings.eventEndedByOrganizer), findsOneWidget);
       expect(find.text(AppStrings.eventStatusEnded), findsOneWidget);
+
+      // A faixa leva à avaliação ("Avaliar agora").
+      await tester.tap(find.text(AppStrings.eventLiveRateNow));
+      await tester.pumpAndSettle();
+      expect(find.text('avaliação do evento'), findsOneWidget);
     });
 
     // Começou há 20 min e durava 15: passou 5 min do previsto.

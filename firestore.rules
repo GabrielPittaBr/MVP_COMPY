@@ -488,58 +488,26 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // ── ratings ──────────────────────────────────────────────────────
-    // Tarefa 14. Coleção nova — antes caía no deny-by-default.
+    // ── ratings / ratingSummaries ────────────────────────────────────
+    // Tarefa 14. Só a callable `submitEventRatings` (Admin SDK) grava: ela
+    // confere o que as regras não conseguem — evento encerrado, autor que
+    // participou, N participantes avaliados, nada repetido — e grava as
+    // avaliações, os agregados e o `ratedBy` do evento numa transação.
     //
-    // D13: comentários não são públicos e não há moderação. Leitura é negada
-    // por completo; o que aparece na UI é a média desnormalizada no alvo,
-    // gravada junto da avaliação. Sem `read`, o comentário não vaza nem para
-    // quem inspeciona o tráfego.
-    //
-    // D12: nota abaixo de 3 estrelas exige justificativa — vale para os dois
-    // alvos ainda suportados, e é validado aqui além da UI. Avaliações de
-    // Local Esportivo ficam fora do escopo até existir um sistema real.
-    //
-    // Avaliação enviada não se reescreve: é a única garantia de integridade da
-    // média sem backend.
+    // D13: comentários não são públicos e não há moderação. Ninguém lê
+    // `ratings` pelo cliente; o que aparece na UI é a média, em
+    // `ratingSummaries`. Sem `read`, o comentário não vaza nem para quem
+    // inspeciona o tráfego.
     match /ratings/{ratingId} {
-      function validRating() {
-        return request.resource.data.keys().hasAll(
-                 ['eventId', 'fromUid', 'targetType', 'targetId', 'stars',
-                  'createdAt'])
-            && request.resource.data.keys().hasOnly(
-                 ['eventId', 'fromUid', 'targetType', 'targetId', 'stars',
-                  'comment', 'createdAt'])
-            && request.resource.data.targetType in ['user', 'event']
-            && request.resource.data.stars is int
-            && request.resource.data.stars >= 1
-            && request.resource.data.stars <= 5
-            && validComment();
-      }
+      allow read, write: if false;
+    }
 
-      function hasComment() {
-        return 'comment' in request.resource.data.keys()
-            && request.resource.data.comment is string
-            && request.resource.data.comment.size() > 0;
-      }
-
-      function validComment() {
-        return (!('comment' in request.resource.data.keys())
-                || (request.resource.data.comment is string
-                    && request.resource.data.comment.size() <= 500))
-            // D12: menos de 3 estrelas exige justificativa.
-            && (request.resource.data.stars >= 3 || hasComment());
-      }
-
-      // TODO(tarefa 14): avaliar se vale o custo de dois `get()` para exigir
-      // que o evento esteja encerrado (`endedAt != null`) e que o autor tenha
-      // participado dele (`request.auth.uid in participantIds`). O
-      // `participantIds` já existe desde a tarefa 12; falta o `endedAt`.
-      allow read: if false;
-      allow create: if signedIn()
-                    && request.resource.data.fromUid == request.auth.uid
-                    && validRating();
-      allow update, delete: if false;
+    // Agregados por alvo (`{targetType}_{targetId}`): contagem, soma e
+    // contagem por estrela. Ficam fora de `users` e `places`, cujos
+    // contratos estritos (`hasOnly`) não aceitam campo de nota.
+    match /ratingSummaries/{summaryId} {
+      allow read: if signedIn();
+      allow write: if false;
     }
   }
 }

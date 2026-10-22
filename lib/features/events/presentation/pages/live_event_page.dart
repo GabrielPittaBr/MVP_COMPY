@@ -69,10 +69,10 @@ class _LiveEventPageState extends ConsumerState<LiveEventPage> {
     try {
       await ref.read(endEventProvider).call(event.id);
       if (!mounted) return;
-      // O evento sai das listas e o detalhe já mostra o encerrado; a
-      // avaliação entra no lugar desta navegação no ticket 09.
+      // O evento sai das listas, e o criador cai direto na avaliação do
+      // local (e, no ticket 10, de quem jogou).
       invalidateEventLists(ref);
-      context.go(AppRoutes.eventDetailPath(event.id));
+      context.push(AppRoutes.eventRatingPath(event.id));
     } on EventAlreadyEndedException {
       messenger.showSnackBar(
         const SnackBar(content: Text(AppStrings.eventAlreadyEndedError)),
@@ -192,7 +192,11 @@ class _LiveScaffold extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         children: <Widget>[
           if (ended && !isCreator) ...<Widget>[
-            const _EndedBanner(),
+            _EndedBanner(
+              onRate: event.hasRated(me.id)
+                  ? null
+                  : () => context.push(AppRoutes.eventRatingPath(event.id)),
+            ),
             const SizedBox(height: 16),
           ],
           Align(
@@ -395,9 +399,12 @@ class _OverdueNotice extends StatelessWidget {
   }
 }
 
-/// Faixa do participante quando o organizador encerra com a tela aberta.
+/// Faixa do participante quando o organizador encerra com a tela aberta,
+/// com o atalho para avaliar enquanto ele ainda não avaliou.
 class _EndedBanner extends StatelessWidget {
-  const _EndedBanner();
+  const _EndedBanner({required this.onRate});
+
+  final VoidCallback? onRate;
 
   @override
   Widget build(BuildContext context) {
@@ -409,16 +416,25 @@ class _EndedBanner extends StatelessWidget {
           color: AppColors.surfaceMuted,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Row(
+        child: Row(
           children: <Widget>[
-            Icon(Icons.flag_outlined, color: AppColors.primary, size: 22),
-            SizedBox(width: 12),
-            Expanded(
+            const Icon(Icons.flag_outlined, color: AppColors.primary, size: 22),
+            const SizedBox(width: 12),
+            const Expanded(
               child: Text(
                 AppStrings.eventEndedByOrganizer,
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               ),
             ),
+            if (onRate != null)
+              FilledButton(
+                onPressed: onRate,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  minimumSize: const Size(0, 40),
+                ),
+                child: const Text(AppStrings.eventLiveRateNow),
+              ),
           ],
         ),
       ),

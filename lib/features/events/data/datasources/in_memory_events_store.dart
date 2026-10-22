@@ -123,6 +123,21 @@ class InMemoryEventsStore {
     return ended;
   }
 
+  /// Registra que [uid] avaliou [eventId] — no mock, faz o papel da
+  /// callable `submitEventRatings`, que grava o `ratedBy`.
+  Event markRated(String eventId, String uid) {
+    final index = _events.indexWhere((e) => e.id == eventId);
+    if (index == -1) {
+      throw StateError('Evento $eventId não encontrado');
+    }
+    final current = _events[index];
+    if (current.ratedBy.contains(uid)) return current;
+    final rated = current.copyWith(ratedBy: <String>[...current.ratedBy, uid]);
+    _events[index] = rated;
+    _controller.add(List<Event>.unmodifiable(_events));
+    return rated;
+  }
+
   /// Grava [draft] como o Firestore faria: rascunho sem id (o formulário
   /// manda `id: ''`) ganha um id gerado, senão a rota de detalhe do evento
   /// recém-criado não teria o que abrir.

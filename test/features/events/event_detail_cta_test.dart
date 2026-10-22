@@ -168,18 +168,46 @@ void main() {
   });
 
   group('encerrado', () {
-    testWidgets('para todos: selo "Encerrado" e nenhuma ação', (tester) async {
-      final encerrado = _evento(
-        inicioEm: const Duration(hours: -2),
-        endedAt: _agora.subtract(const Duration(minutes: 50)),
-      );
-      for (final quem in <UserSummary>[_visitante, _participante, _dono]) {
-        await _abrir(tester, evento: Stream.value(encerrado), quem: quem);
+    final encerrado = _evento(
+      inicioEm: const Duration(hours: -2),
+      endedAt: _agora.subtract(const Duration(minutes: 50)),
+    );
 
-        expect(find.text(AppStrings.eventStatusEnded), findsOneWidget);
-        expect(find.text(AppStrings.eventAlreadyEnded), findsOneWidget);
-        expect(find.byType(FilledButton), findsNothing, reason: quem.id);
-      }
+    testWidgets('quem não participou vê o selo e nenhuma ação', (tester) async {
+      await _abrir(tester, evento: Stream.value(encerrado), quem: _visitante);
+
+      expect(find.text(AppStrings.eventStatusEnded), findsOneWidget);
+      expect(find.text(AppStrings.eventAlreadyEnded), findsOneWidget);
+      expect(find.byType(FilledButton), findsNothing);
+    });
+
+    testWidgets('o participante vê "Avaliar evento"', (tester) async {
+      await _abrir(tester,
+          evento: Stream.value(encerrado), quem: _participante);
+
+      expect(find.text(AppStrings.eventStatusEnded), findsOneWidget);
+      expect(_botao(AppStrings.eventRate), findsOneWidget);
+    });
+
+    testWidgets('o criador vê "Avaliar local e participantes" (D14)',
+        (tester) async {
+      await _abrir(tester, evento: Stream.value(encerrado), quem: _dono);
+
+      expect(_botao(AppStrings.eventRateAsCreator), findsOneWidget);
+      expect(_botao(AppStrings.eventRate), findsNothing);
+    });
+
+    testWidgets('quem já avaliou vê "Você já avaliou"', (tester) async {
+      await _abrir(
+        tester,
+        evento: Stream.value(
+          encerrado.copyWith(ratedBy: const <String>['u_participante']),
+        ),
+        quem: _participante,
+      );
+
+      expect(find.text(AppStrings.eventAlreadyRated), findsOneWidget);
+      expect(find.byType(FilledButton), findsNothing);
     });
 
     testWidgets('encerrado pela Function mostra "Encerrado automaticamente"',

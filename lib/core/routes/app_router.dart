@@ -21,6 +21,7 @@ import '../../features/maps/presentation/pages/maps_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/favorite_sports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/ratings/presentation/pages/event_rating_page.dart';
 import '../../shared/pages/under_construction_page.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 import '../constants/app_strings.dart';
@@ -46,6 +47,11 @@ abstract final class AppRoutes {
   static const String liveEvent = '/events/:id/ao-vivo';
   static String eventDetailPath(String id) => '$events/$id';
   static String liveEventPath(String id) => '$events/$id/ao-vivo';
+
+  /// Avaliação do evento encerrado (tarefa 14) — na raiz, fora do shell:
+  /// abre em tela cheia, sem a barra inferior, com `push`.
+  static const String eventRating = '/avaliacao/:eventId';
+  static String eventRatingPath(String id) => '/avaliacao/$id';
   static const String create = '/create';
   static const String chat = '/chat';
   static const String chatRoom = '/chat/:conversationId';
@@ -219,6 +225,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.onboardingSports,
         builder: (context, state) => const FavoriteSportsPage(),
+      ),
+
+      // ── Avaliação do evento (fora do shell — tela cheia) ───────────────────
+      GoRoute(
+        path: AppRoutes.eventRating,
+        builder: (context, state) =>
+            EventRatingPage(eventId: state.pathParameters['eventId']!),
       ),
 
       // ── Shell com bottom nav preservando estado entre as 5 abas (RNF07) ───

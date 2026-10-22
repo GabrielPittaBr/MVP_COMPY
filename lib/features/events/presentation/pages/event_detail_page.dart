@@ -240,14 +240,31 @@ enum _DetailAction {
   /// Agendado, para quem criou.
   youOrganize,
 
-  /// Encerrado, para todos.
+  /// Encerrado, para o participante que ainda não avaliou.
+  rate,
+
+  /// Encerrado, para o criador que ainda não avaliou o local e quem jogou.
+  rateAsCreator,
+
+  /// Encerrado, para quem já enviou a avaliação (`ratedBy`).
+  alreadyRated,
+
+  /// Encerrado, para quem não participou (ou o criador sem nada a avaliar).
   ended,
 }
 
 _DetailAction _actionFor(Event event, EventStatus status, String? uid) {
-  if (status == EventStatus.ended) return _DetailAction.ended;
   final isCreator = uid != null && event.creator.id == uid;
   final isParticipant = uid != null && event.participantIds.contains(uid);
+  if (status == EventStatus.ended) {
+    if (!isCreator && !isParticipant) return _DetailAction.ended;
+    if (event.hasRated(uid)) return _DetailAction.alreadyRated;
+    if (!isCreator) return _DetailAction.rate;
+    // O criador avalia o local e quem jogou, não o próprio evento (D14).
+    final hasSomethingToRate = event.placeId != null ||
+        event.participantIds.any((id) => id != uid);
+    return hasSomethingToRate ? _DetailAction.rateAsCreator : _DetailAction.ended;
+  }
   if (status == EventStatus.happening && (isCreator || isParticipant)) {
     return _DetailAction.openLive;
   }
@@ -299,6 +316,22 @@ class _ActionBar extends ConsumerWidget {
               _DetailAction.youOrganize => const _StatusPill(
                   icon: Icons.flag_outlined,
                   label: AppStrings.eventYouOrganize,
+                ),
+              _DetailAction.rate => PrimaryButton(
+                  label: AppStrings.eventRate,
+                  icon: Icons.star_outline_rounded,
+                  onPressed: () =>
+                      context.push(AppRoutes.eventRatingPath(event.id)),
+                ),
+              _DetailAction.rateAsCreator => PrimaryButton(
+                  label: AppStrings.eventRateAsCreator,
+                  icon: Icons.star_outline_rounded,
+                  onPressed: () =>
+                      context.push(AppRoutes.eventRatingPath(event.id)),
+                ),
+              _DetailAction.alreadyRated => const _StatusPill(
+                  icon: Icons.check_circle_outline,
+                  label: AppStrings.eventAlreadyRated,
                 ),
               _DetailAction.ended => const _StatusPill(
                   icon: Icons.event_busy_outlined,

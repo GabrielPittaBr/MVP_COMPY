@@ -153,8 +153,51 @@ abstract final class AppStrings {
   static const String eventEndError =
       'Não foi possível encerrar o evento. Tente de novo.';
   static const String eventAlreadyEndedError = 'Este evento já foi encerrado.';
+  static const String eventLiveRateNow = 'Avaliar agora';
+  static const String eventRate = 'Avaliar evento';
+  static const String eventRateAsCreator = 'Avaliar local e participantes';
+  static const String eventAlreadyRated = 'Você já avaliou';
   static String eventParticipantsShort(int count) =>
       count == 1 ? '1 participante' : '$count participantes';
+
+  // Avaliação do evento (tarefa 14)
+  static const String ratingTitle = 'Avaliar evento';
+  static String ratingStep(int index, int total) => 'Passo $index de $total';
+  static const String ratingEventQuestion = 'Como foi o evento?';
+  static const String ratingPlaceQuestion = 'E o local?';
+  static const List<String> ratingStarLabels = <String>[
+    'Péssimo',
+    'Ruim',
+    'Ok',
+    'Bom',
+    'Excelente',
+  ];
+  static String ratingStarsSemantics(int stars) => '$stars de 5 estrelas';
+  static const String ratingCommentHint = 'Conte o que aconteceu (opcional)';
+  static const String ratingCommentReasonHint = 'Por que essa nota?';
+  static const String ratingCommentLocked = 'Escolha as estrelas para comentar';
+  static const String ratingReasonRequired =
+      'Para notas abaixo de 3, conte o motivo.';
+  static const String ratingCommentPrivate =
+      'Seu comentário não fica público: só a média aparece.';
+  static const String ratingContinue = 'Continuar';
+  static const String ratingSubmit = 'Enviar avaliação';
+  static const String ratingSending = 'Enviando...';
+  static const String ratingSent = 'Avaliação enviada!';
+  static const String ratingThanks = 'Obrigado por ajudar a comunidade do COMPY.';
+  static const String ratingBack = 'Voltar';
+  static const String ratingClose = 'Fechar';
+  static const String ratingExitTitle = 'Sair sem enviar?';
+  static const String ratingExitBody = 'O que você preencheu vai se perder.';
+  static const String ratingExitConfirm = 'Sair';
+  static const String ratingNothingToRate = 'Não há o que avaliar neste evento.';
+  static const String ratingErrorAlreadyRated = 'Você já avaliou este evento.';
+  static const String ratingErrorNotEnded = 'Este evento ainda não terminou.';
+  static const String ratingErrorNotParticipant =
+      'Só quem participou pode avaliar.';
+  static const String ratingErrorOffline =
+      'Sem conexão. Tente de novo quando a internet voltar.';
+  static const String ratingErrorGeneric = 'Não foi possível enviar a avaliação.';
 
   // Profile
   static const String profileTitle = 'Perfil';
