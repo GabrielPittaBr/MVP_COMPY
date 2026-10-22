@@ -157,27 +157,24 @@ Itens herdados do antigo `proximos-passos.md` que continuam pendentes, conferido
 
 | # | Tarefa | Branch sugerida | Tam. | `/to-tickets`? | 🔒 |
 |---|---|---|---|---|---|
-| A | Avatar real na Home | `fix/avatar-real-home` | P | Não | |
-| B | Edição de perfil completa (nome, bio, foto) | `feature/editar-perfil-completo` | M/G | Talvez | 🔒 |
+| A | ~~Avatar real na Home~~ ✅ feito em `feature/foto-de-perfil` | — | P | Não | |
+| B | Edição de perfil completa (nome, bio) — **foto ✅ feita** | `feature/editar-perfil-completo` | M | Não | 🔒 |
 | C | Tela de configurações | `feature/tela-configuracoes` | M | Não | |
 | D | Push notifications (FCM) | `feature/push-notifications` | G | Sim | |
 
-### A · Avatar real na Home
+### A · Avatar real na Home — ✅ fechado
 
-O `GreetingHeader` ainda desenha `AppAssets.avatar(userName)`, o placeholder com a inicial do nome, embora `users/{uid}.avatarUrl` exista. O `currentUserSummaryProvider` já expõe o `UserSummary` do usuário logado: basta a Home passar o `avatarUrl` dele para o header.
-
-**Arquivos:** `lib/features/home/presentation/widgets/greeting_header.dart`, `lib/features/home/presentation/pages/home_page.dart`.
+Feito junto com a foto de perfil (`feature/foto-de-perfil`): o `GreetingHeader` usa o `avatarUrl` do perfil e só mostra a inicial enquanto o perfil carrega.
 
 ### B · Edição de perfil completa
 
-A `EditProfilePage` (`/profile/editar`) hoje mostra o username desabilitado e permite excluir a conta. Os esportes favoritos já são editáveis pela tela própria. Faltam **nome, bio e foto**.
+A `EditProfilePage` (`/profile/editar`) mostra o username desabilitado, troca e remove a **foto** (feito em `feature/foto-de-perfil`, com Storage, seletor, recorte e regras — ver [`autenticacao.md`](autenticacao.md#foto-de-perfil-avatarurl)) e permite excluir a conta. Os esportes favoritos já são editáveis pela tela própria. Faltam **nome e bio**.
 
-- `ProfileRemoteDataSource` só sabe gravar `favoriteSports`. Falta um `update` geral.
+- `ProfileRemoteDataSource` grava `favoriteSports` e `avatarUrl`. Falta gravar nome e bio.
 - `bio` já é lida pelo `ProfileRepositoryImpl`, mas nunca é escrita.
-- Foto exige Firebase Storage e um seletor de imagem (`firebase_storage` e `image_picker` não estão instalados), com a URL gravada em `users/{uid}.avatarUrl`. Se o volume for grande, vale quebrar com `/to-tickets` em "nome e bio" primeiro e "foto" depois.
-- Nome alterado precisa ir também para o Firebase Auth (`updateDisplayName`), como na tarefa 1, senão a saudação da Home diverge.
+- Nome alterado precisa ir também para o Firebase Auth (`updateDisplayName`), como na tarefa 1, senão a saudação da Home diverge. Precisa também recalcular `nameLower`, que a regra exige quando o nome muda.
 
-**🔒 Regras do Firestore — precisa decidir:** o `validProfile()` de `users` só aceita `['id', 'name', 'handle', 'avatarUrl', 'createdAt', 'favoriteSports']`. Gravar `bio` hoje é **recusado**. Decidir o limite de tamanho da bio e incluí-la no `hasOnly`. Se entrar Storage, escrever também as regras do bucket (só o dono grava a própria foto, tamanho e tipo limitados).
+**🔒 Regras do Firestore — precisa decidir:** o `validProfile()` de `users` só aceita `['id', 'name', 'nameLower', 'handle', 'avatarUrl', 'createdAt', 'favoriteSports']`. Gravar `bio` hoje é **recusado**. Decidir o limite de tamanho da bio e incluí-la no `hasOnly`.
 
 ### C · Tela de configurações
 
