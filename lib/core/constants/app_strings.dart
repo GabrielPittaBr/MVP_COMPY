@@ -159,6 +159,8 @@ abstract final class AppStrings {
       'Esse arquivo não é uma imagem. Escolha uma foto JPG, PNG, WebP ou GIF.';
   static const String photoPickError =
       'Não foi possível abrir a galeria ou a câmera.';
+  static const String photoSaveError =
+      'Não foi possível salvar a foto. Tente novamente.';
 
   // Chat
   static const String chatTitle = 'Chat';

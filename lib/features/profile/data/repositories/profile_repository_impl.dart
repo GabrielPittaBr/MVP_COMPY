@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/constants/app_flags.dart';
 import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/sport.dart';
@@ -45,6 +48,23 @@ class ProfileRepositoryImpl implements ProfileRepository {
       return;
     }
     await _remote.updateFavoriteSports(uid, Sport.toStorage(sports));
+  }
+
+  @override
+  Future<void> updateAvatar(
+    String uid, {
+    required String name,
+    Uint8List? jpeg,
+  }) async {
+    // ponytail: o modo mock não guarda foto (não há Storage), então trocar
+    // ou remover não tem efeito sem Firebase. Guardar os bytes num override
+    // do MockProfile se alguém precisar testar a tela assim.
+    if (!kUseFirebaseRepos || _remote == null) return;
+
+    final String avatarUrl = jpeg == null
+        ? AppAssets.avatar(name)
+        : await _remote.uploadAvatar(uid, jpeg);
+    await _remote.updateAvatarUrl(uid, avatarUrl);
   }
 
   @override

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../entities/user_profile.dart';
@@ -11,6 +13,12 @@ abstract interface class ProfileRepository {
   /// que marca o onboarding como concluído é o campo passar a existir, não a
   /// lista ter itens.
   Future<void> updateFavoriteSports(String uid, List<Sport> sports);
+
+  /// Troca a foto do perfil de [uid] por [jpeg] (já recortado e reduzido).
+  ///
+  /// `null` remove a foto: o perfil volta para a inicial de [name]. A foto
+  /// anterior continua valendo nos eventos e conversas que já a copiaram.
+  Future<void> updateAvatar(String uid, {required String name, Uint8List? jpeg});
 
   /// Usuários cujo handle começa por [handlePrefix] (digitado sem o `@`).
   ///

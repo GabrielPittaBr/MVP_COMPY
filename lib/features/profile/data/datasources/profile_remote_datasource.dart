@@ -1,11 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/services/avatar_storage.dart';
 import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/sport.dart';
 
 class ProfileRemoteDataSource {
-  ProfileRemoteDataSource(this._firestore);
+  ProfileRemoteDataSource(this._firestore, this._avatars);
   final FirebaseFirestore _firestore;
+  final AvatarStorage _avatars;
 
   Future<DocumentSnapshot<Map<String, dynamic>>> fetchById(String userId) {
     return _firestore.collection('users').doc(userId).get();
@@ -23,6 +27,19 @@ class ProfileRemoteDataSource {
   Future<void> updateFavoriteSports(String userId, List<String> sports) {
     return _firestore.collection('users').doc(userId).set(
       <String, dynamic>{Sport.favoriteSportsField: sports},
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Envia a foto ao Storage e devolve a URL de download.
+  Future<String> uploadAvatar(String userId, Uint8List jpeg) =>
+      _avatars.upload(userId, jpeg);
+
+  /// Grava `users/{uid}.avatarUrl`. Merge pelo mesmo motivo de
+  /// [updateFavoriteSports].
+  Future<void> updateAvatarUrl(String userId, String avatarUrl) {
+    return _firestore.collection('users').doc(userId).set(
+      <String, dynamic>{'avatarUrl': avatarUrl},
       SetOptions(merge: true),
     );
   }
