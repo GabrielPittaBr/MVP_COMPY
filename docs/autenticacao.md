@@ -37,19 +37,37 @@ conta. Se o sinal exigisse ao menos um esporte, o "pular" viraria um loop.
 
 ```
 users/{uid}
-  id:         String  (= uid)
-  name:       String
-  handle:     String  (= "@username")
-  avatarUrl:  String
-  email:      String
-  createdAt:  Timestamp
+  id:              String  (= uid)
+  name:            String
+  nameLower:       String  (nome normalizado, para a busca do painel admin)
+  handle:          String  (= "@username")
+  avatarUrl:       String  (ver "Foto de perfil" abaixo)
+  createdAt:       Timestamp
+  favoriteSports:  List<String>  (gravado no onboarding de esportes)
+
+users/{uid}/private/contact
+  email:  String  (só o dono lê — RN-06)
 
 usernames/{username_minusculo}
   uid:  String
 ```
 
 - `usernames` funciona como índice de unicidade — doc id é o username em minúsculo.
-- A gravação é feita via **WriteBatch atômico**: `users/{uid}` + `usernames/{username}` juntos.
+- A gravação é feita via **WriteBatch atômico**: `users/{uid}` + `private/contact` + `usernames/{username}` juntos.
+
+### Foto de perfil (`avatarUrl`)
+
+O campo guarda sempre uma URL, que pode ser de três tipos:
+
+| Origem | Exemplo | Quando |
+|---|---|---|
+| Firebase Storage | `.../o/users%2F{uid}%2Favatar_<millis>.jpg?...` | A pessoa escolheu uma foto no cadastro ou em Editar perfil |
+| Google | `https://lh3.googleusercontent.com/...=s400-c` | Primeiro login com Google, se a pessoa manteve a foto sugerida |
+| Placeholder | `https://placehold.co/100x100/png?text=G` | Sem foto; `AppAssets.isPlaceholderAvatar()` reconhece |
+
+- **Storage:** o app manda sempre um JPEG 512×512 sem EXIF, com nome novo a cada troca. A foto antiga não é apagada, porque eventos e conversas guardam cópia da URL. As regras ficam em `storage.rules`: só o dono grava na própria pasta, só JPEG abaixo de 1 MB, e qualquer autenticado lê. A exclusão de conta apaga a pasta `users/{uid}` inteira.
+- **Google:** a foto só entra **na criação da conta**, sugerida na `UsernamePage`. Nos logins seguintes o app não mexe nela, porque a pessoa pode ter escolhido outra depois. A URL do Google vem com 96 px (`=s96-c`) e é trocada por `=s400-c` (`largeGooglePhoto`).
+- **Regra do Firestore:** `avatarUrl` precisa ser `http(s)://` e ter até 2048 caracteres. O `http` existe por causa do emulador do Storage.
 
 ---
 
@@ -65,12 +83,14 @@ usernames/{username_minusculo}
 ### B — Cadastro Manual
 
 1. Usuário acessa `/signup` (Link "Criar Conta" na LoginPage).
-2. Preenche Nome, Username, E-mail, Senha.
+2. Preenche Nome, Username, E-mail, Senha e, se quiser, escolhe uma foto.
 3. `AuthController.signUpWithEmail()`:
    - Checa unicidade do username em `usernames/{username}`.
    - Cria conta no FirebaseAuth.
+   - Envia a foto ao Storage. Isso só pode acontecer depois de a conta existir, porque a pasta é do uid. Se o envio falhar, o cadastro segue com o placeholder.
    - Grava perfil e índice no Firestore (batch atômico).
-4. `authStateProvider` emite → redirect para `/home`.
+4. Enquanto o cadastro está em andamento, o guard não redireciona. Sem isso, a tela `/username` aparecia entre a conta criada e o perfil gravado.
+5. `authStateProvider` emite → redirect para `/onboarding/esportes`.
 
 ### C — Login com Google (usuário existente)
 
@@ -82,7 +102,7 @@ usernames/{username_minusculo}
 
 1. Mesmo fluxo C, mas `users/{uid}` não existe → `hasUsername = false`.
 2. `GoRouter.redirect` detecta `!hasUsername` → vai para `/username`.
-3. Usuário escolhe username na `UsernamePage` (nome e e-mail pré-preenchidos read-only).
+3. Usuário escolhe username na `UsernamePage`. O nome vem pré-preenchido e editável, o e-mail vem bloqueado e a foto do Google vem sugerida (dá para manter, trocar ou remover).
 4. `AuthController.setUsername()` grava Firestore.
 5. Redirect para `/onboarding/esportes` — o degrau seguinte.
 6. Escolha (ou "pular") gravada → redirect `/home`.
@@ -139,10 +159,10 @@ As regras usam a função auxiliar `signedIn()` que verifica `request.auth != nu
 - `events`, `conversations`: escrita restrita por papel (criador do evento, membro da conversa) — ver os comentários no próprio `firestore.rules`.
 - `places/{placeId}`: leitura pública exige usuário autenticado; administradores com custom claim `admin == true` podem gerenciar documentos completos conforme whitelist e validações em `firestore.rules`. O mobile lê locais ativos do Firestore. Novas criações de eventos e mensagens de local exigem documento ativo e snapshot correspondente no commit; leituras e atualizações históricas compatíveis permanecem autorizadas.
 
-**Para publicar as regras:**
+**Para publicar as regras** (Firestore e Storage juntos):
 
 ```bash
-firebase deploy --only firestore:rules
+firebase deploy --only storage,firestore:rules
 ```
 
 > ⚠️ Sem o deploy as regras só existem localmente. O Firebase Console usa as regras que foram publicadas via `firebase deploy`.
@@ -181,7 +201,7 @@ Em `ios/Runner/Info.plist`, adicione o `REVERSED_CLIENT_ID` que está no `Google
 ### 3. Deploy das Security Rules
 
 ```bash
-firebase deploy --only firestore:rules
+firebase deploy --only storage,firestore:rules
 ```
 
 ---
@@ -198,6 +218,8 @@ flutter run               → app abre em /login
 Checklist manual:
 - [ ] App abre direto na tela de login (não nas 5 abas)
 - [ ] Cadastro manual cria conta + perfil no Firestore
+- [ ] Cadastro com foto grava `users/{uid}/avatar_*.jpg` no Storage e a foto aparece no perfil e na Home
+- [ ] Login com Google (1ª vez) sugere a foto da conta Google
 - [ ] Username duplicado → mensagem de erro
 - [ ] Login com e-mail/senha funciona
 - [ ] Login com Google (1ª vez) → tela de username → tela de esportes

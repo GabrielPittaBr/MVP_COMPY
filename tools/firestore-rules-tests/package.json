@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Testes das regras do Firestore do COMPY, contra o emulador. Nada aqui vai para o app Flutter.",
+  "description": "Testes das regras do Firestore e do Storage do COMPY, contra o emulador. Nada aqui vai para o app Flutter.",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore --project demo-compy \"node --test --test-concurrency=1\""
+    "test": "firebase emulators:exec --only firestore,storage --project demo-compy \"node --test --test-concurrency=1\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",

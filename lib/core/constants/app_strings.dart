@@ -142,7 +142,8 @@ abstract final class AppStrings {
   static const String profileAccountSection = 'Conta';
   static const String profileDeleteAccount = 'Excluir minha conta';
   static const String profileDeleteAccountHint =
-      'Apaga seu perfil, libera seu @username e encerra seu acesso ao COMPY.';
+      'Apaga seu perfil e sua foto, libera seu @username e encerra seu acesso '
+      'ao COMPY.';
   static const String profileDeleteAccountTitle = 'Excluir conta?';
   static const String profileDeleteAccountBody =
       'Esta ação não pode ser desfeita. Eventos que você criou e mensagens já '
@@ -153,6 +154,25 @@ abstract final class AppStrings {
   static const String profileDeleteAccountGoogleHint =
       'Vamos abrir o Google para você confirmar que é você mesmo.';
   static const String profileDeleteAccountConfirm = 'Excluir conta';
+
+  // Foto de perfil — cadastro, pós-Google e edição do perfil
+  static const String photoAdd = 'Adicionar foto';
+  static const String photoChange = 'Trocar foto';
+  static const String photoRemove = 'Remover foto';
+  static const String photoGallery = 'Escolher da galeria';
+  static const String photoCamera = 'Tirar uma foto';
+  static const String photoCropTitle = 'Ajustar foto';
+  static const String photoCropHint =
+      'Arraste para posicionar. Use a pinça ou a roda do mouse para dar zoom.';
+  static const String photoUse = 'Usar foto';
+  static String photoTooLarge(int maxMb) =>
+      'Imagem muito grande. Escolha uma de até $maxMb MB.';
+  static const String photoNotImage =
+      'Esse arquivo não é uma imagem. Escolha uma foto JPG, PNG, WebP ou GIF.';
+  static const String photoPickError =
+      'Não foi possível abrir a galeria ou a câmera.';
+  static const String photoSaveError =
+      'Não foi possível salvar a foto. Tente novamente.';
 
   // Chat
   static const String chatTitle = 'Chat';

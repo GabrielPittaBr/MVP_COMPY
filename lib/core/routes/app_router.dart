@@ -99,7 +99,15 @@ String? authRedirect({
   required bool isLoading,
   required bool hasError,
   required String location,
+  bool isSubmitting = false,
 }) {
+  // Login ou cadastro em andamento: fica na tela até o controller decidir.
+  // No cadastro por e-mail o stream emite o usuário novo antes de o perfil
+  // existir (`hasUsername: false`), e sem isto o guard jogava para
+  // /username no meio do envio — por mais tempo quanto mais o cadastro
+  // demora, e o upload da foto de perfil demora.
+  if (isSubmitting && _publicRoutes.contains(location)) return null;
+
   // Estado de auth ainda carregando: splash.
   if (isLoading) {
     return location == AppRoutes.splash ? null : AppRoutes.splash;
@@ -181,6 +189,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         // null sem passar pela leitura do perfil.
         hasError: authAsync.hasError,
         location: state.uri.path,
+        isSubmitting: controllerAsync.isLoading,
       );
     },
 

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../entities/auth_user.dart';
 
 /// Interface do repositório de autenticação.
@@ -15,11 +17,15 @@ abstract interface class AuthRepository {
   });
 
   /// Cadastro manual: cria conta no FirebaseAuth + perfil no Firestore.
+  ///
+  /// [photo] é a foto de perfil já recortada, em JPEG; `null` deixa a
+  /// inicial do nome. Se o envio dela falhar, o cadastro segue sem foto.
   Future<AuthUser> signUpWithEmail({
     required String name,
     required String username,
     required String email,
     required String password,
+    Uint8List? photo,
   });
 
   /// Login / cadastro via Google.
@@ -36,11 +42,16 @@ abstract interface class AuthRepository {
 
   /// Grava o username escolhido (fluxo pós-Google para novos usuários).
   /// Cria/atualiza `users/{uid}` e `usernames/{username}` no Firestore.
+  ///
+  /// A foto do perfil é [photo] (JPEG recortado) quando houver, senão
+  /// [photoUrl] (a do Google), senão a inicial do nome.
   Future<void> setUsername({
     required String uid,
     required String username,
     required String name,
     required String email,
+    Uint8List? photo,
+    String? photoUrl,
   });
 
   /// Faz logout do Firebase Auth.
@@ -52,8 +63,8 @@ abstract interface class AuthRepository {
   /// digita senha nenhuma.
   bool signedInWithPassword();
 
-  /// Apaga a conta: `users/{uid}`, o contato privado, a reserva do username e
-  /// o registro no Firebase Auth.
+  /// Apaga a conta: as fotos de perfil no Storage, `users/{uid}`, o contato
+  /// privado, a reserva do username e o registro no Firebase Auth.
   ///
   /// Reautentica antes de apagar qualquer coisa — o Firebase exige login
   /// recente. [password] é obrigatória quando [signedInWithPassword] devolve

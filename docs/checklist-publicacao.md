@@ -12,7 +12,8 @@ metade não está em lugar nenhum do código.
 | 0 | Keystore de release | ✅ criado e ligado ao Gradle |
 | 1 | Pacote definitivo | ✅ `br.com.compy.app` |
 | 2 | `google-services.json` com OAuth | ✅ 3 `oauth_client` para o pacote novo |
-| 3 | Regras e índices no Firestore | ✅ publicados e conferidos |
+| 3 | Regras e índices no Firestore | ✅ publicados e conferidos (até a v0.1.0) |
+| 4 | Storage: bucket, regras e CORS | ⏳ pendente — ver [item 4](#4-storage-fotos-de-perfil) |
 
 Verificações que sustentam a tabela: `dart analyze` sem erros, `flutter test`
 169/169, `npm test --prefix tools/firestore-rules-tests` 83/83, e um
@@ -106,6 +107,36 @@ npm test --prefix tools/firestore-rules-tests
 firebase deploy --only firestore:rules,firestore:indexes
 ```
 
+## 4. Storage (fotos de perfil)
+
+Entrou com a foto de perfil (`feature/foto-de-perfil`, 22/10/2026). O bucket é
+o `compy-tcc.firebasestorage.app`, que já aparece no `firebase_options.dart`.
+As regras ficam em `storage.rules`, e a mesma suíte de
+`tools/firestore-rules-tests/` cobre os dois arquivos.
+
+> **Pendente:** confirmar no Console que o bucket está ativo, publicar as
+> regras e configurar o CORS. Nada disso foi feito ainda.
+
+Publicar as regras do Storage junto com as do Firestore, porque a regra de
+`avatarUrl` no Firestore e a do bucket foram escritas uma para a outra:
+
+```bash
+npm test --prefix tools/firestore-rules-tests
+firebase deploy --only storage,firestore:rules
+```
+
+**CORS do bucket.** O app Android não precisa, mas o Flutter Web (o painel
+admin e o app rodando no Chrome) baixa a imagem por XHR e só consegue mostrar
+a foto se o bucket liberar a origem. Uma vez só, com o `gcloud`:
+
+```bash
+echo '[{"origin":["*"],"method":["GET"],"maxAgeSeconds":3600}]' > cors.json
+gcloud storage buckets update gs://compy-tcc.firebasestorage.app --cors-file=cors.json
+```
+
+Só `GET` fica liberado: o envio passa pelo SDK, que já é autenticado e
+validado pelas regras.
+
 ---
 
 ## O que ainda falta para uma publicação na Play Store
@@ -115,9 +146,12 @@ Distribution). Vira bloqueio no dia em que o destino for a loja.
 
 - **Conta de desenvolvedor** (US$ 25, uma vez) e ficha da loja: descrição,
   capturas, ícone 512×512, banner 1024×500.
-- **Política de privacidade em URL pública.** O app coleta localização e dados
-  de conta — a Play exige a política e o formulário de Segurança dos Dados
-  declarando os dois.
+- **Política de privacidade em URL pública.** O app coleta localização, dados
+  de conta e **fotos** (a foto de perfil, da galeria ou da câmera, que fica no
+  Storage e é visível para os outros usuários) — a Play exige a política e o
+  formulário de Segurança dos Dados declarando os três. Vale dizer na política
+  que o EXIF (com a localização da foto) é removido antes do envio e que a
+  exclusão da conta apaga as fotos.
 - **AAB em vez de APK** (`flutter build appbundle`). A loja não aceita mais APK
   para apps novos.
 - **Play App Signing.** Ao aderir, o Google reassina o app com uma chave dele.

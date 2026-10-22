@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,8 +10,10 @@ import 'package:mvp_compy/features/auth/domain/repositories/auth_repository.dart
 import 'package:mvp_compy/features/auth/presentation/providers/auth_providers.dart';
 import 'package:mvp_compy/features/profile/domain/entities/rating_summary.dart';
 import 'package:mvp_compy/features/profile/domain/entities/user_profile.dart';
+import 'package:mvp_compy/features/profile/domain/repositories/profile_repository.dart';
 import 'package:mvp_compy/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:mvp_compy/features/profile/presentation/providers/profile_providers.dart';
+import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
 
 /// Só os dois métodos que esta tela usa têm corpo; o resto estoura de
@@ -50,6 +54,7 @@ class _FakeAuthRepository implements AuthRepository {
     required String username,
     required String email,
     required String password,
+    Uint8List? photo,
   }) =>
       throw UnimplementedError();
 
@@ -66,6 +71,8 @@ class _FakeAuthRepository implements AuthRepository {
     required String username,
     required String name,
     required String email,
+    Uint8List? photo,
+    String? photoUrl,
   }) =>
       throw UnimplementedError();
 
@@ -73,26 +80,81 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> signOut() => throw UnimplementedError();
 }
 
+/// Só a troca de foto tem corpo, pelo mesmo motivo do [_FakeAuthRepository].
+class _FakeProfileRepository implements ProfileRepository {
+  _FakeProfileRepository({this.errorOnAvatar});
+
+  final Object? errorOnAvatar;
+  final List<(String, String, Uint8List?)> avatarCalls =
+      <(String, String, Uint8List?)>[];
+
+  @override
+  Future<void> updateAvatar(
+    String uid, {
+    required String name,
+    Uint8List? jpeg,
+  }) async {
+    avatarCalls.add((uid, name, jpeg));
+    if (errorOnAvatar != null) throw errorOnAvatar!;
+  }
+
+  @override
+  Future<UserProfile> getCurrentProfile(String uid) =>
+      throw UnimplementedError();
+
+  @override
+  Future<UserProfile?> getPublicProfile(String uid) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> updateFavoriteSports(String uid, List<Sport> sports) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<UserSummary>> searchByHandle(
+    String handlePrefix, {
+    String? excludeUid,
+    int limit = 20,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<UserSummary>> searchByName(
+    String namePrefix, {
+    String? excludeUid,
+    int limit = 20,
+  }) =>
+      throw UnimplementedError();
+}
+
+UserProfile perfilCom({required String avatarUrl}) => UserProfile(
+      summary: UserSummary(
+        id: 'u_gabriel',
+        name: 'Gabriel',
+        handle: '@gabriel',
+        avatarUrl: avatarUrl,
+      ),
+      bio: '',
+      favoriteSports: const <Never>[],
+      badges: const <Never>[],
+      friends: const <Never>[],
+      rating: const RatingSummary(
+        average: 0,
+        count: 0,
+        breakdown: <int, double>{},
+      ),
+      gallery: const <String>[],
+    );
+
 void main() {
-  const UserProfile perfil = UserProfile(
-    summary: UserSummary(
-      id: 'u_gabriel',
-      name: 'Gabriel',
-      handle: '@gabriel',
-      avatarUrl: '',
-    ),
-    bio: '',
-    favoriteSports: <Never>[],
-    badges: <Never>[],
-    friends: <Never>[],
-    rating: RatingSummary(average: 0, count: 0, breakdown: <int, double>{}),
-    gallery: <String>[],
-  );
+  final UserProfile perfil = perfilCom(avatarUrl: '');
 
   Future<_FakeAuthRepository> pumpPage(
     WidgetTester tester, {
     bool needsPassword = false,
     Object? errorOnDelete,
+    UserProfile? profile,
+    ProfileRepository? profileRepository,
   }) async {
     final repo = _FakeAuthRepository(
       needsPassword: needsPassword,
@@ -103,7 +165,9 @@ void main() {
       ProviderScope(
         overrides: <Override>[
           authRepositoryProvider.overrideWith((_) => repo),
-          currentProfileProvider.overrideWith((_) async => perfil),
+          currentProfileProvider.overrideWith((_) async => profile ?? perfil),
+          if (profileRepository != null)
+            profileRepositoryProvider.overrideWith((_) => profileRepository),
         ],
         child: const MaterialApp(home: EditProfilePage()),
       ),
@@ -111,6 +175,64 @@ void main() {
     await tester.pumpAndSettle();
     return repo;
   }
+
+  /// A foto é carregada por rede, e no ambiente de teste isso sempre falha.
+  /// Como em `greeting_header_test`, só a biblioteca de imagem é silenciada.
+  void ignoreImageErrors() {
+    final void Function(FlutterErrorDetails)? previous = FlutterError.onError;
+    FlutterError.onError = (FlutterErrorDetails details) {
+      if (details.library == 'image resource service') return;
+      previous?.call(details);
+    };
+    addTearDown(() => FlutterError.onError = previous);
+  }
+
+  group('EditProfilePage — foto', () {
+    const String fotoReal =
+        'https://firebasestorage.googleapis.com/v0/b/compy/o/a.jpg';
+
+    testWidgets('sem foto mostra a inicial e oferece adicionar',
+        (tester) async {
+      await pumpPage(tester);
+
+      expect(find.text('G'), findsOneWidget);
+      expect(find.text(AppStrings.photoAdd), findsOneWidget);
+      expect(find.text(AppStrings.photoRemove), findsNothing);
+    });
+
+    testWidgets('remover grava na hora, sem foto nova', (tester) async {
+      ignoreImageErrors();
+      final profileRepo = _FakeProfileRepository();
+      await pumpPage(
+        tester,
+        profile: perfilCom(avatarUrl: fotoReal),
+        profileRepository: profileRepo,
+      );
+
+      await tester.tap(find.text(AppStrings.photoRemove));
+      await tester.pumpAndSettle();
+
+      expect(profileRepo.avatarCalls, <(String, String, Uint8List?)>[
+        ('u_gabriel', 'Gabriel', null),
+      ]);
+      expect(find.text(AppStrings.photoSaveError), findsNothing);
+    });
+
+    testWidgets('falha ao gravar vira mensagem na tela', (tester) async {
+      ignoreImageErrors();
+      await pumpPage(
+        tester,
+        profile: perfilCom(avatarUrl: fotoReal),
+        profileRepository:
+            _FakeProfileRepository(errorOnAvatar: Exception('sem rede')),
+      );
+
+      await tester.tap(find.text(AppStrings.photoRemove));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppStrings.photoSaveError), findsOneWidget);
+    });
+  });
 
   Future<void> abrirDialogo(WidgetTester tester) async {
     await tester.tap(find.text(AppStrings.profileDeleteAccount));

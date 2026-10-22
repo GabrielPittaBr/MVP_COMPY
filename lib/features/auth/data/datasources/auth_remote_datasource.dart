@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/services/avatar_storage.dart';
 import '../../../../core/services/firebase_service.dart';
 import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/sport.dart';
@@ -14,21 +15,31 @@ import '../../domain/entities/auth_user.dart';
 
 /// Datasource remoto de autenticação.
 ///
-/// Orquestra FirebaseAuth, GoogleSignIn e Firestore:
+/// Orquestra FirebaseAuth, GoogleSignIn, Firestore e Storage:
 /// - `users/{uid}` armazena o perfil público (UserSummary).
 /// - `usernames/{username}` é o índice de unicidade (doc id = username minúsculo).
+/// - `users/{uid}/avatar_*.jpg`, no Storage, é a foto escolhida no cadastro.
 class AuthRemoteDataSource {
   AuthRemoteDataSource({
     FirebaseAuth? auth,
     FirebaseFirestore? firestore,
     GoogleSignIn? googleSignIn,
+    AvatarStorage? avatarStorage,
   })  : _auth = auth ?? FirebaseService.instance.auth,
         _firestore = firestore ?? FirebaseService.instance.firestore,
-        _googleSignInOverride = googleSignIn;
+        _googleSignInOverride = googleSignIn,
+        _avatarStorageOverride = avatarStorage;
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
   final GoogleSignIn? _googleSignInOverride;
+  final AvatarStorage? _avatarStorageOverride;
+
+  /// Preguiçoso como o [_googleSignIn]: só quem envia foto precisa do
+  /// Storage, e um bucket mal configurado não pode derrubar o login de quem
+  /// não envia.
+  late final AvatarStorage _avatarStorage =
+      _avatarStorageOverride ?? AvatarStorage(FirebaseService.instance.storage);
 
   /// Preguiçoso porque construir o `GoogleSignIn` já dispara a inicialização
   /// do plugin, que na web exige Client ID — e a web nunca o usa (ver
@@ -78,11 +89,14 @@ class AuthRemoteDataSource {
   // Cadastro manual
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// [photo] é o JPEG já recortado (`AvatarImage.toJpeg`), ou `null` para
+  /// ficar com a inicial do nome.
   Future<AuthUser> signUpWithEmail({
     required String name,
     required String username,
     required String email,
     required String password,
+    Uint8List? photo,
   }) async {
     final String normalizedUsername = username.trim().toLowerCase();
 
@@ -101,12 +115,16 @@ class AuthRemoteDataSource {
     // 3. Atualizar displayName no Auth.
     await firebaseUser.updateDisplayName(name.trim());
 
-    // 4. Gravar perfil e username no Firestore (operação atômica via batch).
+    // 4. Enviar a foto. Precisa do uid, por isso só agora.
+    final String? photoUrl = await _tryUploadAvatar(firebaseUser.uid, photo);
+
+    // 5. Gravar perfil e username no Firestore (operação atômica via batch).
     await _writeUserProfile(
       uid: firebaseUser.uid,
       name: name.trim(),
       username: normalizedUsername,
       email: email.trim(),
+      avatarUrl: photoUrl ?? AppAssets.avatar(name.trim()),
     );
 
     return AuthUser(
@@ -201,11 +219,18 @@ class AuthRemoteDataSource {
   }
 
   /// Grava `users/{uid}` e `usernames/{username}` em um batch atômico.
+  ///
+  /// A foto do perfil sai de [photo] (JPEG recortado, enviado ao Storage),
+  /// senão de [photoUrl] (a do Google, que a tela sugere), senão da inicial.
+  /// É só aqui, na criação da conta, que a foto do Google entra: logins
+  /// seguintes não mexem em `avatarUrl`, que o usuário pode ter trocado.
   Future<void> setUsername({
     required String uid,
     required String username,
     required String name,
     required String email,
+    Uint8List? photo,
+    String? photoUrl,
   }) async {
     final String normalizedUsername = username.trim().toLowerCase();
     final String trimmedName = name.trim();
@@ -221,6 +246,9 @@ class AuthRemoteDataSource {
       name: trimmedName,
       username: normalizedUsername,
       email: email,
+      avatarUrl: await _tryUploadAvatar(uid, photo) ??
+          photoUrl ??
+          AppAssets.avatar(trimmedName),
     );
 
     // O nome que a Home exibe (`greetingNameProvider`) vem de
@@ -266,7 +294,8 @@ class AuthRemoteDataSource {
     return providers.contains(EmailAuthProvider.PROVIDER_ID);
   }
 
-  /// Apaga a conta e os documentos que [_writeUserProfile] criou.
+  /// Apaga a conta, as fotos de perfil e os documentos que
+  /// [_writeUserProfile] criou.
   ///
   /// **A ordem é o contrato:**
   ///
@@ -274,14 +303,16 @@ class AuthRemoteDataSource {
   ///    só no fim deixaria o perfil apagado com a conta ainda viva — o pior
   ///    estado possível, porque o guard do router mandaria o usuário para
   ///    `/username` como se fosse gente nova.
-  /// 2. **Firestore.** Todas as regras exigem `signedIn()`: depois que a
+  /// 2. **Storage.** As fotos também só saem com o dono logado.
+  /// 3. **Firestore.** Todas as regras exigem `signedIn()`: depois que a
   ///    conta some não há mais como apagar `users/{uid}`.
-  /// 3. **Auth.**
+  /// 4. **Auth.**
   ///
   /// Fora do escopo de propósito: eventos criados e mensagens de chat
-  /// continuam existindo, com nome e avatar congelados. As regras tornam
-  /// `creator` e `members` imutáveis e não existe "sair do evento" — limpar
-  /// isso é outra tarefa, com outras regras.
+  /// continuam existindo, com o nome congelado. As regras tornam `creator` e
+  /// `members` imutáveis e não existe "sair do evento" — limpar isso é outra
+  /// tarefa, com outras regras. A foto copiada neles deixa de carregar,
+  /// porque o arquivo foi apagado; o avatar fica só com a cor de fundo.
   Future<void> deleteAccount({String? password}) async {
     final User? user = _auth.currentUser;
     if (user == null) {
@@ -292,6 +323,7 @@ class AuthRemoteDataSource {
     }
 
     await _reauthenticate(user, password);
+    await _deleteUserPhotos(user.uid);
     await _deleteUserDocuments(user.uid);
     await user.delete();
     if (!kIsWeb) await _googleSignIn.signOut();
@@ -328,6 +360,17 @@ class AuthRemoteDataSource {
     await user.reauthenticateWithCredential(
       EmailAuthProvider.credential(email: email, password: password),
     );
+  }
+
+  /// Apaga as fotos de perfil do Storage. Melhor esforço: uma falha aqui
+  /// (rede, bucket fora do ar) não pode impedir quem pediu para sair de
+  /// sair. O pior caso é sobrar foto órfã no bucket.
+  Future<void> _deleteUserPhotos(String uid) async {
+    try {
+      await _avatarStorage.deleteAll(uid);
+    } catch (error) {
+      debugPrint('[Auth] fotos de users/$uid não foram apagadas: $error');
+    }
   }
 
   /// O inverso exato de [_writeUserProfile], no mesmo batch atômico.
@@ -378,8 +421,16 @@ class AuthRemoteDataSource {
       displayName: firebaseUser.displayName ?? '',
       hasUsername: (data?['handle'] as String?)?.isNotEmpty == true,
       hasFavoriteSports: Sport.hasStoredFavorites(data),
+      photoUrl: largeGooglePhoto(firebaseUser.photoURL),
     );
   }
+
+  /// A foto do Google chega com 96 px (`...=s96-c`), o que fica borrado no
+  /// círculo do perfil. O próprio Google serve outros tamanhos trocando o
+  /// sufixo; URL sem ele passa intacta.
+  @visibleForTesting
+  static String? largeGooglePhoto(String? url) =>
+      url?.replaceFirst(RegExp(r'=s\d+-c$'), '=s400-c');
 
   /// Lê `users/{uid}`. `null` quando o documento ainda não existe.
   ///
@@ -400,12 +451,31 @@ class AuthRemoteDataSource {
     }
   }
 
+  /// Envia a foto escolhida no cadastro. `null` sem foto ou se o envio falhar.
+  ///
+  /// Falha aqui não derruba o cadastro: a conta no Auth já existe, e abortar
+  /// agora deixaria uma conta sem perfil. O usuário fica com a inicial do
+  /// nome e pode pôr a foto depois, em Editar perfil.
+  Future<String?> _tryUploadAvatar(String uid, Uint8List? photo) async {
+    if (photo == null) return null;
+    try {
+      return await _avatarStorage.upload(uid, photo);
+    } catch (error) {
+      debugPrint('[Auth] envio da foto de perfil falhou: $error');
+      return null;
+    }
+  }
+
   /// Grava o perfil público em `users/{uid}` e o índice em `usernames/{username}`.
+  ///
+  /// [avatarUrl] é a foto já enviada ao Storage, a do Google ou o placeholder
+  /// com a inicial ([AppAssets.avatar]).
   Future<void> _writeUserProfile({
     required String uid,
     required String name,
     required String username,
     required String email,
+    required String avatarUrl,
   }) async {
     // Documento de perfil — compatível com UserSummary.fromMap().
     final DocumentReference<Map<String, dynamic>> userRef =
@@ -434,7 +504,7 @@ class AuthRemoteDataSource {
         'name': name,
         'nameLower': normalizeProfileName(name),
         'handle': '@$username',
-        'avatarUrl': AppAssets.avatar(name),
+        'avatarUrl': avatarUrl,
         // Re-cadastros preservam o Timestamp persistido; novos perfis usam o
         // timestamp do servidor. Assim as Rules podem manter createdAt
         // imutável sem quebrar o fluxo já existente.

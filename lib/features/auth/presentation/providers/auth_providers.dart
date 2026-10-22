@@ -53,12 +53,13 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     );
   }
 
-  /// Cadastro manual.
+  /// Cadastro manual, com a foto de perfil opcional.
   Future<void> signUpWithEmail({
     required String name,
     required String username,
     required String email,
     required String password,
+    Uint8List? photo,
   }) async {
     state = const AsyncLoading<AuthUser?>();
     state = await AsyncValue.guard<AuthUser?>(
@@ -67,6 +68,7 @@ class AuthController extends AsyncNotifier<AuthUser?> {
         username: username,
         email: email,
         password: password,
+        photo: photo,
       ),
     );
   }
@@ -79,12 +81,15 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     );
   }
 
-  /// Grava username (fluxo pós-Google para novos usuários).
+  /// Grava username (fluxo pós-Google para novos usuários), com a foto do
+  /// perfil: [photo] escolhida na tela, ou [photoUrl] do Google.
   Future<void> setUsername({
     required String uid,
     required String username,
     required String name,
     required String email,
+    Uint8List? photo,
+    String? photoUrl,
   }) async {
     state = const AsyncLoading<AuthUser?>();
     state = await AsyncValue.guard<AuthUser?>(
@@ -94,6 +99,8 @@ class AuthController extends AsyncNotifier<AuthUser?> {
           username: username,
           name: name,
           email: email,
+          photo: photo,
+          photoUrl: photoUrl,
         );
         // Retorna o usuário atualizado com hasUsername = true. O estado do
         // controller tem prioridade no guard, então é ele que faz o

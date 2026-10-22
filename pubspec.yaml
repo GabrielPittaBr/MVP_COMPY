@@ -26,6 +26,7 @@ dependencies:
   firebase_auth: ^5.1.4
   cloud_firestore: ^5.2.1
   firebase_app_check: ^0.3.0
+  firebase_storage: ^12.4.10
 
   # Login com Google (RF — autenticação social)
   google_sign_in: ^6.2.1
@@ -43,6 +44,12 @@ dependencies:
   # Imagens em rede com cache
   cached_network_image: ^3.3.1
   url_launcher: ^6.3.1
+
+  # Foto de perfil: escolher (galeria/câmera), recortar com zoom e reduzir
+  # para JPEG antes do envio
+  image_picker: ^1.2.4
+  crop_your_image: ^2.0.1
+  image: ^4.12.0
 
   # Util
   intl: ^0.20.2

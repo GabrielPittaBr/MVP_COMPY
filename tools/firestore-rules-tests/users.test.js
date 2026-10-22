@@ -288,6 +288,66 @@ describe('esportes favoritos (tarefa 13)', () => {
   });
 });
 
+describe('foto de perfil (avatarUrl)', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users', UID), {
+        id: UID,
+        name: 'Gabriel Pitta',
+        nameLower: 'gabriel pitta',
+        handle: `@${USERNAME}`,
+        avatarUrl: 'https://placehold.co/100x100/png?text=G',
+        createdAt: PROFILE_CREATED_AT,
+      });
+    });
+  });
+
+  /** Espelha `ProfileRemoteDataSource.updateAvatarUrl`. */
+  const gravarFoto = (db, uid, avatarUrl) =>
+    setDoc(doc(db, 'users', uid), { avatarUrl }, { merge: true });
+
+  it('o dono troca pela URL do Storage', async () => {
+    await assertSucceeds(
+      gravarFoto(
+        as(UID),
+        UID,
+        `https://firebasestorage.googleapis.com/v0/b/compy-tcc.firebasestorage.app/o/users%2F${UID}%2Favatar_1.jpg?alt=media&token=abc`,
+      ),
+    );
+  });
+
+  it('a URL do emulador do Storage (http) tambem passa', async () => {
+    await assertSucceeds(
+      gravarFoto(as(UID), UID, `http://localhost:9199/v0/b/demo/o/users%2F${UID}%2Favatar_1.jpg`),
+    );
+  });
+
+  it('a foto do Google tambem passa', async () => {
+    await assertSucceeds(
+      gravarFoto(as(UID), UID, 'https://lh3.googleusercontent.com/a/ACg8oc=s400-c'),
+    );
+  });
+
+  it('o que nao e endereco web e recusado', async () => {
+    await assertFails(gravarFoto(as(UID), UID, 'javascript:alert(1)'));
+    await assertFails(gravarFoto(as(UID), UID, ''));
+    await assertFails(gravarFoto(as(UID), UID, 42));
+  });
+
+  it('URL acima de 2048 caracteres e recusada', async () => {
+    await assertFails(
+      gravarFoto(as(UID), UID, `https://exemplo.com/${'a'.repeat(2048)}`),
+    );
+  });
+
+  it('ninguem troca a foto de outro', async () => {
+    await assertFails(
+      gravarFoto(as('uid_outro'), UID, 'https://lh3.googleusercontent.com/a/x'),
+    );
+  });
+});
+
 describe('contato privado — RN-06 (tarefa 13)', () => {
   const contato = (db, uid) => doc(db, 'users', uid, 'private', 'contact');
 
