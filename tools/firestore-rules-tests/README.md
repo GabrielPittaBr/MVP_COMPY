@@ -10,7 +10,7 @@ segurança do Firestore, que não têm equivalente em Dart.
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests
+npm test --prefix tools/firestore-rules-tests      # 167 casos
 ```
 
 ## Pré-requisitos
@@ -58,6 +58,22 @@ Dois casos restringem o código do app:
   campo nasce no primeiro join — mas só com quem entrou dali em diante, então
   os participantes antigos desses documentos não aparecem na consulta de
   "Participando". Ver a nota de migração abaixo.
+
+**`events`, encerramento** (tarefa 14). Só o Organizador encerra, uma vez só,
+depois do início e até 1h após o fim previsto, gravando o horário do servidor e
+`endedAutomatically = false`. O `true` é exclusivo da Function
+`autoEndOverdueEvents`, e o `ratedBy`, da callable da avaliação; nenhum evento
+nasce com esses campos. Depois do encerramento, ninguém mais entra no evento e
+o Organizador não o edita.
+
+**`ratings` e `ratingSummaries`** (tarefa 14). `ratings` é fechada ao
+cliente: nem o autor lê a própria avaliação (D13), e só a callable
+`submitEventRatings` grava. `ratingSummaries` é só leitura para quem está
+logado.
+
+**`users/{uid}/notifications`** (tarefa 14). Só o dono lê. O cliente não cria
+notificação (quem cria é o gatilho `onEventEnded`), só marca como lida, uma
+vez e com o horário do servidor, e apaga as próprias na exclusão de conta.
 
 ## Migração de `participantIds`
 

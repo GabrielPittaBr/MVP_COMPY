@@ -1,3 +1,4 @@
+import '../../../../shared/widgets/user_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,7 +10,6 @@ import '../models/chat_timeline.dart';
 import '../providers/chat_providers.dart';
 import '../widgets/chat_input_bar.dart';
 import '../widgets/message_bubble.dart';
-import '../widgets/peer_avatar.dart';
 
 /// Tela "5.1 Chat privado" — sala 1:1 com lista em tempo real (RF05).
 ///
@@ -35,7 +35,7 @@ class ChatRoomPage extends ConsumerWidget {
         titleSpacing: 0,
         title: Row(
           children: <Widget>[
-            PeerAvatar(peer: conversation?.peer),
+            UserAvatar(user: conversation?.peer),
             const SizedBox(width: 10),
             Expanded(
               child: Text(

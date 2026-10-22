@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/sport_place.dart';
+import 'place_rating_row.dart';
 
 /// Bottom sheet exibido ao tocar em um pin (RF04 — informações do local +
 /// ação de criar evento ali).
@@ -112,6 +113,8 @@ class PlaceDetailsSheet extends StatelessWidget {
                     // Esportes praticáveis — os mesmos que o seletor de
                     // "Criar evento" oferece para este local.
                     _SportsWrap(place: place),
+                    const SizedBox(height: 12),
+                    PlaceRatingRow(placeId: place.id),
                     const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,

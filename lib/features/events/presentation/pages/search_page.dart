@@ -6,6 +6,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/event_card.dart';
+import '../../../../shared/widgets/event_status_chip.dart';
 import '../providers/search_providers.dart';
 
 /// Tela de busca de eventos por nome ou modalidade esportiva.
@@ -57,10 +58,15 @@ class SearchPage extends ConsumerWidget {
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, i) {
                     final e = events[i];
-                    return EventCard(
+                    return EventStatusBuilder(
                       event: e,
-                      actionLabel: AppStrings.eventSeeMore,
-                      onAction: () => context.go('${AppRoutes.events}/${e.id}'),
+                      builder: (context, status) => EventCard(
+                        event: e,
+                        status: status,
+                        actionLabel: AppStrings.eventSeeMore,
+                        onAction: () =>
+                            context.go('${AppRoutes.events}/${e.id}'),
+                      ),
                     );
                   },
                 );

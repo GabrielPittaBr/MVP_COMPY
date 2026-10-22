@@ -84,6 +84,8 @@ abstract final class AppStrings {
       'Selecione o local do evento primeiro.';
   static const String eventDate = 'Data';
   static const String eventTime = 'Horário';
+  static const String eventStartInPast =
+      'Esse horário já passou. Escolha um início a partir de agora.';
   static const String eventDuration = 'Duração';
   static const String eventDurationOther = 'Outro';
   static const String eventDurationCustomTitle = 'Duração personalizada';
@@ -107,6 +109,147 @@ abstract final class AppStrings {
   static const String eventCreatedBy = 'Criado por:';
   static const String eventSeeMore = 'Ver mais';
   static const String eventVacanciesLabel = 'vagas restantes';
+  static String eventParticipantsCount(int count) => 'Participantes ($count)';
+  static const String eventJoined = 'Você entrou no evento!';
+  static const String eventNotFound = 'Evento não encontrado.';
+  static const String eventJoinError = 'Erro ao entrar no evento';
+
+  // Ciclo de vida do evento (tarefa 14)
+  static const String eventStatusLive = 'Acontecendo agora';
+  static const String eventStatusEnded = 'Encerrado';
+  static const String eventStatusEndedAutomatically =
+      'Encerrado automaticamente';
+  static const String eventYouAreIn = 'Você está participando';
+  static const String eventYouOrganize = 'Você organiza este evento';
+  static const String eventAlreadyEnded = 'Este evento já terminou';
+
+  // Evento ao vivo (tarefa 14)
+  static const String eventLiveBadge = 'AO VIVO';
+  static String eventLiveEndsAt(String time) => 'Termina às $time';
+  static const String eventLiveOverdue = 'Horário previsto encerrado';
+  static const String eventLiveOpen = 'Abrir evento';
+  static const String eventLiveOpenFromDetail = 'Abrir evento ao vivo';
+  static const String eventLiveTitle = 'Evento ao vivo';
+  static String eventLiveSchedule(String start, String end) =>
+      'Começou às $start · termina às $end';
+  static String eventLiveRemaining(String duration) => 'Faltam $duration';
+  static String eventLiveOverdueBy(String duration) =>
+      'Passou $duration do previsto';
+  static const String eventLiveOrganizer = 'Organizador';
+  static const String eventLiveYou = 'Você';
+  static String eventLiveMessage(String name) => 'Mandar mensagem para $name';
+  static const String eventLiveTalkToOrganizer = 'Falar com o organizador';
+  static const String eventLiveOverdueCreator =
+      'O horário previsto acabou. Encerre o evento para liberar as avaliações.';
+  static const String eventLiveOverdueParticipant =
+      'O horário previsto acabou. O organizador ainda vai encerrar o evento.';
+  static const String eventEnd = 'Encerrar evento';
+  static const String eventEndConfirmTitle = 'Encerrar o evento agora?';
+  static const String eventEndConfirmBody =
+      'Os participantes vão receber o convite para avaliar. '
+      'Não dá para desfazer.';
+  static const String eventEndConfirm = 'Encerrar';
+  static const String eventEndedByOrganizer = 'O organizador encerrou o evento.';
+  static const String eventEndError =
+      'Não foi possível encerrar o evento. Tente de novo.';
+  static const String eventAlreadyEndedError = 'Este evento já foi encerrado.';
+  static const String eventLiveRateNow = 'Avaliar agora';
+  static const String eventRate = 'Avaliar evento';
+  static const String eventRateAsCreator = 'Avaliar local e participantes';
+  static const String eventAlreadyRated = 'Você já avaliou';
+  static String eventParticipantsShort(int count) =>
+      count == 1 ? '1 participante' : '$count participantes';
+
+  // Central de notificações (tarefa 14)
+  static const String notificationsTitle = 'Notificações';
+  static const String notificationsMarkAllRead = 'Marcar todas como lidas';
+  static const String notificationsNew = 'Novas';
+  static const String notificationsEarlier = 'Anteriores';
+  static const String notificationsEmptyTitle = 'Nada por aqui ainda';
+  static const String notificationsEmptyBody =
+      'Quando um evento de que você participou terminar, o convite para '
+      'avaliar aparece aqui.';
+  static String notificationsBellSemantics(int unread) => switch (unread) {
+        0 => notificationsTitle,
+        1 => '$notificationsTitle, 1 não lida',
+        _ => '$notificationsTitle, $unread não lidas',
+      };
+  static String notificationEventEndedTitle(String eventTitle) =>
+      '$eventTitle terminou';
+  static const String notificationEventEndedBodyParticipant =
+      'Como foi? Avalie o evento, o local e quem jogou com você.';
+  static const String notificationEventEndedBodyCreator =
+      'Como foi? Avalie o local e quem jogou com você.';
+  static const String notificationAutoEndedTitle =
+      'Seu evento foi encerrado automaticamente';
+  static String notificationAutoEndedBody(String eventTitle) =>
+      '$eventTitle passou 1h do horário previsto. '
+      'Avalie o local e os participantes.';
+  static const String notificationRated = 'Avaliado';
+  static String autoEndDialogBody(String eventTitle) =>
+      '$eventTitle passou 1h do horário previsto e encerramos por você. '
+      'Que tal avaliar o local e quem jogou?';
+  static const String autoEndDialogLater = 'Agora não';
+  static const String autoEndDialogRate = 'Avaliar';
+  static const String notificationUnread = 'Não lida';
+
+  // Tempo relativo ("há 2 h") — central de notificações
+  static const String timeNow = 'agora';
+  static String timeMinutesAgo(int minutes) => 'há $minutes min';
+  static String timeHoursAgo(int hours) => 'há $hours h';
+  static const String timeYesterday = 'ontem';
+  static String timeDaysAgo(int days) => 'há $days dias';
+
+  // Médias de avaliação (tarefa 14)
+  static String ratingsCount(int count) =>
+      count == 1 ? '1 avaliação' : '$count avaliações';
+  static const String ratingsNone = 'Sem avaliações ainda';
+  static const String eventRatingAverage = 'Nota do evento';
+
+  // Avaliação do evento (tarefa 14)
+  static const String ratingTitle = 'Avaliar evento';
+  static String ratingStep(int index, int total) => 'Passo $index de $total';
+  static const String ratingEventQuestion = 'Como foi o evento?';
+  static const String ratingPlaceQuestion = 'E o local?';
+  static const String ratingParticipantsQuestion = 'Quem jogou com você';
+  static const String ratingOptional = 'Opcional';
+  static const String ratingSkip = 'Pular';
+  static const String ratingSkipAll = 'Pular todas';
+  static const String ratingSkipped = 'Pulado';
+  static const String ratingUndo = 'Desfazer';
+  static const List<String> ratingStarLabels = <String>[
+    'Péssimo',
+    'Ruim',
+    'Ok',
+    'Bom',
+    'Excelente',
+  ];
+  static String ratingStarsSemantics(int stars) => '$stars de 5 estrelas';
+  static const String ratingCommentHint = 'Conte o que aconteceu (opcional)';
+  static const String ratingCommentReasonHint = 'Por que essa nota?';
+  static const String ratingCommentLocked = 'Escolha as estrelas para comentar';
+  static const String ratingReasonRequired =
+      'Para notas abaixo de 3, conte o motivo.';
+  static const String ratingCommentPrivate =
+      'Seu comentário não fica público: só a média aparece.';
+  static const String ratingContinue = 'Continuar';
+  static const String ratingSubmit = 'Enviar avaliação';
+  static const String ratingSending = 'Enviando...';
+  static const String ratingSent = 'Avaliação enviada!';
+  static const String ratingThanks = 'Obrigado por ajudar a comunidade do COMPY.';
+  static const String ratingBack = 'Voltar';
+  static const String ratingClose = 'Fechar';
+  static const String ratingExitTitle = 'Sair sem enviar?';
+  static const String ratingExitBody = 'O que você preencheu vai se perder.';
+  static const String ratingExitConfirm = 'Sair';
+  static const String ratingNothingToRate = 'Não há o que avaliar neste evento.';
+  static const String ratingErrorAlreadyRated = 'Você já avaliou este evento.';
+  static const String ratingErrorNotEnded = 'Este evento ainda não terminou.';
+  static const String ratingErrorNotParticipant =
+      'Só quem participou pode avaliar.';
+  static const String ratingErrorOffline =
+      'Sem conexão. Tente de novo quando a internet voltar.';
+  static const String ratingErrorGeneric = 'Não foi possível enviar a avaliação.';
 
   // Profile
   static const String profileTitle = 'Perfil';

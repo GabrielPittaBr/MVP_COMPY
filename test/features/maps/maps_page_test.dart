@@ -13,6 +13,8 @@ import 'package:mvp_compy/features/maps/presentation/providers/maps_providers.da
 import 'package:mvp_compy/features/maps/presentation/widgets/place_details_sheet.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/sport_place.dart';
+import 'package:mvp_compy/features/ratings/domain/entities/rating_summary.dart';
+import 'package:mvp_compy/features/ratings/presentation/providers/ratings_providers.dart';
 
 Map<String, dynamic> _placeDocument({
   required String name,
@@ -121,12 +123,19 @@ void main() {
       status: 'inactive',
     );
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: PlaceDetailsSheet(
-          place: inactive,
-          onCreateEvent: () {},
-          onShare: () {},
+    await tester.pumpWidget(ProviderScope(
+      overrides: <Override>[
+        ratingSummaryProvider.overrideWith(
+          (ref, target) => Stream<RatingSummary>.value(RatingSummary.empty),
+        ),
+      ],
+      child: MaterialApp(
+        home: Scaffold(
+          body: PlaceDetailsSheet(
+            place: inactive,
+            onCreateEvent: () {},
+            onShare: () {},
+          ),
         ),
       ),
     ));

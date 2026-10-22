@@ -11,10 +11,9 @@ rules_version = '2';
 //
 // Convenção deste arquivo:
 //   - `delete` é negado por padrão. A única exceção é a exclusão de conta:
-//     o dono apaga o próprio `users/{uid}`, o `private/contact` e a reserva
-//     em `usernames/{username}`. Nenhuma outra coleção apaga nada.
-//   - Campos ainda não implementados (`endedAt`) estão marcados com TODO e a
-//     tarefa correspondente.
+//     o dono apaga o próprio `users/{uid}`, o `private/contact`, as próprias
+//     notificações (`users/{uid}/notifications`) e a reserva em
+//     `usernames/{username}`. Nenhuma outra coleção apaga nada.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -117,6 +116,22 @@ service cloud.firestore {
         allow read, create, update, delete: if signedIn()
                                             && request.auth.uid == userId;
       }
+
+      // ── users/{uid}/notifications ────────────────────────────────
+      // Tarefa 14. Central de notificações in-app. Quem cria é o gatilho
+      // `onEventEnded`, e quem marca "Avaliado" é a callable da avaliação,
+      // as duas pelo Admin SDK. O dono só lê e marca como lida, uma vez, com
+      // o horário do servidor. Na exclusão de conta, ele apaga as suas.
+      match /notifications/{notificationId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        allow update: if signedIn()
+                      && request.auth.uid == userId
+                      && resource.data.get('readAt', null) == null
+                      && changed().hasOnly(['readAt'])
+                      && request.resource.data.readAt == request.time;
+        allow delete: if signedIn() && request.auth.uid == userId;
+        allow create: if false;
+      }
     }
 
     // ── usernames ────────────────────────────────────────────────────
@@ -216,9 +231,49 @@ service cloud.firestore {
         return resource.data.get('participantIds', []);
       }
 
-      // TODO(tarefa 14): abrir a exceção do encerramento automático —
-      // qualquer participante pode gravar `endedAt`/`endedAutomatically`
-      // desde que `endsAt` + 1h já tenha passado e `endedAt` ainda seja nulo.
+      // Tarefa 14 — ciclo de vida. Os três campos só o servidor grava (o
+      // criador ao encerrar, a Function `autoEndOverdueEvents` 1h depois do
+      // fim previsto e a callable da avaliação), então um evento não pode
+      // nascer com eles. O encerramento automático fica com a Function, e não
+      // com uma exceção aqui que deixasse qualquer participante gravar
+      // `endedAt`.
+      function lifecycleFields() {
+        return ['endedAt', 'endedAutomatically', 'ratedBy'];
+      }
+
+      function isEnded() {
+        return resource.data.get('endedAt', null) != null;
+      }
+
+      // Documentos anteriores à tarefa 3 não têm `endsAt`; o app assume 1h.
+      function plannedEnd() {
+        return resource.data.get('endsAt',
+                                 resource.data.dateTime + duration.value(60, 'm'));
+      }
+
+      // A mesma folga de 1h de `kEventEndTolerance` (app) e da Function:
+      // passado o fim previsto + 1h, o evento está encerrado mesmo antes de a
+      // Function gravar `endedAt`.
+      function withinTolerance() {
+        return request.time < plannedEnd() + duration.value(1, 'h');
+      }
+
+      // Encerramento manual: só o criador, uma única vez, depois do início e
+      // dentro da folga, gravando o horário do servidor e
+      // `endedAutomatically = false`. O `true` é exclusivo da Function, e o
+      // `ratedBy` da callable da avaliação.
+      function isManualEnd() {
+        return isCreator()
+            && !isEnded()
+            && changed().hasOnly(['endedAt', 'endedAutomatically'])
+            && request.resource.data.endedAt == request.time
+            && request.resource.data.endedAutomatically == false
+            && request.time >= resource.data.dateTime
+            && withinTolerance();
+      }
+
+      // Entrar só enquanto o evento está agendado ou acontecendo: depois do
+      // fim, ninguém entra só para poder avaliar.
       function isJoin() {
         return signedIn()
             && changed().hasOnly(
@@ -234,7 +289,9 @@ service cloud.firestore {
                  .participantIds[joinedIdsBefore().size()] == request.auth.uid
             && request.resource.data.remainingSpots
                == resource.data.remainingSpots - 1
-            && request.resource.data.remainingSpots >= 0;
+            && request.resource.data.remainingSpots >= 0
+            && !isEnded()
+            && withinTolerance();
       }
 
       allow read: if signedIn();
@@ -248,11 +305,17 @@ service cloud.firestore {
                     && request.resource.data.totalSpots is int
                     && request.resource.data.totalSpots > 0
                     && spotsCoherent()
-                    && newPlaceSnapshotMatchesCurrentPlace();
+                    && newPlaceSnapshotMatchesCurrentPlace()
+                    && !request.resource.data.keys().hasAny(lifecycleFields());
+      // O criador edita o evento aberto, sem tocar no ciclo de vida; depois de
+      // encerrado, o evento fica congelado para ele.
       allow update: if (isCreator()
+                       && !isEnded()
                        && ownerUnchanged()
                        && spotsCoherent()
-                       && historicalEventFieldsUnchanged())
+                       && historicalEventFieldsUnchanged()
+                       && !changed().hasAny(lifecycleFields()))
+                    || isManualEnd()
                     || isJoin();
       allow delete: if false;
     }
@@ -442,58 +505,26 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // ── ratings ──────────────────────────────────────────────────────
-    // Tarefa 14. Coleção nova — antes caía no deny-by-default.
+    // ── ratings / ratingSummaries ────────────────────────────────────
+    // Tarefa 14. Só a callable `submitEventRatings` (Admin SDK) grava: ela
+    // confere o que as regras não conseguem — evento encerrado, autor que
+    // participou, N participantes avaliados, nada repetido — e grava as
+    // avaliações, os agregados e o `ratedBy` do evento numa transação.
     //
-    // D13: comentários não são públicos e não há moderação. Leitura é negada
-    // por completo; o que aparece na UI é a média desnormalizada no alvo,
-    // gravada junto da avaliação. Sem `read`, o comentário não vaza nem para
-    // quem inspeciona o tráfego.
-    //
-    // D12: nota abaixo de 3 estrelas exige justificativa — vale para os dois
-    // alvos ainda suportados, e é validado aqui além da UI. Avaliações de
-    // Local Esportivo ficam fora do escopo até existir um sistema real.
-    //
-    // Avaliação enviada não se reescreve: é a única garantia de integridade da
-    // média sem backend.
+    // D13: comentários não são públicos e não há moderação. Ninguém lê
+    // `ratings` pelo cliente; o que aparece na UI é a média, em
+    // `ratingSummaries`. Sem `read`, o comentário não vaza nem para quem
+    // inspeciona o tráfego.
     match /ratings/{ratingId} {
-      function validRating() {
-        return request.resource.data.keys().hasAll(
-                 ['eventId', 'fromUid', 'targetType', 'targetId', 'stars',
-                  'createdAt'])
-            && request.resource.data.keys().hasOnly(
-                 ['eventId', 'fromUid', 'targetType', 'targetId', 'stars',
-                  'comment', 'createdAt'])
-            && request.resource.data.targetType in ['user', 'event']
-            && request.resource.data.stars is int
-            && request.resource.data.stars >= 1
-            && request.resource.data.stars <= 5
-            && validComment();
-      }
+      allow read, write: if false;
+    }
 
-      function hasComment() {
-        return 'comment' in request.resource.data.keys()
-            && request.resource.data.comment is string
-            && request.resource.data.comment.size() > 0;
-      }
-
-      function validComment() {
-        return (!('comment' in request.resource.data.keys())
-                || (request.resource.data.comment is string
-                    && request.resource.data.comment.size() <= 500))
-            // D12: menos de 3 estrelas exige justificativa.
-            && (request.resource.data.stars >= 3 || hasComment());
-      }
-
-      // TODO(tarefa 14): avaliar se vale o custo de dois `get()` para exigir
-      // que o evento esteja encerrado (`endedAt != null`) e que o autor tenha
-      // participado dele (`request.auth.uid in participantIds`). O
-      // `participantIds` já existe desde a tarefa 12; falta o `endedAt`.
-      allow read: if false;
-      allow create: if signedIn()
-                    && request.resource.data.fromUid == request.auth.uid
-                    && validRating();
-      allow update, delete: if false;
+    // Agregados por alvo (`{targetType}_{targetId}`): contagem, soma e
+    // contagem por estrela. Ficam fora de `users` e `places`, cujos
+    // contratos estritos (`hasOnly`) não aceitam campo de nota.
+    match /ratingSummaries/{summaryId} {
+      allow read: if signedIn();
+      allow write: if false;
     }
   }
 }

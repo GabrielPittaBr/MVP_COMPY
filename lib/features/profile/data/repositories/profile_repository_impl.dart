@@ -2,7 +2,6 @@ import '../../../../core/constants/app_flags.dart';
 import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
-import '../../domain/entities/rating_summary.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../datasources/mock_profile.dart';
@@ -33,7 +32,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
       favoriteSports: Sport.parseList(data[Sport.favoriteSportsField]),
       badges: const [],
       friends: const [],
-      rating: const RatingSummary(average: 0, count: 0, breakdown: {}),
       gallery: const [],
     );
   }

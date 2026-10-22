@@ -7,11 +7,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/providers/clock_providers.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/duration_format.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_place_snapshot.dart';
+import '../../../../shared/models/event_status.dart';
 import '../../../../shared/models/skill_level.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/sport_place.dart';
@@ -73,9 +75,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   /// — não é uma duração, só sinaliza que o input deve abrir.
   static const int _customDurationOption = -1;
 
-  /// Limites do input de "Outro" (15min a 12h).
+  /// Limites do input de "Outro" (15min a 12h). O teto é compartilhado
+  /// com as listas, que contam com ele para saber até quando um evento
+  /// pode estar aberto.
   static const int _minDurationMinutes = 15;
-  static const int _maxDurationMinutes = 720;
+  static const int _maxDurationMinutes = kMaxEventDurationMinutes;
 
   SportPlace? _location;
   Sport? _sport;
@@ -250,6 +254,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                 readOnly: true,
                 onTap: _pickTime,
               ),
+              if (_startsInPast())
+                const _PlaceStatusNotice(message: AppStrings.eventStartInPast),
               // Duração — pré-selecionada em 1h, trocável no seletor.
               EventFormField(
                 hint: AppStrings.eventDuration,
@@ -295,8 +301,30 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         _sport != null &&
         _date != null &&
         _time != null &&
+        !_startsInPast() &&
         _skill != null &&
         (int.tryParse(_participantsCtrl.text) ?? 0) >= 2;
+  }
+
+  /// Início escolhido, ou nulo enquanto falta a data ou o horário.
+  DateTime? get _startsAt {
+    final date = _date;
+    final time = _time;
+    if (date == null || time == null) return null;
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  /// O seletor de data já impede os dias passados, mas não um horário que
+  /// já passou no dia de hoje — e um evento criado assim nasceria ao vivo
+  /// ou já encerrado (tarefa 14). O minuto atual ainda vale: o horário não
+  /// tem segundos, e começar agora é legítimo.
+  bool _startsInPast() {
+    final startsAt = _startsAt;
+    if (startsAt == null) return false;
+    final now = ref.read(clockProvider)();
+    final thisMinute =
+        DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    return startsAt.isBefore(thisMinute);
   }
 
   Future<void> _pickLocation(List<SportPlace> activePlaces) async {
@@ -419,7 +447,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   }
 
   Future<void> _pickDate() async {
-    final now = DateTime.now();
+    final now = ref.read(clockProvider)();
     final picked = await showDatePicker(
       context: context,
       firstDate: now,
@@ -437,7 +465,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: TimeOfDay.fromDateTime(ref.read(clockProvider)()),
     );
     if (picked != null) {
       setState(() {
@@ -557,6 +585,15 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   }
 
   Future<void> _submit() async {
+    // O relógio pode ter passado do horário escolhido enquanto o resto do
+    // formulário era preenchido; o botão só reavalia ao reconstruir.
+    if (_startsInPast()) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.eventStartInPast)),
+      );
+      return;
+    }
     setState(() => _isLoading = true);
 
     try {
@@ -568,13 +605,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       // UserSummary real do usuário logado (users/{uid} no Firestore).
       final creator = await ref.read(currentUserSummaryProvider.future);
 
-      final dateTime = DateTime(
-        _date!.year,
-        _date!.month,
-        _date!.day,
-        _time!.hour,
-        _time!.minute,
-      );
+      final dateTime = _startsAt!;
       final location = _location!;
       final sport = _sport!;
       final totalSpots = int.parse(_participantsCtrl.text);

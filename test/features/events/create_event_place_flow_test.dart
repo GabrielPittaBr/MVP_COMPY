@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mvp_compy/core/constants/app_strings.dart';
+import 'package:mvp_compy/core/providers/clock_providers.dart';
 import 'package:mvp_compy/features/auth/domain/entities/auth_user.dart';
 import 'package:mvp_compy/features/auth/presentation/providers/auth_providers.dart';
 import 'package:mvp_compy/features/events/domain/repositories/events_repository.dart';
@@ -73,66 +75,80 @@ Finder _field(String hint) => find.byWidgetPredicate(
       (widget) => widget is TextField && widget.decoration?.hintText == hint,
     );
 
+/// Instante fixo do relógio: os seletores de data e horário abrem nele, e
+/// é contra ele que o formulário decide se o início já passou.
+final _agora = DateTime(2026, 10, 21, 9);
+
+/// Preenche o formulário inteiro aceitando a data e o horário sugeridos
+/// pelos seletores, que vêm do relógio.
+Future<void> _preencher(WidgetTester tester) async {
+  await tester.enterText(
+      _field('Título (ex.: Pelada de quinta, Vôlei descontraído)'),
+      'Meu evento');
+  await tester.ensureVisible(_field('Selecionar local'));
+  await tester.tap(_field('Selecionar local'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Quadra Central').last);
+  await tester.pumpAndSettle();
+
+  await tester.ensureVisible(_field('Selecionar esporte'));
+  await tester.tap(_field('Selecionar esporte'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Futebol').last);
+  await tester.pumpAndSettle();
+
+  await tester.ensureVisible(_field('Data'));
+  await tester.tap(_field('Data'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('OK').last);
+  await tester.pumpAndSettle();
+
+  await tester.ensureVisible(_field('Horário'));
+  await tester.tap(_field('Horário'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('OK').last);
+  await tester.pumpAndSettle();
+
+  await tester.ensureVisible(_field('Nível de habilidade'));
+  await tester.tap(_field('Nível de habilidade'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Todos').last);
+  await tester.pumpAndSettle();
+
+  await tester.ensureVisible(_field('Número de participantes'));
+  await tester.enterText(_field('Número de participantes'), '4');
+  await tester.pump();
+}
+
+List<Override> _overrides(DateTime Function() clock, EventsRepository repo) =>
+    <Override>[
+      clockProvider.overrideWithValue(clock),
+      authStateProvider.overrideWith((ref) => Stream.value(_authUser)),
+      currentUserSummaryProvider.overrideWith((ref) async => _summary),
+      placesProvider.overrideWith(
+        (ref) => Stream<PlacesStreamResult>.value(
+          const PlacesStreamResult(
+            places: <SportPlace>[_place],
+            isFromCache: true,
+          ),
+        ),
+      ),
+      createEventProvider.overrideWithValue(CreateEvent(repo)),
+    ];
+
 void main() {
   testWidgets('offline preserva os valores do formulário e do local',
       (tester) async {
     final offlineRepository = _OfflineEventsRepository();
     await tester.pumpWidget(ProviderScope(
-      overrides: <Override>[
-        authStateProvider.overrideWith((ref) => Stream.value(_authUser)),
-        currentUserSummaryProvider.overrideWith((ref) async => _summary),
-        placesProvider.overrideWith(
-          (ref) => Stream<PlacesStreamResult>.value(
-            const PlacesStreamResult(
-              places: <SportPlace>[_place],
-              isFromCache: true,
-            ),
-          ),
-        ),
-        createEventProvider.overrideWithValue(
-          CreateEvent(offlineRepository),
-        ),
-      ],
+      overrides: _overrides(() => _agora, offlineRepository),
       child: const MaterialApp(home: CreateEventPage()),
     ));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-        _field('Título (ex.: Pelada de quinta, Vôlei descontraído)'),
-        'Meu evento');
-    await tester.ensureVisible(_field('Selecionar local'));
-    await tester.tap(_field('Selecionar local'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Quadra Central').last);
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(_field('Selecionar esporte'));
-    await tester.tap(_field('Selecionar esporte'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Futebol').last);
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(_field('Data'));
-    await tester.tap(_field('Data'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('OK').last);
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(_field('Horário'));
-    await tester.tap(_field('Horário'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('OK').last);
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(_field('Nível de habilidade'));
-    await tester.tap(_field('Nível de habilidade'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Todos').last);
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(_field('Número de participantes'));
-    await tester.enterText(_field('Número de participantes'), '4');
-    await tester.pump();
+    // Data e horário sugeridos são o próprio "agora": começar no minuto
+    // atual vale.
+    await _preencher(tester);
     for (final hint in <String>[
       'Selecionar local',
       'Selecionar esporte',
@@ -172,6 +188,32 @@ void main() {
             .controller!
             .text,
         'Quadra Central — Taquara');
+  });
+
+  testWidgets('horário que já passou hoje mostra o aviso e bloqueia o envio',
+      (tester) async {
+    final repository = _OfflineEventsRepository();
+    var agora = _agora;
+    await tester.pumpWidget(ProviderScope(
+      overrides: _overrides(() => agora, repository),
+      child: const MaterialApp(home: CreateEventPage()),
+    ));
+    await tester.pumpAndSettle();
+
+    await _preencher(tester);
+    expect(find.text(AppStrings.eventStartInPast), findsNothing);
+
+    // O relógio anda enquanto o formulário fica aberto: o horário escolhido
+    // (09:00 de hoje) passa a estar no passado.
+    agora = _agora.add(const Duration(minutes: 5));
+    await tester.enterText(_field('Número de participantes'), '5');
+    await tester.pump();
+
+    expect(find.text(AppStrings.eventStartInPast), findsOneWidget);
+    final submitButton = find.widgetWithText(FilledButton, 'Criar evento');
+    await tester.ensureVisible(submitButton);
+    expect(tester.widget<FilledButton>(submitButton).onPressed, isNull);
+    expect(repository.createCalled, isFalse);
   });
 
   testWidgets('desativação invalida somente local e modalidade selecionados',

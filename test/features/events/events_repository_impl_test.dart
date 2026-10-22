@@ -3,14 +3,20 @@ import 'package:latlong2/latlong.dart';
 import 'package:mvp_compy/features/events/data/datasources/in_memory_events_store.dart';
 import 'package:mvp_compy/features/events/data/repositories/events_repository_impl.dart';
 import 'package:mvp_compy/features/events/domain/entities/events_filter.dart';
+import 'package:mvp_compy/features/events/domain/repositories/events_repository.dart';
 import 'package:mvp_compy/shared/models/event.dart';
 import 'package:mvp_compy/shared/models/skill_level.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
 
+/// Relógio fixo dos testes. As fixtures ficam relativas a ele: com os
+/// encerrados fora das listas (tarefa 14), um evento de data fixa no passado
+/// sumiria de todas elas.
+final _agora = DateTime.now();
+
 void main() {
   // `_remote == null` força o ramo mock (InMemoryEventsStore), sem Firebase.
-  final repo = EventsRepositoryImpl(null);
+  final repo = EventsRepositoryImpl(null, clock: () => _agora);
 
   group('EventsRepositoryImpl.fetchPage', () {
     test('sem filtro devolve eventos de várias modalidades', () async {
@@ -125,7 +131,8 @@ void main() {
     });
 
     test('withDay normaliza para a meia-noite local', () {
-      final filter = const EventsFilter().withDay(DateTime(2026, 8, 10, 21, 30));
+      final filter =
+          const EventsFilter().withDay(DateTime(2026, 8, 10, 21, 30));
       expect(filter.day, DateTime(2026, 8, 10));
       expect(filter.dayEnd, DateTime(2026, 8, 11));
     });
@@ -171,12 +178,12 @@ void main() {
       store.add(_evento(
         id: 'evt_c_cedo',
         criador: uid,
-        dateTime: DateTime(2026, 9, 1, 19),
+        dateTime: _agora.add(const Duration(days: 1)),
       ));
       store.add(_evento(
         id: 'evt_c_tarde',
         criador: uid,
-        dateTime: DateTime(2026, 9, 8, 19),
+        dateTime: _agora.add(const Duration(days: 8)),
       ));
       store.add(_evento(id: 'evt_c_alheio', criador: 'u_outro_qualquer'));
 
@@ -224,8 +231,8 @@ void main() {
         handle: '@ana',
         avatarUrl: 'novo.png',
       );
-      expect(store.getById('evt_troca')!.participants.last,
-          isNot(identidadeNova));
+      expect(
+          store.getById('evt_troca')!.participants.last, isNot(identidadeNova));
 
       expect(
         (await repo.fetchJoinedBy(identidadeNova.id)).map((e) => e.id),
@@ -246,7 +253,124 @@ void main() {
       expect(criados.map((e) => e.id), <String>['evt_f_volei']);
     });
   });
+
+  // Também escreve no store singleton; ids e uids próprios para não cruzar
+  // com os grupos acima.
+  group('EventsRepositoryImpl — encerrados somem das listas (D17)', () {
+    final store = InMemoryEventsStore.instance;
+    const dono = 'u_dono_d17';
+    const participante = 'u_participante_d17';
+    const abertos = <String>{
+      'evt_d17_agendado',
+      'evt_d17_ao_vivo',
+      'evt_d17_na_folga',
+    };
+
+    setUpAll(() {
+      Event noRelogio(
+        String id, {
+        required Duration inicio,
+        int durationMinutes = 60,
+        DateTime? endedAt,
+      }) =>
+          _evento(
+            id: id,
+            criador: dono,
+            participantes: <UserSummary>[
+              _usuario(dono),
+              _usuario(participante),
+            ],
+            dateTime: _agora.add(inicio),
+            durationMinutes: durationMinutes,
+            endedAt: endedAt,
+          );
+
+      store
+        ..add(noRelogio('evt_d17_agendado', inicio: const Duration(days: 1)))
+        ..add(
+            noRelogio('evt_d17_ao_vivo', inicio: const Duration(minutes: -10)))
+        // Passou do fim previsto, mas ainda está na folga de 1h.
+        ..add(
+            noRelogio('evt_d17_na_folga', inicio: const Duration(minutes: -80)))
+        // O criador encerrou à mão antes do fim previsto.
+        ..add(noRelogio(
+          'evt_d17_encerrado_a_mao',
+          inicio: const Duration(minutes: -10),
+          endedAt: _agora.subtract(const Duration(minutes: 5)),
+        ))
+        // Fim previsto + 1h já passou: encerrado mesmo sem endedAt.
+        ..add(noRelogio(
+          'evt_d17_encerrado_pelo_tempo',
+          inicio: const Duration(hours: -3),
+        ));
+    });
+
+    Set<String> doTeste(Iterable<Event> events) => <String>{
+          for (final e in events)
+            if (e.id.startsWith('evt_d17')) e.id
+        };
+
+    test('"Todos os eventos" esconde os encerrados', () async {
+      final page = await repo.fetchPage(pageSize: 500);
+      expect(doTeste(page.items), abertos);
+    });
+
+    test('"Criados por mim" esconde os encerrados', () async {
+      expect(doTeste(await repo.fetchCreatedBy(dono)), abertos);
+    });
+
+    test('"Participando" esconde os encerrados', () async {
+      expect(doTeste(await repo.fetchJoinedBy(participante)), abertos);
+    });
+
+    test('a busca esconde os encerrados', () async {
+      expect(doTeste(await repo.search('evt_d17')), abertos);
+    });
+
+    test('nas fixtures do mock, o ao vivo aparece e o encerrado não', () async {
+      final todos =
+          (await repo.fetchPage(pageSize: 500)).items.map((e) => e.id);
+      final doJoao = (await repo.fetchJoinedBy('u_joao')).map((e) => e.id);
+
+      expect(todos, contains('evt_005'));
+      expect(todos, isNot(contains('evt_006')));
+      expect(doJoao, contains('evt_005'));
+      expect(doJoao, isNot(contains('evt_006')));
+    });
+  });
+
+  group('EventsRepositoryImpl.endEvent (mock)', () {
+    test('encerra com o horário do relógio e endedAutomatically = false',
+        () async {
+      InMemoryEventsStore.instance.add(_evento(
+        id: 'evt_encerrar',
+        criador: 'u_dono_encerrar',
+        dateTime: _agora.subtract(const Duration(minutes: 30)),
+      ));
+
+      await repo.endEvent('evt_encerrar');
+
+      final encerrado = await repo.getById('evt_encerrar');
+      expect(encerrado!.endedAt, _agora);
+      expect(encerrado.endedAutomatically, isFalse);
+    });
+
+    test('encerrar de novo lança EventAlreadyEndedException', () async {
+      InMemoryEventsStore.instance.add(_evento(
+        id: 'evt_encerrar_2x',
+        criador: 'u_dono_encerrar',
+        dateTime: _agora.subtract(const Duration(minutes: 30)),
+      ));
+      await repo.endEvent('evt_encerrar_2x');
+
+      expect(
+        () => repo.endEvent('evt_encerrar_2x'),
+        throwsA(isA<EventAlreadyEndedException>()),
+      );
+    });
+  });
 }
+
 
 UserSummary _usuario(String id) =>
     UserSummary(id: id, name: id, handle: '@$id', avatarUrl: '');
@@ -257,6 +381,8 @@ Event _evento({
   List<UserSummary>? participantes,
   Sport sport = Sport.futebol,
   DateTime? dateTime,
+  int durationMinutes = 60,
+  DateTime? endedAt,
 }) {
   final dono = _usuario(criador);
   return Event(
@@ -265,7 +391,9 @@ Event _evento({
     sport: sport,
     location: 'Taquara',
     coordinates: const LatLng(-29.6485, -50.7820),
-    dateTime: dateTime ?? DateTime(2026, 9, 1, 19),
+    dateTime: dateTime ?? _agora.add(const Duration(days: 1)),
+    durationMinutes: durationMinutes,
+    endedAt: endedAt,
     skillLevel: SkillLevel.todos,
     totalSpots: 10,
     // O criador já ocupa uma vaga, como no formulário de criação.

@@ -20,6 +20,11 @@ class EventsRemoteDataSource {
   /// `SkillLevel`) filtram modalidade e nível; [dayStart]/[dayEnd] recortam
   /// um dia. Cada combinação de igualdade com o `orderBy('dateTime')` exige
   /// um índice composto — todos declarados em `firestore.indexes.json`.
+  ///
+  /// [notBefore] é o limite inferior de `dateTime` que esconde os eventos
+  /// que já não podem estar abertos (tarefa 14). Com dia escolhido, vale o
+  /// maior dos dois. Como o limite fica no mesmo campo do `orderBy`, os
+  /// índices de sempre continuam servindo.
   Future<QuerySnapshot<Map<String, dynamic>>> fetchPage({
     DocumentSnapshot<Map<String, dynamic>>? startAfter,
     int limit = 10,
@@ -27,6 +32,7 @@ class EventsRemoteDataSource {
     List<String> skillLevelNames = const <String>[],
     DateTime? dayStart,
     DateTime? dayEnd,
+    DateTime? notBefore,
   }) {
     Query<Map<String, dynamic>> query = _firestore.collection('events');
     if (sportName != null) {
@@ -35,11 +41,14 @@ class EventsRemoteDataSource {
     if (skillLevelNames.isNotEmpty) {
       query = query.where('skillLevel', whereIn: skillLevelNames);
     }
-    if (dayStart != null && dayEnd != null) {
-      query = query
-          .where('dateTime',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart))
-          .where('dateTime', isLessThan: Timestamp.fromDate(dayEnd));
+    final hasDay = dayStart != null && dayEnd != null;
+    final from = hasDay ? _latest(dayStart, notBefore) : notBefore;
+    if (from != null) {
+      query = query.where('dateTime',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(from));
+    }
+    if (hasDay) {
+      query = query.where('dateTime', isLessThan: Timestamp.fromDate(dayEnd));
     }
     query = query.orderBy('dateTime').limit(limit);
     if (startAfter != null) {
@@ -60,13 +69,12 @@ class EventsRemoteDataSource {
   Future<QuerySnapshot<Map<String, dynamic>>> fetchCreatedBy(
     String uid, {
     int limit = 50,
+    DateTime? notBefore,
   }) {
-    return _firestore
-        .collection('events')
-        .where('creator.id', isEqualTo: uid)
-        .orderBy('dateTime')
-        .limit(limit)
-        .get();
+    return _since(
+      _firestore.collection('events').where('creator.id', isEqualTo: uid),
+      notBefore,
+    ).orderBy('dateTime').limit(limit).get();
   }
 
   /// Eventos em que [uid] está inscrito — seção "Participando".
@@ -79,14 +87,45 @@ class EventsRemoteDataSource {
   Future<QuerySnapshot<Map<String, dynamic>>> fetchJoinedBy(
     String uid, {
     int limit = 50,
+    DateTime? notBefore,
   }) {
-    return _firestore
-        .collection('events')
-        .where('participantIds', arrayContains: uid)
-        .orderBy('dateTime')
-        .limit(limit)
-        .get();
+    return _since(
+      _firestore
+          .collection('events')
+          .where('participantIds', arrayContains: uid),
+      notBefore,
+    ).orderBy('dateTime').limit(limit).get();
   }
+
+  /// [fetchJoinedBy] em tempo real — alimenta o card do evento ao vivo e a
+  /// seção "Participando" (tarefa 14) com uma única consulta.
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchJoinedBy(
+    String uid, {
+    int limit = 50,
+    DateTime? notBefore,
+  }) {
+    return _since(
+      _firestore
+          .collection('events')
+          .where('participantIds', arrayContains: uid),
+      notBefore,
+    ).orderBy('dateTime').limit(limit).snapshots();
+  }
+
+  /// Aplica o limite inferior de `dateTime`, se houver. Os índices
+  /// `creator.id + dateTime` e `participantIds + dateTime` já cobrem o
+  /// intervalo, porque ele fica no campo do `orderBy`.
+  static Query<Map<String, dynamic>> _since(
+    Query<Map<String, dynamic>> query,
+    DateTime? notBefore,
+  ) {
+    if (notBefore == null) return query;
+    return query.where('dateTime',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(notBefore));
+  }
+
+  static DateTime _latest(DateTime a, DateTime? b) =>
+      b != null && b.isAfter(a) ? b : a;
 
   /// Busca por prefixo do título (campo `titleLower`, minúsculo).
   Future<QuerySnapshot<Map<String, dynamic>>> searchByTitlePrefix(
@@ -118,6 +157,12 @@ class EventsRemoteDataSource {
 
   Future<DocumentSnapshot<Map<String, dynamic>>> fetchById(String id) {
     return _firestore.collection('events').doc(id).get();
+  }
+
+  /// Acompanha o documento em tempo real (tarefa 14): o detalhe mostra um
+  /// encerramento ou um join sem precisar recarregar.
+  Stream<DocumentSnapshot<Map<String, dynamic>>> watchById(String id) {
+    return _firestore.collection('events').doc(id).snapshots();
   }
 
   /// Registra a participação de [user] (mapa de `UserSummary`) em uma
@@ -154,6 +199,36 @@ class EventsRemoteDataSource {
         'remainingSpots': remaining - 1,
       });
     });
+  }
+
+  /// Encerramento manual pelo criador (tarefa 14). A transação relê o
+  /// evento para dar a mensagem certa quando ele já foi encerrado; a regra
+  /// `isManualEnd()` confere o resto (criador, uma vez só, depois do início,
+  /// dentro da folga e com o horário do servidor).
+  Future<void> end(String eventId) async {
+    final docRef = _firestore.collection('events').doc(eventId);
+    try {
+      await _firestore.runTransaction<void>((tx) async {
+        final snapshot = await tx.get(docRef);
+        final data = snapshot.data();
+        if (data == null) {
+          throw StateError('Evento $eventId não encontrado');
+        }
+        if (data['endedAt'] != null) throw const EventAlreadyEndedException();
+        tx.update(docRef, <String, Object?>{
+          'endedAt': FieldValue.serverTimestamp(),
+          'endedAutomatically': false,
+        });
+      });
+    } on FirebaseException catch (error) {
+      // A regra só recusa o criador se o evento já acabou: encerrado por
+      // outra via ou fora da folga de 1h (a Function encerra). Para quem
+      // está na tela, nos dois casos o evento já foi encerrado.
+      if (error.code == 'permission-denied') {
+        throw const EventAlreadyEndedException();
+      }
+      rethrow;
+    }
   }
 
   Future<Event> create(

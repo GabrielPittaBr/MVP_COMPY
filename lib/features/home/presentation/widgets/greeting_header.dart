@@ -5,8 +5,12 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 
-/// Cabeçalho da home: avatar à esquerda, título "Compy" no centro,
+/// Cabeçalho da home: avatar à esquerda, título "Compy" no centro, sino e
 /// engrenagem à direita, e abaixo a saudação "Oi, {nome}".
+///
+/// O sino (tarefa 14) tem o badge das notificações não lidas. Com dois
+/// ícones à direita e um à esquerda, um `Row` com `Spacer` tiraria o título
+/// do centro; por isso ele fica num `Stack`, centralizado na largura toda.
 ///
 /// Os dois toques saem daqui como callback em vez de navegar direto: quem
 /// conhece as rotas é a página, como já acontece em `CategoryCircle` e
@@ -16,6 +20,8 @@ class GreetingHeader extends StatelessWidget {
     required this.userName,
     required this.onAvatarTap,
     required this.onSettingsTap,
+    required this.onNotificationsTap,
+    this.unreadNotifications = 0,
     super.key,
   });
 
@@ -26,12 +32,29 @@ class GreetingHeader extends StatelessWidget {
 
   final VoidCallback onSettingsTap;
 
+  /// Abre a central de notificações.
+  final VoidCallback onNotificationsTap;
+
+  /// Número do badge; zero esconde o badge.
+  final int unreadNotifications;
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Row(
+        Stack(
+          alignment: Alignment.center,
+          children: <Widget>[
+            const Text(
+              AppStrings.appName,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.onSurface,
+              ),
+            ),
+            Row(
           children: <Widget>[
             Semantics(
               button: true,
@@ -55,21 +78,30 @@ class GreetingHeader extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            const Text(
-              AppStrings.appName,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: AppColors.onSurface,
+            IconButton(
+              tooltip: AppStrings.notificationsBellSemantics(unreadNotifications),
+              color: AppColors.onSurface,
+              onPressed: onNotificationsTap,
+              icon: ExcludeSemantics(
+                child: Badge(
+                  isLabelVisible: unreadNotifications > 0,
+                  backgroundColor: AppColors.error,
+                  textColor: Colors.white,
+                  label: Text(
+                    unreadNotifications > 9 ? '9+' : '$unreadNotifications',
+                  ),
+                  child: const Icon(Icons.notifications_outlined),
+                ),
               ),
             ),
-            const Spacer(),
             IconButton(
               icon: const Icon(Icons.settings_outlined),
               color: AppColors.onSurface,
               tooltip: AppStrings.settingsTitle,
               onPressed: onSettingsTap,
             ),
+          ],
+        ),
           ],
         ),
         const SizedBox(height: 12),

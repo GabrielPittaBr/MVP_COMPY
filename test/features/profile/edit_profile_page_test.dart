@@ -6,7 +6,6 @@ import 'package:mvp_compy/core/constants/app_strings.dart';
 import 'package:mvp_compy/features/auth/domain/entities/auth_user.dart';
 import 'package:mvp_compy/features/auth/domain/repositories/auth_repository.dart';
 import 'package:mvp_compy/features/auth/presentation/providers/auth_providers.dart';
-import 'package:mvp_compy/features/profile/domain/entities/rating_summary.dart';
 import 'package:mvp_compy/features/profile/domain/entities/user_profile.dart';
 import 'package:mvp_compy/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:mvp_compy/features/profile/presentation/providers/profile_providers.dart';
@@ -85,7 +84,6 @@ void main() {
     favoriteSports: <Never>[],
     badges: <Never>[],
     friends: <Never>[],
-    rating: RatingSummary(average: 0, count: 0, breakdown: <int, double>{}),
     gallery: <String>[],
   );
 

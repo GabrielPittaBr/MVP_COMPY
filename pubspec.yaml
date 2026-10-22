@@ -26,6 +26,8 @@ dependencies:
   firebase_auth: ^5.1.4
   cloud_firestore: ^5.2.1
   firebase_app_check: ^0.3.0
+  # Callable da avaliação do evento (tarefa 14)
+  cloud_functions: ^5.6.2
 
   # Login com Google (RF — autenticação social)
   google_sign_in: ^6.2.1
