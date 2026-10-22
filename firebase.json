@@ -37,6 +37,9 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": [
     {
       "target": "admin",
@@ -45,6 +48,17 @@
         "firebase.json",
         "**/.*",
         "**/node_modules/**"
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "max-age=0, must-revalidate"
+            }
+          ]
+        }
       ],
       "rewrites": [
         {
@@ -63,6 +77,9 @@
     },
     "functions": {
       "port": 5001
+    },
+    "storage": {
+      "port": 9199
     },
     "ui": {
       "enabled": false

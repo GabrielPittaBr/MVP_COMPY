@@ -499,44 +499,41 @@ class _CreatorTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: <Widget>[
-          UserAvatar(user: event.creator, radius: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  event.creator.name,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  event.creator.handle,
-                  style: const TextStyle(
-                    color: AppColors.onSurfaceMuted,
-                    fontSize: 12,
+    return InkWell(
+      key: const Key('event-creator-profile'),
+      onTap: () => context.push(AppRoutes.publicProfileFor(event.creator.id)),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: <Widget>[
+            UserAvatar(user: event.creator, radius: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    event.creator.name,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                ),
-              ],
+                  Text(
+                    event.creator.handle,
+                    style: const TextStyle(
+                      color: AppColors.onSurfaceMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.add, color: Colors.white, size: 18),
-          ),
-        ],
+            const Icon(Icons.chevron_right, color: AppColors.onSurfaceMuted),
+          ],
+        ),
       ),
     );
   }

@@ -12,6 +12,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   collection,
+  deleteField,
   deleteDoc,
   doc,
   GeoPoint,
@@ -58,7 +59,12 @@ const asUser = (uid = USER) => testEnv.authenticatedContext(uid).firestore();
 const asAdmin = () => testEnv.authenticatedContext(ADMIN, { admin: true }).firestore();
 const anonymous = () => testEnv.unauthenticatedContext().firestore();
 
-function validPlace({ status = 'inactive' } = {}) {
+function validPlace({
+  status = 'inactive',
+  accessType = 'public',
+  contactPhone,
+  images,
+} = {}) {
   return {
     name: 'Parque do Trabalhador',
     nameLower: 'parque do trabalhador',
@@ -75,6 +81,9 @@ function validPlace({ status = 'inactive' } = {}) {
     primarySport: 'futebol',
     coordinates: new GeoPoint(-29.656276729317323, -50.787726691670045),
     imageUrl: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=600',
+    ...(accessType == null ? {} : { accessType }),
+    ...(contactPhone == null ? {} : { contactPhone }),
+    ...(images == null ? {} : { images }),
     status,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -185,6 +194,89 @@ describe('places — escrita administrativa e schema', () => {
     await assertSucceeds(setDoc(doc(asAdmin(), 'places', 'novo'), validPlace()));
   });
 
+  it('Administrador cria local público sem telefone', async () => {
+    const place = validPlace({
+      images: [
+        { url: 'https://example.com/cover.jpg', source: 'Foto: Divulgação' },
+        { url: 'https://example.com/court.jpg' },
+      ],
+    });
+    place.imageUrl = place.images[0].url;
+
+    await assertSucceeds(setDoc(doc(asAdmin(), 'places', 'publico'), place));
+  });
+
+  it('Administrador cria local privado com telefone brasileiro válido', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(asAdmin(), 'places', 'privado'),
+        validPlace({ accessType: 'private', contactPhone: '51999999999' }),
+      ),
+    );
+  });
+
+  it('Rules bloqueiam local privado sem telefone ou com DDD inválido', async () => {
+    await assertFails(
+      setDoc(
+        doc(asAdmin(), 'places', 'privado-sem-telefone'),
+        validPlace({ accessType: 'private' }),
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(asAdmin(), 'places', 'privado-telefone-invalido'),
+        validPlace({ accessType: 'private', contactPhone: '0012345678' }),
+      ),
+    );
+  });
+
+  it('Administrador pode tornar público e remover o telefone privado', async () => {
+    await seed('privado', {
+      ...validPlace({ accessType: 'private', contactPhone: '51999999999' }),
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    });
+
+    await assertSucceeds(
+      updateDoc(doc(asAdmin(), 'places', 'privado'), {
+        accessType: 'public',
+        contactPhone: deleteField(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('Rules aceitam oito imagens e rejeitam galeria maior ou fonte inválida', async () => {
+    const images = Array.from({ length: 8 }, (_, index) => ({
+      url: `https://example.com/photo-${index}.jpg`,
+      ...(index === 3 ? { source: 'Foto: Divulgação' } : {}),
+    }));
+    await assertSucceeds(
+      setDoc(
+        doc(asAdmin(), 'places', 'oito-fotos'),
+        { ...validPlace({ images }), imageUrl: images[0].url },
+      ),
+    );
+
+    const tooMany = [...images, { url: 'https://example.com/photo-8.jpg' }];
+    await assertFails(
+      setDoc(
+        doc(asAdmin(), 'places', 'nove-fotos'),
+        { ...validPlace({ images: tooMany }), imageUrl: tooMany[0].url },
+      ),
+    );
+    const invalidSource = [{
+      url: 'https://example.com/photo.jpg',
+      source: 42,
+    }];
+    await assertFails(
+      setDoc(
+        doc(asAdmin(), 'places', 'fonte-invalida'),
+        { ...validPlace({ images: invalidSource }), imageUrl: invalidSource[0].url },
+      ),
+    );
+  });
+
   it('Administrador não cria Local Esportivo ativo', async () => {
     await assertFails(setDoc(doc(asAdmin(), 'places', 'novo'), validPlace({ status: 'active' })));
   });
@@ -228,6 +320,24 @@ describe('places — escrita administrativa e schema', () => {
         updatedAt: serverTimestamp(),
       }),
     );
+  });
+
+  it('update de documento legado não inventa tipo nem perde imageUrl', async () => {
+    await seed('legado', {
+      ...validPlace({ accessType: null }),
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    });
+
+    await assertSucceeds(
+      updateDoc(doc(asAdmin(), 'places', 'legado'), {
+        description: 'Parque público de Taquara com campo, quadras e pista esportiva para a comunidade.',
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    const legacy = await getDoc(doc(asAdmin(), 'places', 'legado'));
+    assert.equal('accessType' in legacy.data(), false);
+    assert.equal(typeof legacy.data().imageUrl, 'string');
   });
 
   it('update administrativo não altera createdAt', async () => {

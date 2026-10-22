@@ -6,6 +6,11 @@ abstract final class AppAssets {
   static String avatar(String seed, {int size = 100}) =>
       'https://placehold.co/${size}x$size/png?text=${Uri.encodeComponent(seed.isNotEmpty ? seed[0].toUpperCase() : '?')}';
 
+  /// `true` quando [url] não é foto de verdade: vazia ou o placeholder de
+  /// [avatar], que é o que o perfil guarda quando o usuário fica sem foto.
+  static bool isPlaceholderAvatar(String? url) =>
+      url == null || url.isEmpty || url.startsWith('https://placehold.co/');
+
   /// Imagens de banner para eventos / locais por modalidade.
   static const String soccerBanner =
       'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=600';

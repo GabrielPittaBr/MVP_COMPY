@@ -21,8 +21,8 @@ Aplicativo móvel que conecta praticantes de esporte em **Taquara/RS**.
 [![Android](https://img.shields.io/badge/Android-br.com.compy.app-3DDC84?style=for-the-badge&logo=android&logoColor=white)](android/app/build.gradle.kts)
 
 ![Versão](https://img.shields.io/badge/Vers%C3%A3o-v0.1.0-1F3A8A?style=for-the-badge)
-![Testes](https://img.shields.io/badge/Testes-208%20passando-10B981?style=for-the-badge)
-![Regras](https://img.shields.io/badge/Regras%20do%20Firestore-132%20casos-F59E0B?style=for-the-badge)
+![Testes](https://img.shields.io/badge/Testes-376%20passando-10B981?style=for-the-badge)
+![Regras](https://img.shields.io/badge/Regras%20do%20Firestore%20e%20Storage-190%20casos-F59E0B?style=for-the-badge)
 ![Licença](https://img.shields.io/badge/Uso-acad%C3%AAmico-6B7280?style=for-the-badge)
 
 </div>
@@ -143,15 +143,15 @@ flutter run
 ## Testes e qualidade
 
 ```bash
-flutter test     # 343 testes de unidade e de widget
+flutter test     # 376 testes de unidade e de widget
 dart analyze     # analisador estático — sem erros (só sugestões de estilo)
 ```
 
-As regras do Firestore têm suíte própria, em Node, porque não há como testá-las a partir do Dart. Ela roda contra o emulador e **nunca toca o projeto real** — precisa de JDK 21+ no PATH:
+As regras do Firestore e do Storage têm suíte própria, em Node, porque não há como testá-las a partir do Dart. Ela roda contra o emulador e **nunca toca o projeto real** — precisa de JDK 21+ no PATH:
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 167 casos
+npm test --prefix tools/firestore-rules-tests      # 190 casos
 ```
 
 As Cloud Functions também têm lint e testes próprios:
@@ -171,6 +171,7 @@ npm test --prefix functions                        # 81 testes
 | `test/` | Testes de unidade e de widget |
 | `assets/images/` | Logo e ícone do app |
 | `firestore.rules` · `firestore.indexes.json` | Regras de segurança e índices do Firestore |
+| `storage.rules` | Regras do Cloud Storage (fotos de perfil) |
 | `tools/firestore-rules-tests/` | Suíte Node que exercita as regras no emulador |
 | `admin/` | Painel administrativo (Flutter Web) para locais esportivos e contas — ver [`docs/admin/painel-administrativo.md`](docs/admin/painel-administrativo.md) |
 | `functions/` | Cloud Functions (TypeScript): as do painel e as do ciclo de vida do evento (encerramento automático, notificações e avaliações) |

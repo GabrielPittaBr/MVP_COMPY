@@ -49,6 +49,23 @@ const adminBrazilianStates = <String>{
 const adminTaquaraCenter = LatLng(-29.656276729317323, -50.787726691670045);
 const adminTaquaraWarningRadiusKm = 50.0;
 
+class AdminPlaceImage {
+  const AdminPlaceImage({required this.url, this.source});
+
+  final String url;
+  final String? source;
+
+  factory AdminPlaceImage.fromMap(Map<dynamic, dynamic> map) => AdminPlaceImage(
+    url: map['url'] as String,
+    source: _optionalNonBlank(map['source']),
+  );
+
+  Map<String, Object> toFirestore() => <String, Object>{
+    'url': url.trim(),
+    'source': ?_optionalNonBlank(source),
+  };
+}
+
 class AdminPlaceAddress {
   const AdminPlaceAddress({
     required this.street,
@@ -118,6 +135,9 @@ class AdminPlaceRecord {
     required this.primarySport,
     required this.coordinates,
     required this.imageUrl,
+    this.images = const <AdminPlaceImage>[],
+    this.accessType,
+    this.contactPhone,
     required this.status,
     required this.createdAt,
     required this.updatedAt,
@@ -133,6 +153,9 @@ class AdminPlaceRecord {
   final String primarySport;
   final GeoPoint coordinates;
   final String imageUrl;
+  final List<AdminPlaceImage> images;
+  final String? accessType;
+  final String? contactPhone;
   final String status;
   final Timestamp createdAt;
   final Timestamp updatedAt;
@@ -158,10 +181,47 @@ class AdminPlaceRecord {
         data['primarySport'] is! String ||
         data['coordinates'] is! GeoPoint ||
         data['imageUrl'] is! String ||
+        (data['accessType'] != null &&
+            data['accessType'] != 'public' &&
+            data['accessType'] != 'private') ||
+        (data['contactPhone'] != null && data['contactPhone'] is! String) ||
         (data['status'] != 'active' && data['status'] != 'inactive') ||
         data['createdAt'] is! Timestamp ||
         data['updatedAt'] is! Timestamp) {
       throw FormatException('Documento places/${document.id} inválido.');
+    }
+    final imageUrl = data['imageUrl'] as String;
+    final rawImages = data['images'];
+    final images = rawImages == null
+        ? <AdminPlaceImage>[AdminPlaceImage(url: imageUrl)]
+        : rawImages is List &&
+              rawImages.isNotEmpty &&
+              rawImages.length <= 8 &&
+              rawImages.every(
+                (image) =>
+                    image is Map &&
+                    image['url'] is String &&
+                    (image['source'] == null || image['source'] is String),
+              )
+        ? rawImages
+              .cast<Map<dynamic, dynamic>>()
+              .map(AdminPlaceImage.fromMap)
+              .toList()
+        : throw FormatException(
+            'Galeria do documento places/${document.id} inválida.',
+          );
+    if (images.first.url != imageUrl) {
+      throw FormatException(
+        'Capa do documento places/${document.id} não corresponde à galeria.',
+      );
+    }
+    final accessType = data['accessType'] as String?;
+    final contactPhone = data['contactPhone'] as String?;
+    if (accessType == 'private' &&
+        (contactPhone == null || !isValidAdminBrazilianPhone(contactPhone))) {
+      throw FormatException(
+        'Telefone do documento places/${document.id} inválido.',
+      );
     }
     return AdminPlaceRecord(
       id: document.id,
@@ -172,7 +232,10 @@ class AdminPlaceRecord {
       sports: List<String>.unmodifiable(sports.cast<String>()),
       primarySport: data['primarySport'] as String,
       coordinates: data['coordinates'] as GeoPoint,
-      imageUrl: data['imageUrl'] as String,
+      imageUrl: imageUrl,
+      images: List<AdminPlaceImage>.unmodifiable(images),
+      accessType: accessType,
+      contactPhone: contactPhone,
       status: data['status'] as String,
       createdAt: data['createdAt'] as Timestamp,
       updatedAt: data['updatedAt'] as Timestamp,
@@ -195,6 +258,9 @@ class AdminPlaceRecord {
     latitude: coordinates.latitude,
     longitude: coordinates.longitude,
     imageUrl: imageUrl,
+    images: images,
+    accessType: accessType,
+    contactPhone: contactPhone ?? '',
   );
 }
 
@@ -214,6 +280,9 @@ class AdminPlaceDraft {
     required this.latitude,
     required this.longitude,
     required this.imageUrl,
+    this.images = const <AdminPlaceImage>[],
+    this.accessType = 'public',
+    this.contactPhone = '',
   });
 
   final String name;
@@ -230,8 +299,15 @@ class AdminPlaceDraft {
   final double? latitude;
   final double? longitude;
   final String imageUrl;
+  final List<AdminPlaceImage> images;
+  final String? accessType;
+  final String contactPhone;
 
-  Map<String, String> validate() {
+  List<AdminPlaceImage> get effectiveImages => images.isEmpty
+      ? <AdminPlaceImage>[AdminPlaceImage(url: imageUrl)]
+      : images;
+
+  Map<String, String> validate({bool requireAccessType = false}) {
     final errors = <String, String>{};
     final cleanName = name.trim();
     final cleanDescription = description.trim();
@@ -277,18 +353,40 @@ class AdminPlaceDraft {
     if (longitude == null || longitude! < -180 || longitude! > 180) {
       errors['longitude'] = 'A longitude deve estar entre -180 e 180.';
     }
-    final uri = Uri.tryParse(imageUrl.trim());
-    if (imageUrl.trim().length > 2048 ||
-        uri == null ||
-        uri.scheme != 'https' ||
-        uri.host.isEmpty) {
-      errors['imageUrl'] = 'Informe uma URL HTTPS válida para a imagem.';
+    if (effectiveImages.isEmpty || effectiveImages.length > 8) {
+      errors['images'] = 'Adicione de 1 a 8 imagens para o local.';
+    }
+    for (var i = 0; i < effectiveImages.length; i++) {
+      final image = effectiveImages[i];
+      final uri = Uri.tryParse(image.url.trim());
+      if (image.url.trim().length > 2048 ||
+          uri == null ||
+          uri.scheme != 'https' ||
+          uri.host.isEmpty) {
+        errors['images'] = 'Informe uma URL HTTPS válida para cada imagem.';
+        errors['imageUrl'] = errors['images']!;
+        break;
+      }
+      if ((image.source?.trim().length ?? 0) > 200) {
+        errors['images'] = 'A fonte da imagem deve ter até 200 caracteres.';
+        break;
+      }
+    }
+    if (requireAccessType && accessType == null) {
+      errors['accessType'] = 'Selecione se o local é público ou privado.';
+    } else if (accessType != null &&
+        accessType != 'public' &&
+        accessType != 'private') {
+      errors['accessType'] = 'Selecione um tipo de local válido.';
+    }
+    if (accessType == 'private' && !isValidAdminBrazilianPhone(contactPhone)) {
+      errors['contactPhone'] = 'Informe um telefone brasileiro válido com DDD.';
     }
     return errors;
   }
 
-  Map<String, Object> toFirestoreFields() {
-    final errors = validate();
+  Map<String, Object> toFirestoreFields({bool requireAccessType = false}) {
+    final errors = validate(requireAccessType: requireAccessType);
     if (errors.isNotEmpty) {
       throw ArgumentError.value(errors, 'draft', 'Dados inválidos.');
     }
@@ -299,6 +397,10 @@ class AdminPlaceDraft {
     final cleanComplement = _optionalNonBlank(complement);
     final cleanNeighborhood = _optionalNonBlank(neighborhood);
     final cleanPostalCode = postalDigits.isEmpty ? null : postalDigits;
+    final cleanImages = effectiveImages
+        .map((image) => image.toFirestore())
+        .toList(growable: false);
+    final phoneDigits = contactPhone.replaceAll(RegExp(r'\D'), '');
     return <String, Object>{
       'name': cleanName,
       'nameLower': normalizeAdminSearch(cleanName),
@@ -316,7 +418,10 @@ class AdminPlaceDraft {
       'sports': List<String>.unmodifiable(sports),
       'primarySport': primarySport!,
       'coordinates': GeoPoint(latitude!, longitude!),
-      'imageUrl': imageUrl.trim(),
+      'imageUrl': effectiveImages.first.url.trim(),
+      'images': cleanImages,
+      'accessType': ?accessType,
+      if (accessType == 'private') 'contactPhone': phoneDigits,
     };
   }
 
@@ -329,6 +434,24 @@ class AdminPlaceDraft {
         ) >
         adminTaquaraWarningRadiusKm;
   }
+}
+
+bool isValidAdminBrazilianPhone(String value) {
+  final digits = value.replaceAll(RegExp(r'\D'), '');
+  return RegExp(r'^[1-9][0-9][0-9]{8,9}$').hasMatch(digits);
+}
+
+String formatAdminBrazilianPhone(String value) {
+  final digits = value.replaceAll(RegExp(r'\D'), '');
+  if (digits.isEmpty) return '';
+  if (digits.length <= 2) return '($digits';
+  final ddd = digits.substring(0, 2);
+  final subscriber = digits.substring(2);
+  final separatorAt = subscriber.length > 8 ? 5 : 4;
+  final formattedSubscriber = subscriber.length > separatorAt
+      ? '${subscriber.substring(0, separatorAt)}-${subscriber.substring(separatorAt)}'
+      : subscriber;
+  return '($ddd) $formattedSubscriber';
 }
 
 void _validateOptional(

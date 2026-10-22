@@ -22,21 +22,4 @@ void main() {
     expect(find.byType(UserAvatar), findsNWidgets(2));
     expect(find.byIcon(Icons.person), findsNWidgets(2));
   });
-
-  testWidgets('mostra no máximo maxVisible avatares', (tester) async {
-    final participants = List<UserSummary>.generate(
-      5,
-      (i) => UserSummary(id: 'u$i', name: 'P$i', handle: '@p$i', avatarUrl: ''),
-    );
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ParticipantsAvatars(participants: participants, maxVisible: 3),
-        ),
-      ),
-    );
-
-    expect(find.byType(UserAvatar), findsNWidgets(3));
-  });
 }

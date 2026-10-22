@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_flags.dart';
+import '../../../../core/services/avatar_storage.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../auth/domain/entities/auth_user.dart';
@@ -13,10 +15,16 @@ import '../../data/repositories/profile_repository_impl.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../../domain/usecases/get_profile.dart';
+import '../../domain/usecases/get_public_profile.dart';
 import '../../domain/usecases/search_users.dart';
 
 final profileRemoteDataSourceProvider = Provider<ProfileRemoteDataSource?>(
-  (ref) => kUseFirebaseRepos ? ProfileRemoteDataSource(FirebaseFirestore.instance) : null,
+  (ref) => kUseFirebaseRepos
+      ? ProfileRemoteDataSource(
+          FirebaseFirestore.instance,
+          AvatarStorage(FirebaseStorage.instance),
+        )
+      : null,
 );
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
@@ -25,6 +33,15 @@ final profileRepositoryProvider = Provider<ProfileRepository>(
 
 final getProfileProvider = Provider<GetProfile>(
   (ref) => GetProfile(ref.watch(profileRepositoryProvider)),
+);
+
+final getPublicProfileProvider = Provider<GetPublicProfile>(
+  (ref) => GetPublicProfile(ref.watch(profileRepositoryProvider)),
+);
+
+final publicProfileProvider =
+    FutureProvider.autoDispose.family<UserProfile?, String>(
+  (ref, uid) => ref.watch(getPublicProfileProvider).call(uid),
 );
 
 final searchUsersProvider = Provider<SearchUsers>(
@@ -39,7 +56,8 @@ final searchUsersProvider = Provider<SearchUsers>(
 final userSearchProvider =
     FutureProvider.autoDispose.family<List<UserSummary>, String>(
   (ref, query) async {
-    if (query.trim().replaceFirst('@', '').length < SearchUsers.minPrefixLength) {
+    if (query.trim().replaceFirst('@', '').length <
+        SearchUsers.minPrefixLength) {
       return const <UserSummary>[];
     }
 
@@ -86,7 +104,9 @@ class FavoriteSportsController extends AsyncNotifier<void> {
     state = const AsyncLoading<void>();
     state = await AsyncValue.guard<void>(() async {
       final String uid = await _requireUid();
-      await ref.read(profileRepositoryProvider).updateFavoriteSports(uid, sports);
+      await ref
+          .read(profileRepositoryProvider)
+          .updateFavoriteSports(uid, sports);
       // O perfil (e o carrossel da Home, que bebe dele) precisa refletir a
       // escolha sem esperar o app reabrir.
       ref.invalidate(currentProfileProvider);
@@ -132,6 +152,38 @@ class FavoriteSportsController extends AsyncNotifier<void> {
 final favoriteSportsControllerProvider =
     AsyncNotifierProvider<FavoriteSportsController, void>(
   FavoriteSportsController.new,
+);
+
+/// Troca ou remove a foto do perfil, gravando na hora (Editar perfil).
+///
+/// Mesmo formato do [FavoriteSportsController]: o estado só serve para a
+/// tela travar os botões e reclamar, e não é `autoDispose` para um envio
+/// lento não estourar se a tela fechar no meio.
+class AvatarController extends AsyncNotifier<void> {
+  @override
+  Future<void> build() async {}
+
+  /// [jpeg] `null` remove a foto. Devolve `true` quando gravou.
+  Future<bool> save(UserSummary me, Uint8List? jpeg) async {
+    state = const AsyncLoading<void>();
+    state = await AsyncValue.guard<void>(() async {
+      await ref
+          .read(profileRepositoryProvider)
+          .updateAvatar(me.id, name: me.name, jpeg: jpeg);
+      // Perfil, Home e quem mais lê o perfil passam a mostrar a foto nova.
+      ref.invalidate(currentProfileProvider);
+    });
+
+    final AsyncValue<void> result = state;
+    if (result.hasError) {
+      debugPrint('[Avatar] falha ao gravar a foto: ${result.error}');
+    }
+    return !result.hasError;
+  }
+}
+
+final avatarControllerProvider = AsyncNotifierProvider<AvatarController, void>(
+  AvatarController.new,
 );
 
 /// Identidade pública ([UserSummary]) do usuário logado — usada para

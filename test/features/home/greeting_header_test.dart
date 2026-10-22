@@ -1,5 +1,7 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mvp_compy/core/constants/app_assets.dart';
 import 'package:mvp_compy/core/constants/app_strings.dart';
 import 'package:mvp_compy/features/home/presentation/widgets/greeting_header.dart';
 
@@ -22,6 +24,7 @@ void main() {
     required VoidCallback onSettingsTap,
     VoidCallback? onNotificationsTap,
     int unreadNotifications = 0,
+    String? avatarUrl,
   }) async {
     ignoreImageErrors();
     await tester.pumpWidget(
@@ -33,6 +36,7 @@ void main() {
             onSettingsTap: onSettingsTap,
             onNotificationsTap: onNotificationsTap ?? () {},
             unreadNotifications: unreadNotifications,
+            avatarUrl: avatarUrl,
           ),
         ),
       ),
@@ -126,6 +130,34 @@ void main() {
       final titulo = tester.getCenter(find.text(AppStrings.appName));
       final tela = tester.getCenter(find.byType(Scaffold));
       expect(titulo.dx, closeTo(tela.dx, 0.5));
+    });
+
+    String avatarShown(WidgetTester tester) {
+      final CircleAvatar avatar =
+          tester.widget<CircleAvatar>(find.byType(CircleAvatar));
+      return (avatar.backgroundImage! as CachedNetworkImageProvider).url;
+    }
+
+    testWidgets('mostra a foto do perfil', (tester) async {
+      const String foto = 'https://firebasestorage.googleapis.com/foto.jpg';
+      await pumpHeader(
+        tester,
+        onAvatarTap: () {},
+        onSettingsTap: () {},
+        avatarUrl: foto,
+      );
+      expect(avatarShown(tester), foto);
+    });
+
+    // Perfil ainda carregando (null) ou antigo, sem o campo ('').
+    testWidgets('sem foto, fica a inicial do nome', (tester) async {
+      await pumpHeader(
+        tester,
+        onAvatarTap: () {},
+        onSettingsTap: () {},
+        avatarUrl: '',
+      );
+      expect(avatarShown(tester), AppAssets.avatar('Gabriel'));
     });
 
     testWidgets('continua saudando pelo nome', (tester) async {

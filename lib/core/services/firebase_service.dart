@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../firebase_options.dart';
@@ -29,6 +30,7 @@ class FirebaseService {
         // As callables do app ficam em southamerica-east1 (tarefa 14).
         FirebaseFunctions.instanceFor(region: kFunctionsRegion)
             .useFunctionsEmulator('localhost', 5001);
+        await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
       }
       // Na web o App Check exigiria um provider reCAPTCHA; sem ele o
       // `activate()` só falha. A imposição está desligada no Console (ver
@@ -57,6 +59,7 @@ class FirebaseService {
 
   FirebaseAuth get auth => FirebaseAuth.instance;
   FirebaseFirestore get firestore => FirebaseFirestore.instance;
+  FirebaseStorage get storage => FirebaseStorage.instance;
 }
 
 /// Atalho para checagem rápida de modo nas Datasources.

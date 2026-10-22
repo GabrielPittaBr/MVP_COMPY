@@ -6,11 +6,11 @@ Guidance for AI coding agents working in this repository. `CLAUDE.md` imports th
 
 **COMPY** is a Flutter mobile app (TCC project) that connects sports practitioners in Taquara/RS, Brazil. It supports event discovery, map browsing, real-time chat, and user profiles.
 
-- **Languages:** Dart / Flutter 3.22+. The app itself has no Node dependency — the Firebase CLI used for `firebase.json`/`flutterfire configure` runs from a global `firebase-tools` install. Node packages, none of which ship with the mobile app: `tools/firestore-rules-tests/` (exercises `firestore.rules` against the emulator; rules cannot be tested from Dart), `functions/` (the admin panel's Cloud Functions, TypeScript, Node 22) and `tools/firebase-admin/` (local Admin SDK scripts).
+- **Languages:** Dart / Flutter 3.22+. The app itself has no Node dependency — the Firebase CLI used for `firebase.json`/`flutterfire configure` runs from a global `firebase-tools` install. Node packages, none of which ship with the mobile app: `tools/firestore-rules-tests/` (exercises `firestore.rules` and `storage.rules` against the emulators; rules cannot be tested from Dart), `functions/` (the admin panel's Cloud Functions, TypeScript, Node 22) and `tools/firebase-admin/` (local Admin SDK scripts).
 - **Admin panel:** a separate Flutter Web app in `admin/` with its own `pubspec` (needs Dart ≥ 3.13.3) — see `docs/admin/painel-administrativo.md`.
 - **State management:** Flutter Riverpod 2.5.1
 - **Routing:** GoRouter 14.2.0 (5-tab `StatefulShellRoute.indexedStack`)
-- **Backend:** Firebase Auth + Firestore (`compy-tcc` project, region `southamerica-east1`)
+- **Backend:** Firebase Auth + Firestore + Storage for profile photos (`compy-tcc` project, region `southamerica-east1`)
 - **Maps:** flutter_map 7.0.2 with OpenStreetMap (no API key needed)
 
 ## Commands
@@ -22,11 +22,11 @@ flutter pub get               # Install Dart dependencies
 flutterfire configure         # Regenerate lib/firebase_options.dart (required after cloning or changing Firebase project)
 dart analyze                  # Run the Dart analyzer (uses analysis_options.yaml)
 
-# Browser testing against local Auth + Firestore emulators (never touches compy-tcc data)
-firebase emulators:start --only auth,firestore
+# Browser testing against local Auth + Firestore + Functions + Storage emulators (never touches compy-tcc data)
+firebase emulators:start --only auth,firestore,functions,storage
 flutter run -d chrome --dart-define=USE_FIREBASE_EMULATORS=true
 
-# Firestore security rules (needs JDK 21+ on PATH — see tools/firestore-rules-tests/README.md)
+# Firestore and Storage security rules (needs JDK 21+ on PATH — see tools/firestore-rules-tests/README.md)
 npm install --prefix tools/firestore-rules-tests   # once
 npm test --prefix tools/firestore-rules-tests      # runs the rules suite against the emulator
 

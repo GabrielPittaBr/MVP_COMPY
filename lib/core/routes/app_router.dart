@@ -23,6 +23,7 @@ import '../../features/notifications/presentation/widgets/auto_end_notice.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/favorite_sports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/profile/presentation/pages/public_profile_page.dart';
 import '../../features/ratings/presentation/pages/event_rating_page.dart';
 import '../../shared/pages/under_construction_page.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
@@ -59,6 +60,10 @@ abstract final class AppRoutes {
   static const String chatRoom = '/chat/:conversationId';
   static const String chatNew = '/chat/nova';
   static const String profile = '/profile';
+  static const String publicProfile = '/profile/usuarios/:uid';
+
+  static String publicProfileFor(String uid) =>
+      publicProfile.replaceFirst(':uid', Uri.encodeComponent(uid));
 
   /// Edição dos esportes favoritos — sub-rota do perfil, dentro do shell.
   /// Separada de [onboardingSports] porque o guard manda quem já concluiu o
@@ -112,7 +117,15 @@ String? authRedirect({
   required bool isLoading,
   required bool hasError,
   required String location,
+  bool isSubmitting = false,
 }) {
+  // Login ou cadastro em andamento: fica na tela até o controller decidir.
+  // No cadastro por e-mail o stream emite o usuário novo antes de o perfil
+  // existir (`hasUsername: false`), e sem isto o guard jogava para
+  // /username no meio do envio — por mais tempo quanto mais o cadastro
+  // demora, e o upload da foto de perfil demora.
+  if (isSubmitting && _publicRoutes.contains(location)) return null;
+
   // Estado de auth ainda carregando: splash.
   if (isLoading) {
     return location == AppRoutes.splash ? null : AppRoutes.splash;
@@ -194,6 +207,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         // null sem passar pela leitura do perfil.
         hasError: authAsync.hasError,
         location: state.uri.path,
+        isSubmitting: controllerAsync.isLoading,
       );
     },
 
@@ -358,6 +372,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'editar',
                     builder: (context, state) => const EditProfilePage(),
+                  ),
+                  GoRoute(
+                    path: 'usuarios/:uid',
+                    builder: (context, state) => PublicProfilePage(
+                      uid: state.pathParameters['uid']!,
+                    ),
                   ),
                 ],
               ),

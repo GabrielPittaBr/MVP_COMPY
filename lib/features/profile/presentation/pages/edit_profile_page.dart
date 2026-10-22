@@ -1,15 +1,19 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/models/user_summary.dart';
+import '../../../../shared/widgets/avatar_picker.dart';
 import '../../../../shared/widgets/rounded_text_field.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../domain/entities/user_profile.dart';
 import '../providers/profile_providers.dart';
 
-/// Edição do perfil — hoje, o username em modo somente-leitura e a exclusão
-/// de conta.
+/// Edição do perfil — hoje, a foto (trocada e gravada na hora), o username
+/// em modo somente-leitura e a exclusão de conta.
 ///
 /// O campo de username aparece apagado em vez de ausente de propósito: quem
 /// abre "Editar perfil" vem procurar exatamente por ele, e uma tela sem o
@@ -81,6 +85,9 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     });
 
     final bool isDeleting = ref.watch(authControllerProvider).isLoading;
+    final bool isSavingPhoto = ref.watch(avatarControllerProvider).isLoading;
+    final UserSummary? me =
+        ref.watch(currentProfileProvider).valueOrNull?.summary;
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.profileEdit)),
@@ -88,6 +95,17 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: <Widget>[
+            if (me != null) ...<Widget>[
+              AvatarPicker(
+                name: me.name,
+                photoUrl: me.avatarUrl,
+                busy: isSavingPhoto,
+                onPicked: (Uint8List jpeg) => _savePhoto(me, jpeg),
+                onRemoved: () => _savePhoto(me, null),
+              ),
+              const SizedBox(height: 24),
+            ],
+
             const _Label(AppStrings.authUsernameField),
             const SizedBox(height: 8),
             IgnorePointer(
@@ -128,6 +146,19 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// [jpeg] `null` remove a foto. Sem botão Salvar: grava assim que escolhe.
+  Future<void> _savePhoto(UserSummary me, Uint8List? jpeg) async {
+    final bool saved =
+        await ref.read(avatarControllerProvider.notifier).save(me, jpeg);
+    if (saved || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(AppStrings.photoSaveError),
+        backgroundColor: AppColors.error,
       ),
     );
   }

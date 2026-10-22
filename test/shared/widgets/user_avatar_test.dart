@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
@@ -22,9 +23,8 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byIcon(Icons.person), findsOneWidget);
-    final avatar = tester.widget<CircleAvatar>(find.byType(CircleAvatar));
-    expect(avatar.backgroundImage, isNull);
-    expect(avatar.radius, 20);
+    expect(find.byType(CachedNetworkImage), findsNothing);
+    expect(tester.getSize(find.byType(UserAvatar)), const Size(40, 40));
   });
 
   testWidgets('usuário ausente também vira o ícone genérico', (tester) async {
@@ -32,9 +32,24 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byIcon(Icons.person), findsOneWidget);
-    expect(
-      tester.widget<CircleAvatar>(find.byType(CircleAvatar)).backgroundImage,
-      isNull,
+    expect(find.byType(CachedNetworkImage), findsNothing);
+  });
+
+  testWidgets('URL que não é endereço web também vira o ícone genérico',
+      (tester) async {
+    await _pump(
+      tester,
+      const UserAvatar(
+        user: UserSummary(
+          id: 'u1',
+          name: 'Ana',
+          handle: '@ana',
+          avatarUrl: 'javascript:alert(1)',
+        ),
+      ),
     );
+
+    expect(find.byIcon(Icons.person), findsOneWidget);
+    expect(find.byType(CachedNetworkImage), findsNothing);
   });
 }

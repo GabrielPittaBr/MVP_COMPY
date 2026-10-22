@@ -28,6 +28,10 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Usamos sua localização para mostrar eventos esportivos próximos a você.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Usamos suas fotos para você escolher a foto do seu perfil.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Usamos a câmera para você tirar a foto do seu perfil.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

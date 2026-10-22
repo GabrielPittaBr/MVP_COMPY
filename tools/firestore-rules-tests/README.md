@@ -1,16 +1,17 @@
-# Testes das regras do Firestore
+# Testes das regras do Firestore e do Storage
 
-Exercita `firestore.rules` contra o emulador do Firestore. Não toca o projeto
-real (`compy-tcc`) — o emulador roda sob o projeto fictício `demo-compy`.
+Exercita `firestore.rules` e `storage.rules` contra os emuladores. Não toca o
+projeto real (`compy-tcc`) — os emuladores rodam sob o projeto fictício
+`demo-compy`.
 
 Isto **não** faz parte do app Flutter: é a única forma de testar regras de
-segurança do Firestore, que não têm equivalente em Dart.
+segurança do Firebase, que não têm equivalente em Dart.
 
 ## Rodar
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 167 casos
+npm test --prefix tools/firestore-rules-tests      # 190 casos
 ```
 
 ## Pré-requisitos
@@ -41,7 +42,9 @@ Um caso merece destaque porque restringe o código do app: **`memberSummaries`
 precisam ser gravados no momento em que ela nasce — não há como corrigi-los
 depois sem afrouxar a regra.
 
-**`users` e `usernames`**, replicando o batch do login com Google.
+**`users` e `usernames`**, replicando o batch do login com Google, e a forma
+do `avatarUrl`: texto de até 2048 caracteres começando por `http(s)://` (o
+`http` é o emulador do Storage).
 
 **`events`** (tarefa 12), com foco no `participantIds` — o array de uids que a
 seção "Participando" consulta. A regra do join exige que ele cresça **junto**
@@ -75,6 +78,13 @@ logado.
 notificação (quem cria é o gatilho `onEventEnded`), só marca como lida, uma
 vez e com o horário do servidor, e apaga as próprias na exclusão de conta.
 
+**Storage** (`storage.test.js`): fotos de perfil em
+`users/{uid}/avatar_<millis>.jpg`. Só o dono envia, só JPEG abaixo de 1 MB,
+só com esse padrão de nome, e nunca por cima de um arquivo existente — no
+Storage sobrescrever conta como `create`, então a regra exige
+`resource == null`. Qualquer autenticado lê; só o dono lista e apaga (é o que
+a exclusão de conta usa).
+
 ## Migração de `participantIds`
 
 Eventos gravados antes da tarefa 12 não têm o campo e **não aparecem** em
@@ -85,7 +95,7 @@ eventos de teste no console antes de publicar.
 ## Antes de publicar em produção
 
 ```bash
-firebase deploy --only firestore:rules,firestore:indexes
+firebase deploy --only firestore:rules,firestore:indexes,storage
 ```
 
 Publicar as regras **quebra o envio de mensagem** em qualquer versão do app

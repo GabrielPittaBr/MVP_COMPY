@@ -3,6 +3,7 @@
 > Criado em 2026-08-08, revisado em 2026-08-09 com as decisões de produto.
 > **Atualizado em 2026-10-22:** as 14 tarefas de prioridade alta estão fechadas. O deploy da 14 (regras e Cloud Functions) está registrado em [`admin/firebase-deployment.md`](admin/firebase-deployment.md). O APK novo ainda precisa ser gerado e distribuído.
 > Este documento absorveu o antigo `proximos-passos.md`: o que ainda estava pendente nele virou o [Backlog](#backlog--prioridade-média-e-baixa) no fim.
+> **Atualizado em 2026-10-22:** visualização de perfis públicos concluída em `feature/perfil-publico-usuarios`.
 
 ---
 
@@ -61,33 +62,38 @@
 
 ---
 
+## Funcionalidade concluída — perfis públicos de outros usuários
+
+**Branch:** `feature/perfil-publico-usuarios` · **Status:** ✅ Concluída em 2026-10-22.
+
+Usuários autenticados podem abrir `users/{uid}` pelo organizador ou pelos participantes de um evento, pelo cabeçalho de uma conversa e pelo resultado da busca de usuários. A tela mostra apenas nome, handle, avatar, biografia existente e esportes favoritos. O botão "Mensagem" usa o fluxo 1:1 existente. Perfis ausentes e falhas de leitura têm estados próprios; o UID do próprio usuário mostra a tela proprietária. A lista rolável do evento mantém todos os participantes identificáveis. As regras do Firestore não precisaram mudar.
+
+---
+
 ## Backlog — prioridade média e baixa
 
 Itens herdados do antigo `proximos-passos.md` que continuam pendentes, conferidos no código em 2026-09-27. A tarefa 14 já fechou, então eles são os próximos.
 
 | # | Tarefa | Branch sugerida | Tam. | `/to-tickets`? | 🔒 |
 |---|---|---|---|---|---|
-| A | Avatar real na Home | `fix/avatar-real-home` | P | Não | |
-| B | Edição de perfil completa (nome, bio, foto) | `feature/editar-perfil-completo` | M/G | Talvez | 🔒 |
+| A | ~~Avatar real na Home~~ ✅ feito em `feature/foto-de-perfil` | — | P | Não | |
+| B | Edição de perfil completa (nome, bio) — **foto ✅ feita** | `feature/editar-perfil-completo` | M | Não | 🔒 |
 | C | Tela de configurações | `feature/tela-configuracoes` | M | Não | |
 | D | Push notifications (FCM) | `feature/push-notifications` | G | Sim | |
 
-### A · Avatar real na Home
+### A · Avatar real na Home — ✅ fechado
 
-O `GreetingHeader` ainda desenha `AppAssets.avatar(userName)`, o placeholder com a inicial do nome, embora `users/{uid}.avatarUrl` exista. O `currentUserSummaryProvider` já expõe o `UserSummary` do usuário logado: basta a Home passar o `avatarUrl` dele para o header.
-
-**Arquivos:** `lib/features/home/presentation/widgets/greeting_header.dart`, `lib/features/home/presentation/pages/home_page.dart`.
+Feito junto com a foto de perfil (`feature/foto-de-perfil`): o `GreetingHeader` usa o `avatarUrl` do perfil e só mostra a inicial enquanto o perfil carrega.
 
 ### B · Edição de perfil completa
 
-A `EditProfilePage` (`/profile/editar`) hoje mostra o username desabilitado e permite excluir a conta. Os esportes favoritos já são editáveis pela tela própria. Faltam **nome, bio e foto**.
+A `EditProfilePage` (`/profile/editar`) mostra o username desabilitado, troca e remove a **foto** (feito em `feature/foto-de-perfil`, com Storage, seletor, recorte e regras — ver [`autenticacao.md`](autenticacao.md#foto-de-perfil-avatarurl)) e permite excluir a conta. Os esportes favoritos já são editáveis pela tela própria. Faltam **nome e bio**.
 
-- `ProfileRemoteDataSource` só sabe gravar `favoriteSports`. Falta um `update` geral.
+- `ProfileRemoteDataSource` grava `favoriteSports` e `avatarUrl`. Falta gravar nome e bio.
 - `bio` já é lida pelo `ProfileRepositoryImpl`, mas nunca é escrita.
-- Foto exige Firebase Storage e um seletor de imagem (`firebase_storage` e `image_picker` não estão instalados), com a URL gravada em `users/{uid}.avatarUrl`. Se o volume for grande, vale quebrar com `/to-tickets` em "nome e bio" primeiro e "foto" depois.
-- Nome alterado precisa ir também para o Firebase Auth (`updateDisplayName`), como na tarefa 1, senão a saudação da Home diverge.
+- Nome alterado precisa ir também para o Firebase Auth (`updateDisplayName`), como na tarefa 1, senão a saudação da Home diverge. Precisa também recalcular `nameLower`, que a regra exige quando o nome muda.
 
-**🔒 Regras do Firestore — precisa decidir:** o `validProfile()` de `users` só aceita `['id', 'name', 'handle', 'avatarUrl', 'createdAt', 'favoriteSports']`. Gravar `bio` hoje é **recusado**. Decidir o limite de tamanho da bio e incluí-la no `hasOnly`. Se entrar Storage, escrever também as regras do bucket (só o dono grava a própria foto, tamanho e tipo limitados).
+**🔒 Regras do Firestore — precisa decidir:** o `validProfile()` de `users` só aceita `['id', 'name', 'nameLower', 'handle', 'avatarUrl', 'createdAt', 'favoriteSports']`. Gravar `bio` hoje é **recusado**. Decidir o limite de tamanho da bio e incluí-la no `hasOnly`.
 
 ### C · Tela de configurações
 
