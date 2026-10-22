@@ -539,3 +539,11 @@ firebase functions:log --only autoEndOverdueEvents --project compy-tcc
 - `firebase functions:list` mostra as seis Functions em v2, `southamerica-east1`, `nodejs22`: `autoEndOverdueEvents` (scheduled), `onEventEnded` (`google.cloud.firestore.document.v1.updated`), `submitEventRatings`, `getAdminUserAuthDetails`, `getAdminUsersAuthStatus` e `setUserSuspension` (callable).
 - O log da `autoEndOverdueEvents` mostra a instância subindo às 20:16 UTC e a primeira execução agendada às 20:27 UTC, sem nenhuma linha de erro. O `firebase functions:log` às vezes falha com "Failed to retrieve log entries from Google Cloud"; repetir o comando resolve.
 - O app v0.1.0 instalado continua compatível. O APK novo, com a tarefa 14, ainda precisa ser gerado e distribuído pelo responsável.
+
+## Regras juntas: tarefa 14, locais e foto de perfil — 2026-10-22
+
+- O deploy das regras da tarefa 14, mais cedo, saiu da `develop` local, que ainda não tinha os PRs #17 (acesso e galeria dos locais) e #20 (foto de perfil). Se as regras do #17 estavam publicadas, aquele deploy as desfez, e o painel deixou de conseguir salvar locais com `images`, `accessType` e `contactPhone`.
+- A `develop` foi juntada com a remota (`db47ad0`, já no GitHub). Suítes verdes nessa árvore: app 376/376, `dart analyze` com os 10 avisos de sempre, admin 63/63, Functions com lint limpo e 81/81, regras do Firestore e do Storage 190/190.
+- `firebase deploy --only storage,firestore:rules`: as duas compilaram e foram publicadas. As regras do Firestore no ar agora têm as três mudanças, e as do Storage (fotos de perfil) entraram pela primeira vez, o que confirmou que o bucket `compy-tcc.firebasestorage.app` está ativo.
+- A regra nova do `avatarUrl` aceita só `http(s)`. O app v0.1.0 instalado grava a imagem de inicial do `placehold.co` (https), então continua compatível.
+- Falta o CORS do bucket, que precisa do `gcloud` (ver `docs/checklist-publicacao.md`, item 4). As Functions não mudaram nesta junção, então não foram publicadas de novo.

@@ -12,8 +12,8 @@ metade não está em lugar nenhum do código.
 | 0 | Keystore de release | ✅ criado e ligado ao Gradle |
 | 1 | Pacote definitivo | ✅ `br.com.compy.app` |
 | 2 | `google-services.json` com OAuth | ✅ 3 `oauth_client` para o pacote novo |
-| 3 | Regras e índices no Firestore | ✅ publicados e conferidos (até a v0.1.0) |
-| 4 | Storage: bucket, regras e CORS | ⏳ pendente — ver [item 4](#4-storage-fotos-de-perfil) |
+| 3 | Regras e índices no Firestore | ✅ publicados e conferidos; regras republicadas em 22/10/2026 com a tarefa 14, os locais e o avatar |
+| 4 | Storage: bucket, regras e CORS | 🟡 bucket ativo e regras publicadas; falta o CORS — ver [item 4](#4-storage-fotos-de-perfil) |
 
 Verificações que sustentam a tabela: `dart analyze` sem erros, `flutter test`
 169/169, `npm test --prefix tools/firestore-rules-tests` 83/83, e um
@@ -114,8 +114,10 @@ o `compy-tcc.firebasestorage.app`, que já aparece no `firebase_options.dart`.
 As regras ficam em `storage.rules`, e a mesma suíte de
 `tools/firestore-rules-tests/` cobre os dois arquivos.
 
-> **Pendente:** confirmar no Console que o bucket está ativo, publicar as
-> regras e configurar o CORS. Nada disso foi feito ainda.
+> **Feito em 22/10/2026:** `firebase deploy --only storage,firestore:rules`
+> publicou as duas regras juntas, o que também confirmou que o bucket está
+> ativo. **Pendente:** configurar o CORS (abaixo); sem ele, o painel e o app
+> no navegador não mostram as fotos.
 
 Publicar as regras do Storage junto com as do Firestore, porque a regra de
 `avatarUrl` no Firestore e a do bucket foram escritas uma para a outra:
