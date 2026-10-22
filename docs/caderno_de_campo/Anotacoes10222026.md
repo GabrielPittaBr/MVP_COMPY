@@ -1,3 +1,4 @@
 Taquara, 22 de Outubro de 2026
 
 - Hoje atualizamos o cadastro de locais para diferenciar acesso público e privado, exigir telefone válido apenas para locais privados e manter dados antigos sem classificação. Também adicionamos até oito fotos com fontes independentes, ordenação e prévias no Admin, além do carrossel, créditos e discador no aplicativo. Ajustamos as Rules e cobrimos a compatibilidade e os novos fluxos com testes locais.
+- Hoje ligamos o perfil público por UID aos eventos, à busca e ao chat. Mostramos apenas dados públicos reais, tratamos perfil ausente e falhas de leitura, mantivemos todos os participantes acessíveis e reaproveitamos a abertura de conversa existente. Testamos os caminhos de ida e volta e excluímos dependências Node geradas da análise Dart, sem alterar as regras do Firestore nem o ciclo de vida dos eventos.

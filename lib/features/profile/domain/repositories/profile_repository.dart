@@ -5,6 +5,9 @@ import '../entities/user_profile.dart';
 abstract interface class ProfileRepository {
   Future<UserProfile> getCurrentProfile(String uid);
 
+  /// Lê somente os campos públicos de `users/{uid}`. Ausência não é mock.
+  Future<UserProfile?> getPublicProfile(String uid);
+
   /// Registra a escolha de esportes favoritos de [uid].
   ///
   /// Lista vazia é escolha válida — é o que o "pular" do onboarding grava. O

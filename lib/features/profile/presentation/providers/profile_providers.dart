@@ -13,10 +13,13 @@ import '../../data/repositories/profile_repository_impl.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../../domain/usecases/get_profile.dart';
+import '../../domain/usecases/get_public_profile.dart';
 import '../../domain/usecases/search_users.dart';
 
 final profileRemoteDataSourceProvider = Provider<ProfileRemoteDataSource?>(
-  (ref) => kUseFirebaseRepos ? ProfileRemoteDataSource(FirebaseFirestore.instance) : null,
+  (ref) => kUseFirebaseRepos
+      ? ProfileRemoteDataSource(FirebaseFirestore.instance)
+      : null,
 );
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
@@ -25,6 +28,15 @@ final profileRepositoryProvider = Provider<ProfileRepository>(
 
 final getProfileProvider = Provider<GetProfile>(
   (ref) => GetProfile(ref.watch(profileRepositoryProvider)),
+);
+
+final getPublicProfileProvider = Provider<GetPublicProfile>(
+  (ref) => GetPublicProfile(ref.watch(profileRepositoryProvider)),
+);
+
+final publicProfileProvider =
+    FutureProvider.autoDispose.family<UserProfile?, String>(
+  (ref, uid) => ref.watch(getPublicProfileProvider).call(uid),
 );
 
 final searchUsersProvider = Provider<SearchUsers>(
@@ -39,7 +51,8 @@ final searchUsersProvider = Provider<SearchUsers>(
 final userSearchProvider =
     FutureProvider.autoDispose.family<List<UserSummary>, String>(
   (ref, query) async {
-    if (query.trim().replaceFirst('@', '').length < SearchUsers.minPrefixLength) {
+    if (query.trim().replaceFirst('@', '').length <
+        SearchUsers.minPrefixLength) {
       return const <UserSummary>[];
     }
 
@@ -86,7 +99,9 @@ class FavoriteSportsController extends AsyncNotifier<void> {
     state = const AsyncLoading<void>();
     state = await AsyncValue.guard<void>(() async {
       final String uid = await _requireUid();
-      await ref.read(profileRepositoryProvider).updateFavoriteSports(uid, sports);
+      await ref
+          .read(profileRepositoryProvider)
+          .updateFavoriteSports(uid, sports);
       // O perfil (e o carrossel da Home, que bebe dele) precisa refletir a
       // escolha sem esperar o app reabrir.
       ref.invalidate(currentProfileProvider);

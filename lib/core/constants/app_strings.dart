@@ -114,6 +114,13 @@ abstract final class AppStrings {
 
   // Profile
   static const String profileTitle = 'Perfil';
+  static const String profilePublicTitle = 'Perfil do usuário';
+  static const String profilePublicNotFound = 'Perfil não encontrado.';
+  static const String profilePublicError =
+      'Não foi possível carregar este perfil.';
+  static const String profileMessage = 'Mensagem';
+  static const String profileNoFavoriteSports =
+      'Nenhum esporte favorito informado.';
   static const String profileEdit = 'Editar perfil';
   static const String profileEditFavoriteSports = 'Editar esportes favoritos';
   static const String profileFavoriteSports = 'Esportes favoritos';
