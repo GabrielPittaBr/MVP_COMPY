@@ -8,6 +8,7 @@ import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/widgets/event_card.dart';
+import '../../../../shared/widgets/event_status_chip.dart';
 import '../../domain/entities/events_filter.dart';
 import '../providers/events_providers.dart';
 import '../widgets/events_filter_sheet.dart';
@@ -164,13 +165,17 @@ class _Sections extends ConsumerWidget {
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (context, i) {
           final e = events[i];
-          return EventCard(
+          return EventStatusBuilder(
             event: e,
-            actionLabel: AppStrings.eventSeeMore,
-            // "Ver mais" continua valendo num evento lotado — ver
-            // [EventCard.disableWhenFull].
-            disableWhenFull: false,
-            onAction: () => context.go('${AppRoutes.events}/${e.id}'),
+            builder: (context, status) => EventCard(
+              event: e,
+              status: status,
+              actionLabel: AppStrings.eventSeeMore,
+              // "Ver mais" continua valendo num evento lotado — ver
+              // [EventCard.disableWhenFull].
+              disableWhenFull: false,
+              onAction: () => context.go('${AppRoutes.events}/${e.id}'),
+            ),
           );
         },
       ),

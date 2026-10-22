@@ -11,8 +11,8 @@ import '../../data/repositories/events_repository_impl.dart';
 import '../../domain/entities/events_filter.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../../domain/usecases/create_event.dart';
-import '../../domain/usecases/get_event_detail.dart';
 import '../../domain/usecases/join_event.dart';
+import '../../domain/usecases/watch_event_detail.dart';
 
 final eventsRemoteDataSourceProvider = Provider<EventsRemoteDataSource?>(
   (ref) => kUseFirebaseRepos ? EventsRemoteDataSource(FirebaseFirestore.instance) : null,
@@ -25,8 +25,8 @@ final eventsRepositoryProvider = Provider<EventsRepository>(
   ),
 );
 
-final getEventDetailProvider = Provider<GetEventDetail>(
-  (ref) => GetEventDetail(ref.watch(eventsRepositoryProvider)),
+final watchEventDetailProvider = Provider<WatchEventDetail>(
+  (ref) => WatchEventDetail(ref.watch(eventsRepositoryProvider)),
 );
 
 final joinEventProvider = Provider<JoinEvent>(
@@ -175,9 +175,8 @@ void invalidateEventLists(WidgetRef ref) {
   ref.invalidate(joinedEventsProvider);
 }
 
-/// Detalhe de um evento por id. `family` permite cachear por id;
-/// invalidado explicitamente após join/create.
-final eventDetailProvider =
-    FutureProvider.family<Event?, String>((ref, id) async {
-  return ref.watch(getEventDetailProvider).call(id);
+/// Detalhe de um evento por id, em tempo real (tarefa 14): um join ou um
+/// encerramento aparece na tela sem invalidar nada.
+final eventDetailProvider = StreamProvider.family<Event?, String>((ref, id) {
+  return ref.watch(watchEventDetailProvider).call(id);
 });

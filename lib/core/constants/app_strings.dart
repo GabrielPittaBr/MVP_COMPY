@@ -109,6 +109,19 @@ abstract final class AppStrings {
   static const String eventCreatedBy = 'Criado por:';
   static const String eventSeeMore = 'Ver mais';
   static const String eventVacanciesLabel = 'vagas restantes';
+  static String eventParticipantsCount(int count) => 'Participantes ($count)';
+  static const String eventJoined = 'Você entrou no evento!';
+  static const String eventNotFound = 'Evento não encontrado.';
+  static const String eventJoinError = 'Erro ao entrar no evento';
+
+  // Ciclo de vida do evento (tarefa 14)
+  static const String eventStatusLive = 'Acontecendo agora';
+  static const String eventStatusEnded = 'Encerrado';
+  static const String eventStatusEndedAutomatically =
+      'Encerrado automaticamente';
+  static const String eventYouAreIn = 'Você está participando';
+  static const String eventYouOrganize = 'Você organiza este evento';
+  static const String eventAlreadyEnded = 'Este evento já terminou';
 
   // Profile
   static const String profileTitle = 'Perfil';

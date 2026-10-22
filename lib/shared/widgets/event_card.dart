@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_colors.dart';
 import '../models/event.dart';
+import '../models/event_status.dart';
+import 'event_status_chip.dart';
 
 /// Card horizontal de evento usado tanto na "Home > Eventos Próximos"
 /// quanto na aba "Eventos". O texto do CTA varia conforme o contexto
@@ -14,6 +16,7 @@ class EventCard extends StatelessWidget {
     required this.actionLabel,
     required this.onAction,
     this.disableWhenFull = true,
+    this.status,
     super.key,
   });
 
@@ -27,6 +30,11 @@ class EventCard extends StatelessWidget {
   /// aparecem eventos lotados de propósito, e abrir os detalhes de um
   /// evento que você criou ou de que já participa continua fazendo sentido.
   final bool disableWhenFull;
+
+  /// Fase do evento, calculada por quem monta a lista com o "agora" do app
+  /// (ver [EventStatusBuilder]). Acontecendo, o selo toma o lugar do ícone
+  /// de calendário; nulo ou agendado, fica o calendário.
+  final EventStatus? status;
 
   @override
   Widget build(BuildContext context) {
@@ -55,11 +63,14 @@ class EventCard extends StatelessWidget {
                           ),
                         ),
                         const Spacer(),
-                        const Icon(
-                          Icons.calendar_today_outlined,
-                          size: 16,
-                          color: AppColors.onSurfaceMuted,
-                        ),
+                        if (status == EventStatus.happening)
+                          const EventStatusChip(status: EventStatus.happening)
+                        else
+                          const Icon(
+                            Icons.calendar_today_outlined,
+                            size: 16,
+                            color: AppColors.onSurfaceMuted,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -113,7 +124,8 @@ class EventCard extends StatelessWidget {
               style: TextButton.styleFrom(
                 backgroundColor: AppColors.surfaceMuted,
                 foregroundColor: AppColors.onSurface,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),

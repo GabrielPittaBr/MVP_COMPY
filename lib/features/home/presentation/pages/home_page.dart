@@ -9,6 +9,7 @@ import '../../../../features/events/domain/entities/events_filter.dart';
 import '../../../../features/events/presentation/providers/events_providers.dart';
 import '../../../../features/events/presentation/widgets/events_filter_sheet.dart';
 import '../../../../shared/widgets/event_card.dart';
+import '../../../../shared/widgets/event_status_chip.dart';
 import '../providers/home_providers.dart';
 import '../widgets/category_circle.dart';
 import '../widgets/explore_map_card.dart';
@@ -110,11 +111,15 @@ class HomePage extends ConsumerWidget {
                     : Column(
                         children: <Widget>[
                           for (final e in events)
-                            EventCard(
+                            EventStatusBuilder(
                               event: e,
-                              actionLabel: AppStrings.eventJoin,
-                              onAction: () =>
-                                  context.go('${AppRoutes.events}/${e.id}'),
+                              builder: (context, status) => EventCard(
+                                event: e,
+                                status: status,
+                                actionLabel: AppStrings.eventJoin,
+                                onAction: () =>
+                                    context.go('${AppRoutes.events}/${e.id}'),
+                              ),
                             ),
                         ],
                       ),

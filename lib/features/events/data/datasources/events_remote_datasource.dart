@@ -144,6 +144,12 @@ class EventsRemoteDataSource {
     return _firestore.collection('events').doc(id).get();
   }
 
+  /// Acompanha o documento em tempo real (tarefa 14): o detalhe mostra um
+  /// encerramento ou um join sem precisar recarregar.
+  Stream<DocumentSnapshot<Map<String, dynamic>>> watchById(String id) {
+    return _firestore.collection('events').doc(id).snapshots();
+  }
+
   /// Registra a participação de [user] (mapa de `UserSummary`) em uma
   /// transação: valida vagas e decrementa atomicamente, evitando corrida
   /// entre dois joins simultâneos (RN-05). Idempotente para quem já entrou.

@@ -33,6 +33,9 @@ abstract interface class EventsRepository {
 
   Future<Event?> getById(String id);
 
+  /// Acompanha um evento em tempo real; emite `null` se ele não existe.
+  Stream<Event?> watchById(String id);
+
   /// Adiciona [user] (o usuário autenticado) como participante e
   /// decrementa vagas. Idempotente para quem já participa.
   /// Lança [EventFullException] se o evento estiver lotado (RN-05).

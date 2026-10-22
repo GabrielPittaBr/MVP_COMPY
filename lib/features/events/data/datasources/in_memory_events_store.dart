@@ -57,6 +57,18 @@ class InMemoryEventsStore {
     return List<Event>.unmodifiable(result);
   }
 
+  /// Acompanha um evento — espelha o `doc(id).snapshots()` do Firestore,
+  /// para o detalhe refletir join e encerramento sem recarregar.
+  Stream<Event?> watchById(String id) =>
+      watchAll().map((events) => _find(events, id)).distinct();
+
+  static Event? _find(List<Event> events, String id) {
+    for (final event in events) {
+      if (event.id == id) return event;
+    }
+    return null;
+  }
+
   Event? getById(String id) {
     try {
       return _events.firstWhere((e) => e.id == id);

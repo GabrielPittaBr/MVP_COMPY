@@ -177,6 +177,17 @@ class EventsRepositoryImpl implements EventsRepository {
   }
 
   @override
+  Stream<Event?> watchById(String id) {
+    if (!kUseFirebaseRepos || _remote == null) {
+      return InMemoryEventsStore.instance.watchById(id);
+    }
+    return _remote.watchById(id).map((doc) {
+      final data = doc.data();
+      return data == null ? null : Event.fromMap(doc.id, data);
+    });
+  }
+
+  @override
   Future<Event> joinEvent(String eventId, UserSummary user) async {
     if (!kUseFirebaseRepos || _remote == null) {
       final store = InMemoryEventsStore.instance;
