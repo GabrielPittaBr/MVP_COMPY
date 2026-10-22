@@ -150,7 +150,7 @@ As regras do Firestore e do Storage têm suíte própria, em Node, porque não h
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 143 casos
+npm test --prefix tools/firestore-rules-tests      # 149 casos
 ```
 
 ---

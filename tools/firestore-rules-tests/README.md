@@ -42,7 +42,9 @@ Um caso merece destaque porque restringe o código do app: **`memberSummaries`
 precisam ser gravados no momento em que ela nasce — não há como corrigi-los
 depois sem afrouxar a regra.
 
-**`users` e `usernames`**, replicando o batch do login com Google.
+**`users` e `usernames`**, replicando o batch do login com Google, e a forma
+do `avatarUrl`: texto de até 2048 caracteres começando por `http(s)://` (o
+`http` é o emulador do Storage).
 
 **`events`** (tarefa 12), com foco no `participantIds` — o array de uids que a
 seção "Participando" consulta. A regra do join exige que ele cresça **junto**
