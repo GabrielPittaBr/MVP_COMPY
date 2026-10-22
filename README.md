@@ -146,11 +146,11 @@ flutter test     # 208 testes de unidade e de widget
 dart analyze     # analisador estático — sem erros (só sugestões de estilo)
 ```
 
-As regras do Firestore têm suíte própria, em Node, porque não há como testá-las a partir do Dart. Ela roda contra o emulador e **nunca toca o projeto real** — precisa de JDK 21+ no PATH:
+As regras do Firestore e do Storage têm suíte própria, em Node, porque não há como testá-las a partir do Dart. Ela roda contra o emulador e **nunca toca o projeto real** — precisa de JDK 21+ no PATH:
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 132 casos
+npm test --prefix tools/firestore-rules-tests      # 143 casos
 ```
 
 ---
@@ -163,6 +163,7 @@ npm test --prefix tools/firestore-rules-tests      # 132 casos
 | `test/` | Testes de unidade e de widget |
 | `assets/images/` | Logo e ícone do app |
 | `firestore.rules` · `firestore.indexes.json` | Regras de segurança e índices do Firestore |
+| `storage.rules` | Regras do Cloud Storage (fotos de perfil) |
 | `tools/firestore-rules-tests/` | Suíte Node que exercita as regras no emulador |
 | `admin/` | Painel administrativo (Flutter Web) para locais esportivos e contas — ver [`docs/admin/painel-administrativo.md`](docs/admin/painel-administrativo.md) |
 | `functions/` | Cloud Functions do painel (TypeScript) |
