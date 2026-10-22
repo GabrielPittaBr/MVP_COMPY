@@ -11,6 +11,7 @@ class AuthUser extends Equatable {
     required this.displayName,
     required this.hasUsername,
     required this.hasFavoriteSports,
+    this.photoUrl,
   });
 
   /// UID do Firebase Auth.
@@ -34,12 +35,17 @@ class AuthUser extends Equatable {
   /// esporte, o guard devolveria quem pulou para a tela, indefinidamente.
   final bool hasFavoriteSports;
 
+  /// Foto do provedor (Google), quando houver. Só serve de sugestão na
+  /// criação da conta: a foto que o app mostra é `users/{uid}.avatarUrl`.
+  final String? photoUrl;
+
   AuthUser copyWith({
     String? uid,
     String? email,
     String? displayName,
     bool? hasUsername,
     bool? hasFavoriteSports,
+    String? photoUrl,
   }) {
     return AuthUser(
       uid: uid ?? this.uid,
@@ -47,10 +53,17 @@ class AuthUser extends Equatable {
       displayName: displayName ?? this.displayName,
       hasUsername: hasUsername ?? this.hasUsername,
       hasFavoriteSports: hasFavoriteSports ?? this.hasFavoriteSports,
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
 
   @override
-  List<Object?> get props =>
-      <Object?>[uid, email, displayName, hasUsername, hasFavoriteSports];
+  List<Object?> get props => <Object?>[
+        uid,
+        email,
+        displayName,
+        hasUsername,
+        hasFavoriteSports,
+        photoUrl,
+      ];
 }

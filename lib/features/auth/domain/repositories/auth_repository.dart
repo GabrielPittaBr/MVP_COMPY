@@ -42,11 +42,16 @@ abstract interface class AuthRepository {
 
   /// Grava o username escolhido (fluxo pós-Google para novos usuários).
   /// Cria/atualiza `users/{uid}` e `usernames/{username}` no Firestore.
+  ///
+  /// A foto do perfil é [photo] (JPEG recortado) quando houver, senão
+  /// [photoUrl] (a do Google), senão a inicial do nome.
   Future<void> setUsername({
     required String uid,
     required String username,
     required String name,
     required String email,
+    Uint8List? photo,
+    String? photoUrl,
   });
 
   /// Faz logout do Firebase Auth.

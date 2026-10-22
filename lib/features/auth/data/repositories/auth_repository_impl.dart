@@ -53,8 +53,17 @@ class AuthRepositoryImpl implements AuthRepository {
     required String username,
     required String name,
     required String email,
+    Uint8List? photo,
+    String? photoUrl,
   }) =>
-      _dataSource.setUsername(uid: uid, username: username, name: name, email: email);
+      _dataSource.setUsername(
+        uid: uid,
+        username: username,
+        name: name,
+        email: email,
+        photo: photo,
+        photoUrl: photoUrl,
+      );
 
   @override
   Future<void> signOut() => _dataSource.signOut();

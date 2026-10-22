@@ -219,11 +219,18 @@ class AuthRemoteDataSource {
   }
 
   /// Grava `users/{uid}` e `usernames/{username}` em um batch atômico.
+  ///
+  /// A foto do perfil sai de [photo] (JPEG recortado, enviado ao Storage),
+  /// senão de [photoUrl] (a do Google, que a tela sugere), senão da inicial.
+  /// É só aqui, na criação da conta, que a foto do Google entra: logins
+  /// seguintes não mexem em `avatarUrl`, que o usuário pode ter trocado.
   Future<void> setUsername({
     required String uid,
     required String username,
     required String name,
     required String email,
+    Uint8List? photo,
+    String? photoUrl,
   }) async {
     final String normalizedUsername = username.trim().toLowerCase();
     final String trimmedName = name.trim();
@@ -239,7 +246,9 @@ class AuthRemoteDataSource {
       name: trimmedName,
       username: normalizedUsername,
       email: email,
-      avatarUrl: AppAssets.avatar(trimmedName),
+      avatarUrl: await _tryUploadAvatar(uid, photo) ??
+          photoUrl ??
+          AppAssets.avatar(trimmedName),
     );
 
     // O nome que a Home exibe (`greetingNameProvider`) vem de
@@ -397,8 +406,16 @@ class AuthRemoteDataSource {
       displayName: firebaseUser.displayName ?? '',
       hasUsername: (data?['handle'] as String?)?.isNotEmpty == true,
       hasFavoriteSports: Sport.hasStoredFavorites(data),
+      photoUrl: largeGooglePhoto(firebaseUser.photoURL),
     );
   }
+
+  /// A foto do Google chega com 96 px (`...=s96-c`), o que fica borrado no
+  /// círculo do perfil. O próprio Google serve outros tamanhos trocando o
+  /// sufixo; URL sem ele passa intacta.
+  @visibleForTesting
+  static String? largeGooglePhoto(String? url) =>
+      url?.replaceFirst(RegExp(r'=s\d+-c$'), '=s400-c');
 
   /// Lê `users/{uid}`. `null` quando o documento ainda não existe.
   ///
