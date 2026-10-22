@@ -186,6 +186,11 @@ abstract final class AppStrings {
       '$eventTitle passou 1h do horário previsto. '
       'Avalie o local e os participantes.';
   static const String notificationRated = 'Avaliado';
+  static String autoEndDialogBody(String eventTitle) =>
+      '$eventTitle passou 1h do horário previsto e encerramos por você. '
+      'Que tal avaliar o local e quem jogou?';
+  static const String autoEndDialogLater = 'Agora não';
+  static const String autoEndDialogRate = 'Avaliar';
   static const String notificationUnread = 'Não lida';
 
   // Tempo relativo ("há 2 h") — central de notificações

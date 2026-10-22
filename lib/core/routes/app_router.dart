@@ -19,6 +19,7 @@ import '../../features/events/presentation/pages/search_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/maps/presentation/pages/maps_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
+import '../../features/notifications/presentation/widgets/auto_end_notice.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/favorite_sports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -375,15 +376,19 @@ class _ScaffoldWithNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: navShell,
-      bottomNavigationBar: AppBottomNav(
-        currentIndex: navShell.currentIndex,
-        // `goBranch` preserva o estado da aba (RNF07): voltar para "Eventos"
-        // não recria a página, mantém scroll e detalhes anteriores.
-        onTap: (index) => navShell.goBranch(
-          index,
-          initialLocation: index == navShell.currentIndex,
+    // O aviso único de encerramento automático (tarefa 14) mora aqui por ser
+    // o primeiro widget de toda rota do shell.
+    return AutoEndNotice(
+      child: Scaffold(
+        body: navShell,
+        bottomNavigationBar: AppBottomNav(
+          currentIndex: navShell.currentIndex,
+          // `goBranch` preserva o estado da aba (RNF07): voltar para "Eventos"
+          // não recria a página, mantém scroll e detalhes anteriores.
+          onTap: (index) => navShell.goBranch(
+            index,
+            initialLocation: index == navShell.currentIndex,
+          ),
         ),
       ),
     );
