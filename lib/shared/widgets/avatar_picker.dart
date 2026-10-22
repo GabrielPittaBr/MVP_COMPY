@@ -176,9 +176,14 @@ Future<Uint8List?> pickAvatarPhoto(BuildContext context) async {
       maxHeight: 1600,
       imageQuality: 90,
     );
-  } on PlatformException catch (e) {
+  } catch (e) {
+    // No celular, câmera e permissão negadas chegam como PlatformException.
+    // Na web o redimensionamento carrega o arquivo numa <img> e, quando ele
+    // não é imagem, falha com uma String ('Error while loading image.').
     debugPrint('[AvatarPicker] image_picker falhou: $e');
-    warn(AppStrings.photoPickError);
+    warn(e is PlatformException
+        ? AppStrings.photoPickError
+        : AppStrings.photoNotImage);
     return null;
   }
   if (file == null) return null;
