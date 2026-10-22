@@ -16,6 +16,14 @@ Push-Location $adminRoot
 try {
   & flutter build web --release "--dart-define=COMPY_RECAPTCHA_V3_SITE_KEY=$siteKey"
   $exitCode = $LASTEXITCODE
+  if ($exitCode -eq 0) {
+    $placesSource = Join-Path $adminRoot 'web/places'
+    if (Test-Path $placesSource) {
+      $placesOutput = Join-Path $adminRoot 'build/web/places'
+      New-Item -ItemType Directory -Path $placesOutput -Force | Out-Null
+      Copy-Item -Path (Join-Path $placesSource '*') -Destination $placesOutput -Recurse -Force
+    }
+  }
 }
 finally {
   Pop-Location
