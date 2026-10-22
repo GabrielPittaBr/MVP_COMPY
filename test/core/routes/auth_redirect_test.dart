@@ -37,6 +37,7 @@ void main() {
     '/events/abc',
     '/events/abc/ao-vivo',
     '/avaliacao/abc',
+    AppRoutes.notifications,
   ];
 
   const List<String> todasAsRotas = <String>[

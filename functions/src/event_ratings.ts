@@ -2,7 +2,9 @@ import { FieldValue, getFirestore, Timestamp, type Transaction } from 'firebase-
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
 import { administrativeFunctionsRegion } from './config.js';
+import { creatorIdOf, participantIdsOf, toStringList } from './event_documents.js';
 import { eventEndToleranceMs } from './event_lifecycle.js';
+import { eventEndedNotificationId } from './event_notifications.js';
 
 const maxEventIdLength = 128;
 const maxCommentLength = 500;
@@ -46,14 +48,22 @@ export interface RatingWrite extends RatingInput {
   readonly targetId: string;
 }
 
+/** A notificação `eventEnded` de quem avalia, se existir. */
+export interface RatingNotificationSnapshot {
+  readonly isRead: boolean;
+}
+
 /** Operações de uma transação: todas as leituras antes das escritas. */
 export interface RatingsTransaction {
   readEvent(eventId: string): Promise<RatingEventSnapshot | null>;
+  readNotification(uid: string, eventId: string): Promise<RatingNotificationSnapshot | null>;
   /** Cria `ratings/{eventId}_{fromUid}_{tipo}_{alvo}`; se já existir, a transação falha. */
   createRating(rating: RatingWrite): void;
   /** Soma a nota em `ratingSummaries/{tipo}_{alvo}` com incremento. */
   incrementSummary(rating: RatingWrite): void;
   addRatedBy(eventId: string, uid: string): void;
+  /** Marca a notificação como "Avaliado" (e como lida, se [markRead]). */
+  completeNotification(uid: string, eventId: string, markRead: boolean): void;
 }
 
 export interface RatingsGateway {
@@ -161,7 +171,8 @@ function requireAuth(request: RatingsCallableRequest): string {
 /**
  * Valida a avaliação contra o evento e grava tudo numa transação: as
  * `ratings` (ids compostos, que impedem duplicidade), os agregados de
- * `ratingSummaries` e o `ratedBy` do evento (tarefa 14, §6.3).
+ * `ratingSummaries`, o `ratedBy` do evento e, se existir, a notificação
+ * vira "Avaliado" (tarefa 14, §6.3).
  */
 export function createSubmitEventRatingsHandler(gateway: RatingsGateway, now: () => Date) {
   return async (request: RatingsCallableRequest): Promise<SubmitEventRatingsResult> => {
@@ -172,6 +183,9 @@ export function createSubmitEventRatingsHandler(gateway: RatingsGateway, now: ()
       return await gateway.runTransaction(async (transaction) => {
         const event = await transaction.readEvent(input.eventId);
         if (event === null) throw new HttpsError('not-found', 'Evento não encontrado.');
+        // A notificação pode não existir (o gatilho ainda não rodou, ou o
+        // evento é anterior a ela): avaliar não depende dela.
+        const notification = await transaction.readNotification(uid, input.eventId);
 
         const ended = event.endedAt !== null || now().getTime() >= event.plannedEnd.getTime() + eventEndToleranceMs;
         if (!ended) throw new HttpsError('failed-precondition', 'Este evento ainda não terminou.');
@@ -206,6 +220,9 @@ export function createSubmitEventRatingsHandler(gateway: RatingsGateway, now: ()
           transaction.incrementSummary(write);
         }
         transaction.addRatedBy(input.eventId, uid);
+        if (notification !== null) {
+          transaction.completeNotification(uid, input.eventId, !notification.isRead);
+        }
         return { ratedTargets: writes.length };
       });
     } catch (error) {
@@ -218,24 +235,13 @@ export function createSubmitEventRatingsHandler(gateway: RatingsGateway, now: ()
   };
 }
 
-function toStringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
-}
-
-/** Ids dos participantes; documentos anteriores à tarefa 12 só têm `participants`. */
-function participantIdsOf(data: Record<string, unknown>): string[] {
-  if (Array.isArray(data.participantIds)) return toStringList(data.participantIds);
-  const participants = Array.isArray(data.participants) ? data.participants : [];
-  return participants
-    .map((p: unknown) => (p !== null && typeof p === 'object' ? (p as Record<string, unknown>).id : undefined))
-    .filter((id): id is string => typeof id === 'string');
-}
-
 /** Código gRPC ALREADY_EXISTS, que o `create` devolve no commit. */
 const grpcAlreadyExists = 6;
 
 export function createFirestoreRatingsGateway(): RatingsGateway {
   const firestore = getFirestore();
+  const notificationRef = (uid: string, eventId: string) =>
+    firestore.collection('users').doc(uid).collection('notifications').doc(eventEndedNotificationId(eventId));
   return {
     runTransaction: async (work) => {
       try {
@@ -247,15 +253,19 @@ export function createFirestoreRatingsGateway(): RatingsGateway {
               if (data === undefined) return null;
               const startsAt = (data.dateTime as Timestamp | undefined)?.toDate() ?? new Date(0);
               const endsAt = (data.endsAt as Timestamp | undefined)?.toDate();
-              const creator = data.creator as Record<string, unknown> | undefined;
               return {
-                creatorId: typeof creator?.id === 'string' ? creator.id : '',
+                creatorId: creatorIdOf(data),
                 participantIds: participantIdsOf(data),
                 placeId: typeof data.placeId === 'string' ? data.placeId : null,
                 endedAt: (data.endedAt as Timestamp | undefined)?.toDate() ?? null,
                 plannedEnd: endsAt ?? new Date(startsAt.getTime() + legacyDurationMs),
                 ratedBy: toStringList(data.ratedBy),
               };
+            },
+            readNotification: async (uid, eventId) => {
+              const snapshot = await transaction.get(notificationRef(uid, eventId));
+              const data = snapshot.data();
+              return data === undefined ? null : { isRead: data.readAt != null };
             },
             createRating: (rating) => {
               const id = `${rating.eventId}_${rating.fromUid}_${rating.targetType}_${rating.targetId}`;
@@ -287,6 +297,12 @@ export function createFirestoreRatingsGateway(): RatingsGateway {
             addRatedBy: (eventId, uid) => {
               transaction.update(firestore.collection('events').doc(eventId), {
                 ratedBy: FieldValue.arrayUnion(uid),
+              });
+            },
+            completeNotification: (uid, eventId, markRead) => {
+              transaction.update(notificationRef(uid, eventId), {
+                completedAt: FieldValue.serverTimestamp(),
+                ...(markRead ? { readAt: FieldValue.serverTimestamp() } : {}),
               });
             },
           }),

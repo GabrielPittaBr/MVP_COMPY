@@ -20,6 +20,8 @@ void main() {
     WidgetTester tester, {
     required VoidCallback onAvatarTap,
     required VoidCallback onSettingsTap,
+    VoidCallback? onNotificationsTap,
+    int unreadNotifications = 0,
   }) async {
     ignoreImageErrors();
     await tester.pumpWidget(
@@ -29,6 +31,8 @@ void main() {
             userName: 'Gabriel',
             onAvatarTap: onAvatarTap,
             onSettingsTap: onSettingsTap,
+            onNotificationsTap: onNotificationsTap ?? () {},
+            unreadNotifications: unreadNotifications,
           ),
         ),
       ),
@@ -66,6 +70,62 @@ void main() {
 
       expect(settingsTaps, 1);
       expect(avatarTaps, 0);
+    });
+
+    testWidgets('o sino abre a central e mostra as não lidas', (tester) async {
+      var taps = 0;
+      await pumpHeader(
+        tester,
+        onAvatarTap: () {},
+        onSettingsTap: () {},
+        onNotificationsTap: () => taps++,
+        unreadNotifications: 2,
+      );
+
+      expect(find.text('2'), findsOneWidget);
+      expect(
+        find.byTooltip(AppStrings.notificationsBellSemantics(2)),
+        findsOneWidget,
+      );
+      expect(AppStrings.notificationsBellSemantics(2),
+          'Notificações, 2 não lidas');
+      await tester.tap(find.byIcon(Icons.notifications_outlined));
+      await tester.pump();
+      expect(taps, 1);
+    });
+
+    testWidgets('a partir de 10 o badge mostra "9+"', (tester) async {
+      await pumpHeader(
+        tester,
+        onAvatarTap: () {},
+        onSettingsTap: () {},
+        unreadNotifications: 12,
+      );
+
+      expect(find.text('9+'), findsOneWidget);
+    });
+
+    testWidgets('sem não lidas, nada de badge', (tester) async {
+      await pumpHeader(tester, onAvatarTap: () {}, onSettingsTap: () {});
+
+      expect(find.text('0'), findsNothing);
+      expect(
+        find.byTooltip(AppStrings.notificationsTitle),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('"COMPY" continua no centro com o sino', (tester) async {
+      await pumpHeader(
+        tester,
+        onAvatarTap: () {},
+        onSettingsTap: () {},
+        unreadNotifications: 3,
+      );
+
+      final titulo = tester.getCenter(find.text(AppStrings.appName));
+      final tela = tester.getCenter(find.byType(Scaffold));
+      expect(titulo.dx, closeTo(tela.dx, 0.5));
     });
 
     testWidgets('continua saudando pelo nome', (tester) async {

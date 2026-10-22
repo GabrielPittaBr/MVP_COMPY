@@ -339,6 +339,12 @@ class AuthRemoteDataSource {
     final String? usernameDocId =
         usernameDocIdFromHandle(snapshot.data()?['handle'] as String?);
 
+    // Tarefa 14: as notificações da pessoa saem junto, no mesmo lote. As
+    // avaliações e médias ficam, para as médias dos outros continuarem
+    // íntegras.
+    final QuerySnapshot<Map<String, dynamic>> notifications =
+        await userRef.collection('notifications').get();
+
     final WriteBatch batch = _firestore.batch();
 
     // A regra de `usernames` olha `resource.data.uid`, e num documento
@@ -348,6 +354,10 @@ class AuthRemoteDataSource {
       batch.delete(_firestore.collection('usernames').doc(usernameDocId));
     }
     batch.delete(userRef.collection('private').doc('contact'));
+    for (final QueryDocumentSnapshot<Map<String, dynamic>> doc
+        in notifications.docs) {
+      batch.delete(doc.reference);
+    }
     batch.delete(userRef);
 
     await batch.commit();

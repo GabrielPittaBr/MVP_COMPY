@@ -49,16 +49,28 @@ class GatewayFalso implements RatingsGateway {
   readonly eventos = new Map<string, RatingEventSnapshot>();
   readonly ratings = new Map<string, RatingWrite>();
   readonly resumos = new Map<string, Resumo>();
+  /** Notificações `eventEnded` por uid: lida ou não, e se já foi concluída. */
+  readonly notificacoes = new Map<string, { lida: boolean; concluida: boolean }>();
 
   async runTransaction<T>(work: (transaction: RatingsTransaction) => Promise<T>): Promise<T> {
     let escreveu = false;
     const criadas: RatingWrite[] = [];
     const somas: RatingWrite[] = [];
     const avaliaram: Array<{ eventId: string; uid: string }> = [];
+    const concluidas: Array<{ uid: string; marcarLida: boolean }> = [];
     const result = await work({
       readEvent: async (eventId) => {
         if (escreveu) throw new Error('leitura depois de escrita');
         return this.eventos.get(eventId) ?? null;
+      },
+      readNotification: async (uid) => {
+        if (escreveu) throw new Error('leitura depois de escrita');
+        const n = this.notificacoes.get(uid);
+        return n === undefined ? null : { isRead: n.lida };
+      },
+      completeNotification: (uid, _eventId, marcarLida) => {
+        escreveu = true;
+        concluidas.push({ uid, marcarLida });
       },
       createRating: (rating) => {
         escreveu = true;
@@ -87,6 +99,10 @@ class GatewayFalso implements RatingsGateway {
     for (const { eventId, uid } of avaliaram) {
       const e = this.eventos.get(eventId)!;
       this.eventos.set(eventId, { ...e, ratedBy: [...e.ratedBy, uid] });
+    }
+    for (const { uid, marcarLida } of concluidas) {
+      const n = this.notificacoes.get(uid)!;
+      this.notificacoes.set(uid, { lida: n.lida || marcarLida, concluida: true });
     }
     return result;
   }
@@ -132,6 +148,31 @@ test('o participante avalia o evento e o local numa transação só', async () =
   assert.deepEqual(gateway.resumos.get(`event_${EVENTO}`), { count: 1, sum: 5, starCounts: { '5': 1 } });
   assert.deepEqual(gateway.resumos.get(`place_${LOCAL}`), { count: 1, sum: 4, starCounts: { '4': 1 } });
   assert.deepEqual(gateway.eventos.get(EVENTO)?.ratedBy, [PARTICIPANTE]);
+});
+
+test('a notificação não lida vira "Avaliado" e lida', async () => {
+  const { gateway, enviar } = cenario();
+  gateway.notificacoes.set(PARTICIPANTE, { lida: false, concluida: false });
+
+  await enviar(PARTICIPANTE, doParticipante());
+
+  assert.deepEqual(gateway.notificacoes.get(PARTICIPANTE), { lida: true, concluida: true });
+});
+
+test('a notificação já lida só ganha o "Avaliado"', async () => {
+  const { gateway, enviar } = cenario();
+  gateway.notificacoes.set(CRIADOR, { lida: true, concluida: false });
+
+  await enviar(CRIADOR, { eventId: EVENTO, place: { stars: 5 }, participants: [] });
+
+  assert.deepEqual(gateway.notificacoes.get(CRIADOR), { lida: true, concluida: true });
+});
+
+test('sem notificação (gatilho ainda não rodou), a avaliação passa igual', async () => {
+  const { gateway, enviar } = cenario();
+
+  assert.deepEqual(await enviar(PARTICIPANTE, doParticipante()), { ratedTargets: 2 });
+  assert.equal(gateway.notificacoes.size, 0);
 });
 
 test('agregados somam as notas de pessoas diferentes', async () => {

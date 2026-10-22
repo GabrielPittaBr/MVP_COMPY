@@ -14,3 +14,4 @@ export { getAdminUserAuthDetails, getAdminUsersAuthStatus } from './admin_auth_r
 export { setUserSuspension } from './user_suspension.js';
 export { autoEndOverdueEvents } from './event_lifecycle.js';
 export { submitEventRatings } from './event_ratings.js';
+export { onEventEnded } from './event_notifications.js';

@@ -18,6 +18,7 @@ import '../../features/events/presentation/pages/live_event_page.dart';
 import '../../features/events/presentation/pages/search_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/maps/presentation/pages/maps_page.dart';
+import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/favorite_sports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -74,6 +75,9 @@ abstract final class AppRoutes {
 
   /// Configurações — o botão da Home já existe; a tela, ainda não.
   static const String settings = '/home/configuracoes';
+
+  /// Central de notificações (tarefa 14) — aberta pelo sino da Home.
+  static const String notifications = '/home/notificacoes';
 
   /// Insígnias — o "Ver mais" do perfil já existe; a tela, ainda não.
   static const String profileBadges = '/profile/insignias';
@@ -262,6 +266,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const UnderConstructionPage(
                       title: AppStrings.settingsTitle,
                     ),
+                  ),
+                  GoRoute(
+                    path: 'notificacoes',
+                    builder: (context, state) => const NotificationsPage(),
                   ),
                 ],
               ),

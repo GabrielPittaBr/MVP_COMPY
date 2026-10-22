@@ -1,6 +1,6 @@
 # 11: Central de notificações com o convite para avaliar
 
-Status: open
+Status: resolved
 
 Blocked by: 01 — Desenhar as telas do ciclo de vida no Claude Design; 08 — Criador encerra o evento; 09 — Avaliar o evento e o Local Esportivo
 
@@ -25,16 +25,16 @@ O diálogo do criador fica para o ticket 12.
 
 ## Acceptance criteria
 
-- [ ] **Gatilho:**
+- [x] **Gatilho:**
   - a transição cria N notificações, uma por participante (ou pelos ids legados);
   - updates sem transição (join, `ratedBy`) não criam nada;
   - no encerramento manual, a notificação do criador vem lida;
   - no automático, ela vem não lida;
   - o id é `eventEnded_{eventId}`;
   - a criação ignora "já existe" e nunca usa `set`.
-- [ ] O teste de região inclui o gatilho.
-- [ ] Callable de avaliação: na mesma transação, se a notificação existe, grava `completedAt` e preenche `readAt` se ele ainda estava vazio. Os testes cobrem os casos com e sem notificação.
-- [ ] **Regras:**
+- [x] O teste de região inclui o gatilho.
+- [x] Callable de avaliação: na mesma transação, se a notificação existe, grava `completedAt` e preenche `readAt` se ele ainda estava vazio. Os testes cobrem os casos com e sem notificação.
+- [x] **Regras:**
   - o dono lê → permite;
   - outro usuário lê → nega;
   - o dono marca `readAt` com `serverTimestamp()` uma vez → permite;
@@ -45,13 +45,13 @@ O diálogo do criador fica para o ticket 12.
   - outro usuário apaga → nega.
 
   O cabeçalho das regras registra que a exclusão de conta também apaga as notificações.
-- [ ] **Feature de notificações no app:**
+- [x] **Feature de notificações no app:**
   - entidade;
   - repositório com stream, marcar como lida e marcar todas em lote;
   - mock em memória, em que encerrar no mock cria as notificações, fazendo o papel do gatilho;
   - providers da lista e da contagem de não lidas.
-- [ ] O sino tem badge e semântica "Notificações, N não lidas", e "COMPY" continua centralizado.
-- [ ] **Central:**
+- [x] O sino tem badge e semântica "Notificações, N não lidas", e "COMPY" continua centralizado.
+- [x] **Central:**
   - Novas e Anteriores;
   - ícone e cor do esporte;
   - tempo relativo;
@@ -61,17 +61,31 @@ O diálogo do criador fica para o ticket 12.
   - estado vazio.
 
   A rota entra no teste do `authRedirect`.
-- [ ] Os textos de cada tipo e papel do §8.10 (participante, criador com encerramento manual, criador com encerramento automático) são montados no app e testados.
-- [ ] A exclusão de conta apaga as notificações no mesmo lote.
-- [ ] Testes de widget: badge, lista, e toque que navega e marca como lida.
+- [x] Os textos de cada tipo e papel do §8.10 (participante, criador com encerramento manual, criador com encerramento automático) são montados no app e testados.
+- [x] A exclusão de conta apaga as notificações no mesmo lote.
+- [x] Testes de widget: badge, lista, e toque que navega e marca como lida.
 
 ## Verification
 
-- [ ] `flutter test` verde.
-- [ ] `dart analyze` com 0 erros e sem infos novas além das 10 da linha de base.
-- [ ] `npm run lint --prefix functions` e `npm test --prefix functions` verdes.
-- [ ] `npm test --prefix tools/firestore-rules-tests` verde, com o JDK 25 no `JAVA_HOME`. Se der erro de loopback, rode fora do sandbox.
-- [ ] Resultado das hipóteses 2, 3 e 6 anotado aqui.
-- [ ] Bullet no caderno do dia, no mesmo commit, e o ticket em `Status: resolved`.
+- [x] `flutter test` verde.
+- [x] `dart analyze` com 0 erros e sem infos novas além das 10 da linha de base.
+- [x] `npm run lint --prefix functions` e `npm test --prefix functions` verdes.
+- [x] `npm test --prefix tools/firestore-rules-tests` verde, com o JDK 25 no `JAVA_HOME`. Se der erro de loopback, rode fora do sandbox.
+- [x] Resultado das hipóteses 2, 3 e 6 anotado aqui (a 6 fica para o E2E, como o ticket permite).
+- [x] Bullet no caderno do dia, no mesmo commit, e o ticket em `Status: resolved`.
+
+Hipóteses (§13), conferidas em 21/10/2026:
+
+- **2:** confirmada no emulador. `updateDoc(..., { readAt: serverTimestamp() })` passa em `readAt == request.time`, e um `Date` do cliente é recusado.
+- **3:** confirmada. O `changed()` global funciona dentro de `match /users/{userId}/notifications/{id}`: só `readAt` passa, e mexer em `completedAt` ou no título é recusado.
+- **6:** fica para o E2E (ticket 14). O teste unitário cobre o planejador e a criação idempotente com fakes, mas o disparo do gatilho no emulador, com escrita pela REST, só é conferido lá.
+
+Notas:
+
+- Textos: o título "{título} terminou" vale para o participante e para o criador que encerrou à mão, como decidido no ticket 01. O corpo segue o design aprovado: "Como foi? Avalie o evento, o local e quem jogou com você." para o participante, e o mesmo sem o evento para o criador. O automático usa os textos do §8.10.
+- A leitura dos ids de participantes saiu da callable para `functions/src/event_documents.ts`, que o gatilho também usa. Os dois tratam documento legado sem `participantIds`.
+- No mock, o `InMemoryEventsStore.end` cria as notificações e o `InMemoryRatingsStore` marca "Avaliado". O evento encerrado das fixtures (`evt_006`) já nasce com a notificação não lida do João, para a central ter o que mostrar.
+- A exclusão de conta lê as notificações antes do lote e apaga todas nele. Um lote aceita 500 escritas, longe do volume de uma pessoa.
+- Suítes: regras em 167 casos (10 novos em `notifications.test.js`), Functions em 81 testes e Flutter em 325.
 
 Commit sugerido: `feat: central de notificacoes com convite para avaliar`

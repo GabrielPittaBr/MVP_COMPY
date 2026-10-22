@@ -160,6 +160,41 @@ abstract final class AppStrings {
   static String eventParticipantsShort(int count) =>
       count == 1 ? '1 participante' : '$count participantes';
 
+  // Central de notificações (tarefa 14)
+  static const String notificationsTitle = 'Notificações';
+  static const String notificationsMarkAllRead = 'Marcar todas como lidas';
+  static const String notificationsNew = 'Novas';
+  static const String notificationsEarlier = 'Anteriores';
+  static const String notificationsEmptyTitle = 'Nada por aqui ainda';
+  static const String notificationsEmptyBody =
+      'Quando um evento de que você participou terminar, o convite para '
+      'avaliar aparece aqui.';
+  static String notificationsBellSemantics(int unread) => switch (unread) {
+        0 => notificationsTitle,
+        1 => '$notificationsTitle, 1 não lida',
+        _ => '$notificationsTitle, $unread não lidas',
+      };
+  static String notificationEventEndedTitle(String eventTitle) =>
+      '$eventTitle terminou';
+  static const String notificationEventEndedBodyParticipant =
+      'Como foi? Avalie o evento, o local e quem jogou com você.';
+  static const String notificationEventEndedBodyCreator =
+      'Como foi? Avalie o local e quem jogou com você.';
+  static const String notificationAutoEndedTitle =
+      'Seu evento foi encerrado automaticamente';
+  static String notificationAutoEndedBody(String eventTitle) =>
+      '$eventTitle passou 1h do horário previsto. '
+      'Avalie o local e os participantes.';
+  static const String notificationRated = 'Avaliado';
+  static const String notificationUnread = 'Não lida';
+
+  // Tempo relativo ("há 2 h") — central de notificações
+  static const String timeNow = 'agora';
+  static String timeMinutesAgo(int minutes) => 'há $minutes min';
+  static String timeHoursAgo(int hours) => 'há $hours h';
+  static const String timeYesterday = 'ontem';
+  static String timeDaysAgo(int days) => 'há $days dias';
+
   // Avaliação do evento (tarefa 14)
   static const String ratingTitle = 'Avaliar evento';
   static String ratingStep(int index, int total) => 'Passo $index de $total';

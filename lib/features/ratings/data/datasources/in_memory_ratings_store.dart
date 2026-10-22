@@ -1,5 +1,6 @@
 import '../../../../shared/models/event_status.dart';
 import '../../../events/data/datasources/in_memory_events_store.dart';
+import '../../../notifications/data/datasources/in_memory_notifications_store.dart';
 import '../../domain/entities/event_rating_submission.dart';
 import '../../domain/repositories/ratings_repository.dart';
 
@@ -33,5 +34,7 @@ class InMemoryRatingsStore {
     }
     _submissions.add(submission);
     events.markRated(submission.eventId, submission.raterId);
+    InMemoryNotificationsStore.instance
+        .complete(submission.raterId, submission.eventId, at: now);
   }
 }

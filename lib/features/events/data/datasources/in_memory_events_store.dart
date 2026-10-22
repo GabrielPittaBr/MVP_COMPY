@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../../features/home/data/datasources/mock_events.dart';
+import '../../../../features/notifications/data/datasources/in_memory_notifications_store.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/events_filter.dart';
@@ -120,6 +121,8 @@ class InMemoryEventsStore {
     final ended = current.copyWith(endedAt: at, endedAutomatically: automatic);
     _events[index] = ended;
     _controller.add(List<Event>.unmodifiable(_events));
+    // O papel do gatilho `onEventEnded`: avisar cada participante.
+    InMemoryNotificationsStore.instance.createEventEnded(ended, at: at);
     return ended;
   }
 

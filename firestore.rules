@@ -11,8 +11,9 @@ rules_version = '2';
 //
 // Convenção deste arquivo:
 //   - `delete` é negado por padrão. A única exceção é a exclusão de conta:
-//     o dono apaga o próprio `users/{uid}`, o `private/contact` e a reserva
-//     em `usernames/{username}`. Nenhuma outra coleção apaga nada.
+//     o dono apaga o próprio `users/{uid}`, o `private/contact`, as próprias
+//     notificações (`users/{uid}/notifications`) e a reserva em
+//     `usernames/{username}`. Nenhuma outra coleção apaga nada.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -114,6 +115,22 @@ service cloud.firestore {
       match /private/{docId} {
         allow read, create, update, delete: if signedIn()
                                             && request.auth.uid == userId;
+      }
+
+      // ── users/{uid}/notifications ────────────────────────────────
+      // Tarefa 14. Central de notificações in-app. Quem cria é o gatilho
+      // `onEventEnded`, e quem marca "Avaliado" é a callable da avaliação,
+      // as duas pelo Admin SDK. O dono só lê e marca como lida, uma vez, com
+      // o horário do servidor. Na exclusão de conta, ele apaga as suas.
+      match /notifications/{notificationId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        allow update: if signedIn()
+                      && request.auth.uid == userId
+                      && resource.data.get('readAt', null) == null
+                      && changed().hasOnly(['readAt'])
+                      && request.resource.data.readAt == request.time;
+        allow delete: if signedIn() && request.auth.uid == userId;
+        allow create: if false;
       }
     }
 

@@ -7,6 +7,7 @@ import {
   autoEndOverdueEvents,
   getAdminUserAuthDetails,
   getAdminUsersAuthStatus,
+  onEventEnded,
   setUserSuspension,
   submitEventRatings,
 } from '../src/index.js';
@@ -27,6 +28,10 @@ test('as três Callables exportam a região aprovada no contrato de deploy', () 
 
 test('a callable da avaliação usa a região aprovada', () => {
   assert.deepEqual(submitEventRatings.__endpoint.region, ['southamerica-east1']);
+});
+
+test('o gatilho de evento encerrado usa a região aprovada', () => {
+  assert.deepEqual(onEventEnded.__endpoint.region, ['southamerica-east1']);
 });
 
 test('o encerramento automático roda a cada 10 min, na região e no fuso aprovados', () => {
