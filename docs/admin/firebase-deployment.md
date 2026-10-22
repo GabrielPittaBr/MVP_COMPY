@@ -529,3 +529,13 @@ firebase functions:log --only autoEndOverdueEvents --project compy-tcc
 - O visual novo entrou na `develop` (`0eaa211`), então o aviso da seção anterior não vale mais: um deploy feito a partir da `develop` mantém o visual novo.
 - O Flutter 3.47.7 (Dart 3.13.5) voltou a ser o instalado e atende o `sdk: ^3.13.3` do Admin; o build rodou sem rebaixar a restrição de SDK.
 - Build de release via `admin/tool/build_web.ps1` com a mesma site key pública reCAPTCHA v3 do bundle anterior, sem token de debug no ambiente: exit code 0. Deploy `hosting:admin` concluído (só 2 dos 47 arquivos mudaram em relação à release anterior). O `main.dart.js` servido confere byte a byte com o build; `/`, `/login`, `/dashboard`, `/places` e `/users` respondem HTTP 200.
+
+## Tarefa 14 publicada a partir da develop — 2026-10-22
+
+- Publicado a partir da `develop` com o merge `bc4aec5` (`merge: feature/ciclo-vida-evento em develop`), depois de todas as suítes verdes: mobile 343/343 e `dart analyze` só com os 10 avisos informativos de sempre; Functions com lint limpo e 81/81; regras 167/167 no emulador.
+- Os índices não mudaram, então não houve deploy de `firestore:indexes`.
+- `firebase deploy --only functions:administrative`: criou `autoEndOverdueEvents` e `submitEventRatings` e atualizou as três do painel. O CLI ativou a API do Cloud Scheduler sozinho. O `onEventEnded` falhou na primeira vez com "Permission denied while using the Eventarc Service Agent", o caso previsto do primeiro gatilho gen2. Quatro minutos depois, `firebase deploy --only functions:administrative:onEventEnded` concluiu.
+- Só então, `firebase deploy --only firestore:rules`: compilou e publicou.
+- `firebase functions:list` mostra as seis Functions em v2, `southamerica-east1`, `nodejs22`: `autoEndOverdueEvents` (scheduled), `onEventEnded` (`google.cloud.firestore.document.v1.updated`), `submitEventRatings`, `getAdminUserAuthDetails`, `getAdminUsersAuthStatus` e `setUserSuspension` (callable).
+- O log da `autoEndOverdueEvents` mostra a instância subindo às 20:16 UTC e a primeira execução agendada às 20:27 UTC, sem nenhuma linha de erro. O `firebase functions:log` às vezes falha com "Failed to retrieve log entries from Google Cloud"; repetir o comando resolve.
+- O app v0.1.0 instalado continua compatível. O APK novo, com a tarefa 14, ainda precisa ser gerado e distribuído pelo responsável.

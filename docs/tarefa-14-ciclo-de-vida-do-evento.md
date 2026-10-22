@@ -1240,13 +1240,13 @@ A revisão crítica foi interrompida. Valide cada item no código ou no teste, e
 
 ## 15. Critérios de aceite finais (roadmap §14, atualizados)
 
-- [ ] Eventos encerrados somem de "Todos os eventos", e também de "Criados por mim", "Participando", da Home e da busca (D17).
-- [ ] Participante de evento em andamento vê o card no topo da aba Eventos; quem não participa, não vê.
-- [ ] Só o criador vê "Encerrar evento".
-- [ ] Evento esquecido encerra 1h depois do fim previsto (Function), e o criador é avisado **uma única vez** ao reabrir o app.
-- [ ] A central de notificações (sino na Home) avisa os participantes quando o evento termina e leva à avaliação (D15).
-- [ ] Não é possível concluir a avaliação sem avaliar evento e local. O criador avalia local e participantes, não o próprio evento (D14).
-- [ ] Não é possível enviar comentário sem estrelas, nem nota abaixo de 3 sem justificativa, nos três alvos (UI e servidor).
-- [ ] As médias aparecem no perfil e na tela do local (e no evento encerrado). Os comentários não aparecem em lugar nenhum (D13).
-- [ ] O atalho de chat da tela ao vivo abre conversa 1:1 (D16).
-- [ ] Testes Dart, Functions e regras verdes; E2E no Chrome feito; documentação, ADR e roadmap atualizados; deploy feito e conferido.
+- [x] Eventos encerrados somem de "Todos os eventos", e também de "Criados por mim", "Participando", da Home e da busca (D17).
+- [x] Participante de evento em andamento vê o card no topo da aba Eventos; quem não participa, não vê.
+- [x] Só o criador vê "Encerrar evento".
+- [x] Evento esquecido encerra 1h depois do fim previsto (Function), e o criador é avisado **uma única vez** ao reabrir o app.
+- [x] A central de notificações (sino na Home) avisa os participantes quando o evento termina e leva à avaliação (D15).
+- [x] Não é possível concluir a avaliação sem avaliar evento e local. O criador avalia local e participantes, não o próprio evento (D14).
+- [x] Não é possível enviar comentário sem estrelas, nem nota abaixo de 3 sem justificativa, nos três alvos (UI e servidor).
+- [x] As médias aparecem no perfil e na tela do local (e no evento encerrado). Os comentários não aparecem em lugar nenhum (D13).
+- [x] O atalho de chat da tela ao vivo abre conversa 1:1 (D16).
+- [x] Testes Dart, Functions e regras verdes; E2E no Chrome feito; documentação, ADR e roadmap atualizados; deploy feito e conferido.
