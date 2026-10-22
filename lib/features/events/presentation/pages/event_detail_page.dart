@@ -2,14 +2,17 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/duration_format.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../../shared/widgets/primary_button.dart';
+import '../../../../shared/widgets/user_avatar.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../providers/events_providers.dart';
@@ -72,7 +75,8 @@ class _Body extends ConsumerWidget {
               errorWidget: (_, __, ___) => Container(
                 color: AppColors.surfaceMuted,
                 alignment: Alignment.center,
-                child: Icon(event.sport.icon, size: 60, color: event.sport.color),
+                child:
+                    Icon(event.sport.icon, size: 60, color: event.sport.color),
               ),
             ),
           ),
@@ -83,7 +87,8 @@ class _Body extends ConsumerWidget {
             delegate: SliverChildListDelegate(<Widget>[
               Text(
                 event.title,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
               _IconRow(
@@ -127,7 +132,8 @@ class _Body extends ConsumerWidget {
 
               Text(
                 'Participantes (${event.participants.length})',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
               ParticipantsAvatars(participants: event.participants),
@@ -181,7 +187,8 @@ class _Body extends ConsumerWidget {
               const SizedBox(height: 24),
 
               PrimaryButton(
-                label: event.isFull ? AppStrings.eventFull : AppStrings.eventJoin,
+                label:
+                    event.isFull ? AppStrings.eventFull : AppStrings.eventJoin,
                 onPressed: event.isFull ? null : () => _join(context, ref),
               ),
               const SizedBox(height: 24),
@@ -251,47 +258,41 @@ class _CreatorTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: <Widget>[
-          CircleAvatar(
-            radius: 18,
-            backgroundImage: CachedNetworkImageProvider(event.creator.avatarUrl),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  event.creator.name,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  event.creator.handle,
-                  style: const TextStyle(
-                    color: AppColors.onSurfaceMuted,
-                    fontSize: 12,
+    return InkWell(
+      key: const Key('event-creator-profile'),
+      onTap: () => context.push(AppRoutes.publicProfileFor(event.creator.id)),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: <Widget>[
+            UserAvatar(user: event.creator, radius: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    event.creator.name,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                ),
-              ],
+                  Text(
+                    event.creator.handle,
+                    style: const TextStyle(
+                      color: AppColors.onSurfaceMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.add, color: Colors.white, size: 18),
-          ),
-        ],
+            const Icon(Icons.chevron_right, color: AppColors.onSurfaceMuted),
+          ],
+        ),
       ),
     );
   }

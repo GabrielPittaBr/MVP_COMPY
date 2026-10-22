@@ -20,6 +20,7 @@ import '../../features/maps/presentation/pages/maps_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/favorite_sports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/profile/presentation/pages/public_profile_page.dart';
 import '../../shared/pages/under_construction_page.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 import '../constants/app_strings.dart';
@@ -44,6 +45,10 @@ abstract final class AppRoutes {
   static const String chatRoom = '/chat/:conversationId';
   static const String chatNew = '/chat/nova';
   static const String profile = '/profile';
+  static const String publicProfile = '/profile/usuarios/:uid';
+
+  static String publicProfileFor(String uid) =>
+      publicProfile.replaceFirst(':uid', Uri.encodeComponent(uid));
 
   /// Edição dos esportes favoritos — sub-rota do perfil, dentro do shell.
   /// Separada de [onboardingSports] porque o guard manda quem já concluiu o
@@ -322,6 +327,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'editar',
                     builder: (context, state) => const EditProfilePage(),
+                  ),
+                  GoRoute(
+                    path: 'usuarios/:uid',
+                    builder: (context, state) => PublicProfilePage(
+                      uid: state.pathParameters['uid']!,
+                    ),
                   ),
                 ],
               ),

@@ -1,8 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/user_summary.dart';
+import '../../../../shared/widgets/user_avatar.dart';
 
 /// Avatar do interlocutor, tolerante a peer ausente.
 ///
@@ -18,18 +17,6 @@ class PeerAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = peer?.avatarUrl ?? '';
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: AppColors.surfaceMuted,
-      backgroundImage: url.isEmpty ? null : CachedNetworkImageProvider(url),
-      child: url.isEmpty
-          ? Icon(
-              Icons.person,
-              size: radius,
-              color: AppColors.onSurfaceMuted,
-            )
-          : null,
-    );
+    return UserAvatar(user: peer, radius: radius);
   }
 }

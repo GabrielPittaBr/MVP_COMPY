@@ -22,7 +22,8 @@ abstract final class MockProfile {
           handle: '@joao.souza',
           avatarUrl: AppAssets.avatar('João', size: 200),
         ),
-        bio: 'Apaixonado por esportes coletivos. Busca parceiros para treinar em Taquara.',
+        bio:
+            'Apaixonado por esportes coletivos. Busca parceiros para treinar em Taquara.',
         favoriteSports: favoriteSportsOverride ??
             const <Sport>[Sport.futebol, Sport.volei, Sport.basquete],
         badges: const <SportBadge>[
@@ -103,4 +104,39 @@ abstract final class MockProfile {
           avatarUrl: AppAssets.avatar('Eduardo'),
         ),
       ];
+
+  /// Apenas identidades presentes nas fixtures do modo mockado.
+  static UserProfile? publicById(String uid) {
+    if (uid == current.summary.id) return current;
+    final users = <UserSummary>[
+      ...searchable,
+      UserSummary(
+        id: 'u_carlao',
+        name: 'Carlos Alberto',
+        handle: '@carlao.alberto',
+        avatarUrl: AppAssets.avatar('Carlos'),
+      ),
+      for (var i = 0; i < 10; i++)
+        UserSummary(
+          id: 'p_$i',
+          name: 'Participante ${i + 1}',
+          handle: '@p${i + 1}',
+          avatarUrl: AppAssets.avatar('${i + 1}'),
+        ),
+    ];
+    for (final user in users) {
+      if (user.id == uid) {
+        return UserProfile(
+          summary: user,
+          bio: '',
+          favoriteSports: const [],
+          badges: const [],
+          friends: const [],
+          rating: const RatingSummary(average: 0, count: 0, breakdown: {}),
+          gallery: const [],
+        );
+      }
+    }
+    return null;
+  }
 }

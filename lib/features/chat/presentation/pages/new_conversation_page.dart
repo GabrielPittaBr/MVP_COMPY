@@ -42,9 +42,8 @@ class _NewConversationPageState extends ConsumerState<NewConversationPage> {
     setState(() => _opening = true);
     try {
       final me = await ref.read(currentUserSummaryProvider.future);
-      final conversationId = await ref
-          .read(openConversationProvider)
-          .call(me: me, peer: peer);
+      final conversationId =
+          await ref.read(openConversationProvider).call(me: me, peer: peer);
 
       // A conversa nova ainda não está na lista nem no cache da sala.
       ref.invalidate(paginatedConversationsProvider);
@@ -103,7 +102,10 @@ class _NewConversationPageState extends ConsumerState<NewConversationPage> {
                   itemBuilder: (context, i) {
                     final user = users[i];
                     return ListTile(
-                      onTap: _opening ? null : () => _open(user),
+                      onTap: _opening
+                          ? null
+                          : () =>
+                              context.push(AppRoutes.publicProfileFor(user.id)),
                       leading: PeerAvatar(peer: user, radius: 24),
                       title: Text(
                         user.name,
@@ -112,6 +114,11 @@ class _NewConversationPageState extends ConsumerState<NewConversationPage> {
                       subtitle: Text(
                         user.handle,
                         style: const TextStyle(color: AppColors.onSurfaceMuted),
+                      ),
+                      trailing: IconButton(
+                        tooltip: AppStrings.profileMessage,
+                        icon: const Icon(Icons.chat_bubble_outline),
+                        onPressed: _opening ? null : () => _open(user),
                       ),
                     );
                   },

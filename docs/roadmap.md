@@ -3,6 +3,7 @@
 > Criado em 2026-08-08, revisado em 2026-08-09 com as decisões de produto.
 > **Atualizado em 2026-09-27:** 13 das 14 tarefas de prioridade alta fechadas (conferido no `git log` de `develop` e no código). Resta a tarefa 14.
 > Este documento absorveu o antigo `proximos-passos.md`: o que ainda estava pendente nele virou o [Backlog](#backlog--prioridade-média-e-baixa) no fim.
+> **Atualizado em 2026-10-22:** visualização de perfis públicos concluída em `feature/perfil-publico-usuarios`; o ciclo de vida dos eventos permanece em desenvolvimento separado.
 
 ---
 
@@ -56,6 +57,14 @@
 **13 · Esportes favoritos** — Contas novas passam por `/onboarding/esportes` antes da Home. Os favoritos ficam em `users/{uid}`, são editáveis pelo perfil e o carrossel da Home passa a segui-los. Junto, o e-mail saiu do documento público de perfil para `users/{uid}/private/contact`, legível só pelo dono (RN-06).
 
 **Do antigo `proximos-passos.md`, também já feitos:** entrar em evento com o uid real, criar evento com o criador real, busca de eventos com debounce, eventos próximos por geolocalização, paginação das listas de eventos e conversas, nova conversa de chat e revisão das regras do Firestore. O débito técnico listado lá (`AuthService` legado, Home usando mock) também foi resolvido.
+
+---
+
+## Funcionalidade concluída — perfis públicos de outros usuários
+
+**Branch:** `feature/perfil-publico-usuarios` · **Status:** ✅ Concluída em 2026-10-22.
+
+Usuários autenticados podem abrir `users/{uid}` pelo organizador ou pelos participantes de um evento, pelo cabeçalho de uma conversa e pelo resultado da busca de usuários. A tela mostra apenas nome, handle, avatar, biografia existente e esportes favoritos. O botão "Mensagem" usa o fluxo 1:1 existente. Perfis ausentes e falhas de leitura têm estados próprios; o UID do próprio usuário mostra a tela proprietária. A lista rolável do evento mantém todos os participantes identificáveis. As regras do Firestore não precisaram mudar.
 
 ---
 

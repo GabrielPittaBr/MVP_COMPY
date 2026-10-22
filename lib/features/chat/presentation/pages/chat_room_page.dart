@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/day_label.dart';
 import '../../domain/entities/conversation.dart';
@@ -33,17 +35,26 @@ class ChatRoomPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
-        title: Row(
-          children: <Widget>[
-            PeerAvatar(peer: conversation?.peer),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                conversation?.peer.name ?? AppStrings.chatFallbackTitle,
-                overflow: TextOverflow.ellipsis,
+        title: InkWell(
+          onTap: conversation == null ||
+                  conversation.peer.id.isEmpty ||
+                  conversation.peer.id == 'unknown'
+              ? null
+              : () => context.push(
+                    AppRoutes.publicProfileFor(conversation.peer.id),
+                  ),
+          child: Row(
+            children: <Widget>[
+              PeerAvatar(peer: conversation?.peer),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  conversation?.peer.name ?? AppStrings.chatFallbackTitle,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: <Widget>[
           IconButton(
