@@ -33,6 +33,7 @@ abstract final class MessageMapper {
       placeId: (data['placeId'] as String?)?.trim().isEmpty ?? true
           ? null
           : (data['placeId'] as String).trim(),
+      placeSnapshot: PlaceMessageSnapshot.tryFromMap(data['placeSnapshot']),
     );
   }
 
@@ -43,7 +44,6 @@ abstract final class MessageMapper {
   /// mensagem que o usuário acabou de enviar chegaria em primeiro lugar e
   /// pularia para o fim assim que o servidor confirmasse.
   static List<Message> sortedBySentAt(List<Message> messages) {
-    return <Message>[...messages]
-      ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+    return <Message>[...messages]..sort((a, b) => a.sentAt.compareTo(b.sentAt));
   }
 }

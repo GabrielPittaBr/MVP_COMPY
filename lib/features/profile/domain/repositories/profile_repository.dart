@@ -21,4 +21,11 @@ abstract interface class ProfileRepository {
     String? excludeUid,
     int limit,
   });
+
+  /// Usuários cujo nome normalizado começa por [namePrefix].
+  Future<List<UserSummary>> searchByName(
+    String namePrefix, {
+    String? excludeUid,
+    int limit,
+  });
 }

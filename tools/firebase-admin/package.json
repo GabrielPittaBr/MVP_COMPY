@@ -1,0 +1,29 @@
+{
+  "name": "compy-firebase-admin-tooling",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "lint": "eslint src test",
+    "test": "npm run build && node --test lib/test/*.test.js",
+    "bootstrap-admin": "npm run build && node lib/src/cli/bootstrap-admin.js",
+    "migrate-parque-do-trabalhador": "npm run build && node lib/src/cli/migrate-parque-do-trabalhador.js",
+    "backfill-profile-name-lower": "npm run build && node lib/src/cli/backfill-profile-name-lower.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^20.0.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.0.0",
+    "globals": "^15.0.0"
+  }
+}

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/sport.dart';
 
 class ProfileRemoteDataSource {
@@ -42,6 +43,24 @@ class ProfileRemoteDataSource {
     return _firestore
         .collection('users')
         .orderBy('handle')
+        .startAt(<Object>[start])
+        .endAt(<Object>['$start'])
+        .limit(limit)
+        .get();
+  }
+
+  /// Perfis cujo nome normalizado começa por [namePrefix].
+  ///
+  /// A consulta é remota e ordenada por `nameLower`; ela não baixa todos os
+  /// perfis para filtrar no cliente.
+  Future<QuerySnapshot<Map<String, dynamic>>> searchByNamePrefix(
+    String namePrefix, {
+    int limit = 20,
+  }) {
+    final start = TextNormalizer.normalize(namePrefix);
+    return _firestore
+        .collection('users')
+        .orderBy('nameLower')
         .startAt(<Object>[start])
         .endAt(<Object>['$start'])
         .limit(limit)

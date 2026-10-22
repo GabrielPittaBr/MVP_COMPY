@@ -1,4 +1,5 @@
 import '../../../../core/constants/app_flags.dart';
+import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/rating_summary.dart';
@@ -73,6 +74,37 @@ class ProfileRepositoryImpl implements ProfileRepository {
               // conversa vai usar como membro.
               'id': doc.id,
             }))
+        .toList();
+  }
+
+  @override
+  Future<List<UserSummary>> searchByName(
+    String namePrefix, {
+    String? excludeUid,
+    int limit = 20,
+  }) async {
+    final prefix = TextNormalizer.normalize(namePrefix);
+    if (prefix.isEmpty) return const <UserSummary>[];
+
+    if (!kUseFirebaseRepos || _remote == null) {
+      return MockProfile.searchable
+          .where(
+            (user) =>
+                user.id != excludeUid && TextNormalizer.normalize(user.name).startsWith(prefix),
+          )
+          .take(limit)
+          .toList();
+    }
+
+    final snapshot = await _remote.searchByNamePrefix(prefix, limit: limit);
+    return snapshot.docs
+        .where((doc) => doc.id != excludeUid)
+        .map(
+          (doc) => UserSummary.fromMap(<String, dynamic>{
+            ...doc.data(),
+            'id': doc.id,
+          }),
+        )
         .toList();
   }
 }

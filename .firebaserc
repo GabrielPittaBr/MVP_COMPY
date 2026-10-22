@@ -1,5 +1,12 @@
 {
   "projects": {
     "default": "compy-tcc"
+  },
+  "targets": {
+    "compy-tcc": {
+      "hosting": {
+        "admin": ["compy-tcc-admin"]
+      }
+    }
   }
 }

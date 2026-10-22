@@ -7,7 +7,8 @@ void main() {
   group('MessageMapper.fromMap', () {
     test('mapeia o documento do Firestore', () {
       final sentAt = DateTime(2026, 8, 9, 14, 30);
-      final message = MessageMapper.fromMap('m1', 'c_douglas', <String, dynamic>{
+      final message =
+          MessageMapper.fromMap('m1', 'c_douglas', <String, dynamic>{
         'senderId': 'uid_douglas',
         'text': 'Bora treinar?',
         'sentAt': Timestamp.fromDate(sentAt),
@@ -20,12 +21,14 @@ void main() {
       expect(message.sentAt, sentAt);
     });
 
-    test('sentAt nulo (serverTimestamp pendente) vira agora, não a época zero', () {
+    test('sentAt nulo (serverTimestamp pendente) vira agora, não a época zero',
+        () {
       // O `serverTimestamp()` do envio só chega preenchido quando o servidor
       // confirma. No primeiro snapshot local ele vem nulo — se virasse epoch,
       // a mensagem recém-enviada saltaria para o topo do histórico.
       final before = DateTime.now();
-      final message = MessageMapper.fromMap('m2', 'c_douglas', <String, dynamic>{
+      final message =
+          MessageMapper.fromMap('m2', 'c_douglas', <String, dynamic>{
         'senderId': 'uid_joao',
         'text': 'Bora!',
         'sentAt': null,
@@ -37,7 +40,8 @@ void main() {
     });
 
     test('documento incompleto não quebra a sala', () {
-      final message = MessageMapper.fromMap('m3', 'c_douglas', <String, dynamic>{});
+      final message =
+          MessageMapper.fromMap('m3', 'c_douglas', <String, dynamic>{});
 
       expect(message.senderId, '');
       expect(message.text, '');
@@ -45,18 +49,57 @@ void main() {
     });
 
     test('mensagem de local carrega o id do local', () {
-      final message = MessageMapper.fromMap('m4', 'c_douglas', <String, dynamic>{
+      final message =
+          MessageMapper.fromMap('m4', 'c_douglas', <String, dynamic>{
+        'senderId': 'uid_joao',
+        'text': 'Encaminhou um local...',
+        'placeId': 'parque_do_trabalhador',
+        'placeSnapshot': <String, Object?>{
+          'name': 'Parque do Trabalhador',
+          'imageUrl': 'https://example.com/parque.jpg',
+          'primarySport': 'futebol',
+        },
+      });
+
+      expect(message.placeId, 'parque_do_trabalhador');
+      expect(message.isPlace, isTrue);
+      expect(message.placeSnapshot?.name, 'Parque do Trabalhador');
+      expect(message.placeSnapshot?.primarySport.storageName, 'futebol');
+    });
+
+    test('mensagem placeId-only legada continua sem snapshot', () {
+      final message =
+          MessageMapper.fromMap('m4-old', 'c_douglas', <String, dynamic>{
         'senderId': 'uid_joao',
         'text': 'Encaminhou um local...',
         'placeId': 'parque_do_trabalhador',
       });
 
-      expect(message.placeId, 'parque_do_trabalhador');
       expect(message.isPlace, isTrue);
+      expect(message.placeSnapshot, isNull);
+    });
+
+    test('snapshot malformado é ignorado para preservar a leitura histórica',
+        () {
+      final message =
+          MessageMapper.fromMap('m4-bad', 'c_douglas', <String, dynamic>{
+        'senderId': 'uid_joao',
+        'text': 'Encaminhou um local...',
+        'placeId': 'parque_do_trabalhador',
+        'placeSnapshot': <String, Object?>{
+          'name': 'Parque',
+          'imageUrl': 'http://inseguro.example/parque.jpg',
+          'primarySport': 'futebol',
+        },
+      });
+
+      expect(message.isPlace, isTrue);
+      expect(message.placeSnapshot, isNull);
     });
 
     test('mensagem de texto não é mensagem de local', () {
-      final message = MessageMapper.fromMap('m5', 'c_douglas', <String, dynamic>{
+      final message =
+          MessageMapper.fromMap('m5', 'c_douglas', <String, dynamic>{
         'senderId': 'uid_joao',
         'text': 'Bora!',
       });
@@ -66,7 +109,8 @@ void main() {
     });
 
     test('placeId vazio não vira card de local', () {
-      final message = MessageMapper.fromMap('m6', 'c_douglas', <String, dynamic>{
+      final message =
+          MessageMapper.fromMap('m6', 'c_douglas', <String, dynamic>{
         'senderId': 'uid_joao',
         'text': 'Bora!',
         'placeId': '   ',
@@ -99,7 +143,8 @@ void main() {
       // Com `orderBy('sentAt')` o Firestore devolve o documento pendente
       // (sentAt nulo) em primeiro lugar, porque nulo é o menor valor. Reordenar
       // no cliente pelo horário já resolvido evita o salto na tela.
-      final pendente = MessageMapper.fromMap('pendente', 'c_douglas', <String, dynamic>{
+      final pendente =
+          MessageMapper.fromMap('pendente', 'c_douglas', <String, dynamic>{
         'senderId': 'uid_joao',
         'text': 'acabei de enviar',
       });

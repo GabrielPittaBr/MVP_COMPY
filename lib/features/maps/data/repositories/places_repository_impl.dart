@@ -1,21 +1,50 @@
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/sport_place.dart';
+import '../datasources/places_remote_datasource.dart';
 import '../../domain/repositories/places_repository.dart';
 
-/// Locais **não** vêm do Firestore: o catálogo é curado pela equipe
-/// (RN-04), é pequeno e muda raramente, então vive em código —
-/// [SportPlace.all] é a única fonte. Por isso este repositório ignora
-/// `kUseFirebaseRepos`: antes ele devolvia lista vazia com Firebase
-/// ligado e o mapa ficava sem nenhum pin.
 class PlacesRepositoryImpl implements PlacesRepository {
-  const PlacesRepositoryImpl();
+  PlacesRepositoryImpl(this._remoteDataSource);
+
+  final PlacesRemoteDataSource _remoteDataSource;
 
   @override
-  Future<List<SportPlace>> getAll() async => SportPlace.all;
-
-  @override
-  Future<List<SportPlace>> getBySport(Sport sport) async {
-    final all = await getAll();
-    return all.where((p) => p.allowedSports.contains(sport)).toList();
+  Stream<PlacesStreamResult> watchActive({Sport? sport}) {
+    return _remoteDataSource.watchActive(sport: sport).map((snapshot) {
+      final places = snapshot.documents
+          .where((doc) => doc.data != null)
+          .map((doc) => SportPlace.tryFromFirestore(doc.id, doc.data!))
+          .whereType<SportPlace>();
+      return PlacesStreamResult(
+        places: filterAndSortActivePlaces(places, sport: sport),
+        isFromCache: snapshot.isFromCache,
+      );
+    });
   }
+
+  @override
+  Future<PlaceLookupResult> getById(String id) async {
+    final snapshot = await _remoteDataSource.getById(id);
+    final place = snapshot.exists && snapshot.data != null
+        ? SportPlace.tryFromFirestore(id, snapshot.data!)
+        : null;
+    return PlaceLookupResult(
+      place: place,
+      isFromCache: snapshot.isFromCache,
+    );
+  }
+}
+
+/// Defesa no limite da aplicação: Firestore já filtra/ordena a query, mas o
+/// resultado exposto mantém o contrato mesmo com fixtures/fakes não fiéis.
+List<SportPlace> filterAndSortActivePlaces(
+  Iterable<SportPlace> places, {
+  Sport? sport,
+}) {
+  final result = places
+      .where((place) => place.status == PlaceStatus.active)
+      .where((place) => sport == null || place.sports.contains(sport))
+      .toList();
+  result.sort((a, b) => a.nameLower.compareTo(b.nameLower));
+  return List<SportPlace>.unmodifiable(result);
 }

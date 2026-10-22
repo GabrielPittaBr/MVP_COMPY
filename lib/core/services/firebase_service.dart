@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../../firebase_options.dart';
 import '../constants/app_flags.dart';
 
-/// Inicializa o Firebase de forma defensiva.
+/// Inicializa Firebase Core e expõe os serviços compartilhados do app.
 class FirebaseService {
   FirebaseService._();
   static final FirebaseService instance = FirebaseService._();
@@ -22,22 +22,30 @@ class FirebaseService {
         options: DefaultFirebaseOptions.currentPlatform,
       );
       _initialized = true;
-      try {
-        await FirebaseAppCheck.instance.activate(
-          androidProvider:
-              kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-        );
-      } catch (e) {
-        if (kDebugMode) debugPrint('[FirebaseService] App Check: $e');
+      if (kUseFirebaseEmulators) {
+        await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+        FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+      }
+      // Na web o App Check exigiria um provider reCAPTCHA; sem ele o
+      // `activate()` só falha. A imposição está desligada no Console (ver
+      // docs/checklist-publicacao.md), então pular não bloqueia nada.
+      if (!kIsWeb) {
+        try {
+          await FirebaseAppCheck.instance.activate(
+            androidProvider: kDebugMode
+                ? AndroidProvider.debug
+                : AndroidProvider.playIntegrity,
+          );
+        } catch (e) {
+          if (kDebugMode) debugPrint('[FirebaseService] App Check: $e');
+        }
       }
       if (kDebugMode) {
         debugPrint('[FirebaseService] Inicialização bem-sucedida.');
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint(
-          '[FirebaseService] Erro ao inicializar Firebase (usando mocks): $e',
-        );
+        debugPrint('[FirebaseService] Erro ao inicializar Firebase: $e');
       }
       _initialized = false;
     }

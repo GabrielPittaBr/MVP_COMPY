@@ -1,0 +1,47 @@
+name: compy_admin
+description: "Painel Administrativo Flutter Web do COMPY."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cloud_firestore: ^5.2.1
+  cloud_functions: ^5.1.1
+  firebase_app_check: ^0.3.0
+  firebase_auth: ^5.1.4
+  firebase_core: ^3.3.0
+  flutter_map: ^7.0.2
+  flutter_riverpod: ^2.5.1
+  flutter_web_plugins:
+    sdk: flutter
+  go_router: ^14.2.0
+  latlong2: ^0.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Barlow (SIL OFL 1.1, ver assets/fonts/OFL.txt), embutida para não depender
+  # de CDN de fontes.
+  fonts:
+    - family: Barlow
+      fonts:
+        - asset: assets/fonts/Barlow-Regular.ttf
+        - asset: assets/fonts/Barlow-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Barlow-SemiBold.ttf
+          weight: 600
+    - family: BarlowCondensed
+      fonts:
+        - asset: assets/fonts/BarlowCondensed-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/BarlowCondensed-Bold.ttf
+          weight: 700

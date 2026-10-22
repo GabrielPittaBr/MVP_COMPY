@@ -30,7 +30,8 @@ class MessageBubble extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: <Widget>[
           if (!isMine) ...<Widget>[
             PeerAvatar(peer: peer, radius: 14),
@@ -57,6 +58,7 @@ class MessageBubble extends StatelessWidget {
                       ? PlaceMessageCard(
                           placeId: message.placeId!,
                           isMine: isMine,
+                          snapshot: message.placeSnapshot,
                         )
                       : Text(
                           message.text,

@@ -1,114 +1,404 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../../core/constants/app_assets.dart';
+import '../../core/utils/text_normalizer.dart';
 import 'sport.dart';
 
-/// Local esportivo curado pela equipe (RF04 + RN-04: somente locais
-/// validados aparecem no app).
-///
-/// **Fonte de verdade única de locais.** O mapa (pins) e o seletor de
-/// "Criar evento" leem desta mesma lista: cadastrar um local aqui o faz
-/// aparecer nos dois lugares, com o mesmo `id` — a navegação do pin para
-/// a criação de evento depende desse id estável.
-///
-/// O catálogo vive em código de propósito: são poucos locais, curados
-/// pela equipe e que mudam raramente. Não existe coleção `places` no
-/// Firestore (ver `firestore.rules`).
+enum PlaceStatus { active, inactive }
+
+enum PlaceAccessType { public, private }
+
+class SportPlaceImage extends Equatable {
+  const SportPlaceImage({required this.url, this.source});
+
+  final String url;
+  final String? source;
+
+  static SportPlaceImage? tryFromMap(Object? raw) {
+    if (raw is! Map) return null;
+    final map = Map<String, dynamic>.from(raw);
+    if (map.keys
+            .toSet()
+            .difference(const <String>{'url', 'source'}).isNotEmpty ||
+        !map.keys.toSet().contains('url')) {
+      return null;
+    }
+    final url = map['url'];
+    final sourceRaw = map['source'];
+    final uri = url is String ? Uri.tryParse(url) : null;
+    if (url is! String ||
+        url.length > 2048 ||
+        uri == null ||
+        uri.scheme != 'https' ||
+        uri.host.isEmpty ||
+        (sourceRaw != null && sourceRaw is! String)) {
+      return null;
+    }
+    final source = sourceRaw is String ? sourceRaw.trim() : null;
+    if (source != null && source.length > 200) return null;
+    return SportPlaceImage(
+      url: url,
+      source: source == null || source.isEmpty ? null : source,
+    );
+  }
+
+  @override
+  List<Object?> get props => <Object?>[url, source];
+}
+
+class PlaceAddress extends Equatable {
+  const PlaceAddress({
+    required this.street,
+    required this.city,
+    required this.cityLower,
+    required this.state,
+    this.number,
+    this.complement,
+    this.neighborhood,
+    this.postalCode,
+  });
+
+  final String street;
+  final String city;
+  final String cityLower;
+  final String state;
+  final String? number;
+  final String? complement;
+  final String? neighborhood;
+  final String? postalCode;
+
+  String get formatted {
+    final streetLine = <String>[street, if (number != null) number!]
+        .where((part) => part.isNotEmpty)
+        .join(', ');
+    return <String>[
+      if (streetLine.isNotEmpty) streetLine,
+      if (complement?.isNotEmpty == true) complement!,
+      if (neighborhood?.isNotEmpty == true) neighborhood!,
+      '$city - $state',
+    ].join(' · ');
+  }
+
+  Map<String, dynamic> toMap() => <String, dynamic>{
+        'street': street,
+        'city': city,
+        'cityLower': cityLower,
+        'state': state,
+        if (number != null) 'number': number,
+        if (complement != null) 'complement': complement,
+        if (neighborhood != null) 'neighborhood': neighborhood,
+        if (postalCode != null) 'postalCode': postalCode,
+      };
+
+  static PlaceAddress? tryFromMap(Object? raw) {
+    if (raw is! Map) return null;
+    final map = Map<String, dynamic>.from(raw);
+    const allowed = <String>{
+      'street',
+      'city',
+      'cityLower',
+      'state',
+      'number',
+      'complement',
+      'neighborhood',
+      'postalCode',
+    };
+    if (!allowed.containsAll(map.keys) ||
+        !map.keys
+            .toSet()
+            .containsAll(<String>{'street', 'city', 'cityLower', 'state'})) {
+      return null;
+    }
+    for (final key in map.keys) {
+      if (map[key] is! String) return null;
+    }
+    final street = (map['street'] as String).trim();
+    final city = (map['city'] as String).trim();
+    final cityLower = map['cityLower'] as String;
+    final state = map['state'] as String;
+    final number = _optionalTrimmed(map['number']);
+    final complement = _optionalTrimmed(map['complement']);
+    final neighborhood = _optionalTrimmed(map['neighborhood']);
+    final postalCode = map['postalCode'] as String?;
+    const validStates = <String>{
+      'AC',
+      'AL',
+      'AP',
+      'AM',
+      'BA',
+      'CE',
+      'DF',
+      'ES',
+      'GO',
+      'MA',
+      'MT',
+      'MS',
+      'MG',
+      'PA',
+      'PB',
+      'PR',
+      'PE',
+      'PI',
+      'RJ',
+      'RN',
+      'RS',
+      'RO',
+      'RR',
+      'SC',
+      'SP',
+      'SE',
+      'TO',
+    };
+    if (street.isEmpty ||
+        street.length > 160 ||
+        city.isEmpty ||
+        city.length > 100 ||
+        cityLower != TextNormalizer.normalize(city) ||
+        !validStates.contains(state) ||
+        (number != null && number.length > 20) ||
+        (complement != null && complement.length > 120) ||
+        (neighborhood != null && neighborhood.length > 100) ||
+        (postalCode != null && !RegExp(r'^\d{8}$').hasMatch(postalCode))) {
+      return null;
+    }
+    return PlaceAddress(
+      street: street,
+      city: city,
+      cityLower: cityLower,
+      state: state,
+      number: number,
+      complement: complement,
+      neighborhood: neighborhood,
+      postalCode: postalCode,
+    );
+  }
+
+  static String? _optionalTrimmed(Object? value) {
+    if (value == null) return null;
+    if (value is! String) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  @override
+  List<Object?> get props => <Object?>[
+        street,
+        city,
+        cityLower,
+        state,
+        number,
+        complement,
+        neighborhood,
+        postalCode,
+      ];
+}
+
+/// Local Esportivo parseado do contrato Firestore `places/{placeId}`.
 class SportPlace extends Equatable {
   const SportPlace({
     required this.id,
     required this.name,
-    required this.city,
-    required this.coordinates,
-    required this.allowedSports,
-    required this.imageUrl,
+    required this.nameLower,
     required this.description,
-    this.address = '',
-    this.rating = 0,
-    this.ratingsCount = 0,
+    required this.address,
+    required this.coordinates,
+    required this.sports,
+    required this.primarySport,
+    required this.status,
+    required this.imageUrl,
+    this.images = const <SportPlaceImage>[],
+    this.accessType,
+    this.contactPhone,
+    this.createdAt,
+    this.updatedAt,
   });
 
   final String id;
   final String name;
-  final String city;
-
-  /// Endereço completo. Fica vazio enquanto não for conferido — a UI
-  /// esconde a linha em vez de mostrar endereço inventado.
-  final String address;
-  final LatLng coordinates;
-
-  /// Esportes praticáveis no local — o usuário só cria evento aqui com um
-  /// destes (RN: impedir esportes incompatíveis com a estrutura do local).
-  ///
-  /// O primeiro é a modalidade principal: define ícone e cor do pin.
-  /// Todo local tem ao menos um.
-  final List<Sport> allowedSports;
-  final String imageUrl;
-
-  /// Nota do local. **Não é dado real**: seria um número escrito à mão no
-  /// catálogo, então o padrão é zero e a UI omite a nota enquanto
-  /// [hasRatings] for falso. Vira média calculada quando a avaliação de
-  /// locais existir (tarefa 14).
-  final double rating;
-  final int ratingsCount;
+  final String nameLower;
   final String description;
+  final PlaceAddress address;
+  final LatLng coordinates;
+  final List<Sport> sports;
+  final Sport primarySport;
+  final PlaceStatus status;
+  final String imageUrl;
+  final List<SportPlaceImage> images;
+  final PlaceAccessType? accessType;
+  final String? contactPhone;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
-  /// Modalidade que representa o local no mapa.
-  Sport get primarySport => allowedSports.first;
+  List<SportPlaceImage> get gallery => images.isEmpty
+      ? <SportPlaceImage>[SportPlaceImage(url: imageUrl)]
+      : images;
 
-  /// Local ainda sem nenhuma avaliação — a UI omite a nota em vez de
-  /// mostrar 0,0 estrelas.
-  bool get hasRatings => ratingsCount > 0;
+  // Compatibilidade temporária dos consumidores existentes; os tickets de
+  // mapa/eventos/mensagens migram esses acessos para o contrato explícito.
+  String get city => address.city;
+  String get formattedAddress => address.formatted;
+  List<Sport> get allowedSports => sports;
 
-  // ── Catálogo curado ─────────────────────────────────────────────
+  SportPlace copyWithStatus(PlaceStatus newStatus) => SportPlace(
+        id: id,
+        name: name,
+        nameLower: nameLower,
+        description: description,
+        address: address,
+        coordinates: coordinates,
+        sports: sports,
+        primarySport: primarySport,
+        status: newStatus,
+        imageUrl: imageUrl,
+        images: images,
+        accessType: accessType,
+        contactPhone: contactPhone,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
 
-  /// Parque do Trabalhador — o local mais usado para esportes em Taquara.
-  /// Base para os demais locais que serão cadastrados conforme validados.
-  static const SportPlace parqueDoTrabalhador = SportPlace(
-    id: 'parque_do_trabalhador',
-    name: 'Parque do Trabalhador',
-    city: 'Taquara',
-    coordinates: LatLng(-29.656276729317323, -50.787726691670045),
-    allowedSports: <Sport>[
-      Sport.futebol,
-      Sport.basquete,
-      Sport.futsal,
-      Sport.volei,
-      Sport.corrida,
-      Sport.ciclismo,
-      Sport.caminhada,
-    ],
-    imageUrl: AppAssets.soccerBanner,
-    description: 'Parque público de Taquara, com campo de futebol, quadras e '
-        'pista usada para corrida, ciclismo e caminhada.',
-  );
-
-  /// Locais disponíveis no app. Acrescentar aqui — e só aqui.
-  static const List<SportPlace> all = <SportPlace>[parqueDoTrabalhador];
-
-  /// Busca pelo [id] estável do catálogo. É como o local atravessa a
-  /// navegação (pin do mapa → formulário de criação): viaja o id, não o
-  /// objeto. Devolve `null` para id desconhecido — ex.: link antigo de um
-  /// local que saiu do catálogo.
-  static SportPlace? byId(String id) {
-    for (final place in all) {
-      if (place.id == id) return place;
+  static SportPlace? tryFromFirestore(
+    String id,
+    Map<String, dynamic> data,
+  ) {
+    try {
+      const requiredFields = <String>{
+        'name',
+        'nameLower',
+        'description',
+        'address',
+        'sports',
+        'primarySport',
+        'coordinates',
+        'imageUrl',
+        'status',
+        'createdAt',
+        'updatedAt',
+      };
+      const allowedFields = <String>{
+        ...requiredFields,
+        'images',
+        'accessType',
+        'contactPhone',
+      };
+      if (!allowedFields.containsAll(data.keys) ||
+          !data.keys.toSet().containsAll(requiredFields)) {
+        return null;
+      }
+      final name = data['name'];
+      final nameLower = data['nameLower'];
+      final description = data['description'];
+      final imageUrl = data['imageUrl'];
+      final statusRaw = data['status'];
+      final coordinatesRaw = data['coordinates'];
+      final sportsRaw = data['sports'];
+      final primarySport = Sport.tryParse(data['primarySport']);
+      final address = PlaceAddress.tryFromMap(data['address']);
+      final createdAt = data['createdAt'];
+      final updatedAt = data['updatedAt'];
+      final sports = Sport.parseList(sportsRaw);
+      if (imageUrl is! String || imageUrl.length > 2048) return null;
+      final uri = Uri.tryParse(imageUrl);
+      final accessTypeRaw = data['accessType'];
+      final accessType = switch (accessTypeRaw) {
+        null => null,
+        'public' => PlaceAccessType.public,
+        'private' => PlaceAccessType.private,
+        _ => null,
+      };
+      final contactPhoneRaw = data['contactPhone'];
+      final contactPhone = contactPhoneRaw is String ? contactPhoneRaw : null;
+      final gallery = _parseGallery(data['images'], imageUrl);
+      final phoneIsValid = contactPhone == null ||
+          RegExp(r'^[1-9][0-9][0-9]{8,9}$').hasMatch(contactPhone);
+      if (name is! String ||
+          name.trim().length < 3 ||
+          name.trim().length > 120 ||
+          nameLower is! String ||
+          nameLower != TextNormalizer.normalize(name) ||
+          description is! String ||
+          description.trim().length < 20 ||
+          description.trim().length > 1500 ||
+          address == null ||
+          sportsRaw is! List ||
+          sports.isEmpty ||
+          sports.length > 8 ||
+          sports.length != sportsRaw.length ||
+          sports.toSet().length != sports.length ||
+          primarySport == null ||
+          !sports.contains(primarySport) ||
+          coordinatesRaw is! GeoPoint ||
+          !coordinatesRaw.latitude.isFinite ||
+          !coordinatesRaw.longitude.isFinite ||
+          coordinatesRaw.latitude < -90 ||
+          coordinatesRaw.latitude > 90 ||
+          coordinatesRaw.longitude < -180 ||
+          coordinatesRaw.longitude > 180 ||
+          uri == null ||
+          uri.scheme != 'https' ||
+          uri.host.isEmpty ||
+          (accessTypeRaw != null && accessType == null) ||
+          (contactPhoneRaw != null && contactPhone == null) ||
+          !phoneIsValid ||
+          (accessType == PlaceAccessType.private && contactPhone == null) ||
+          gallery == null ||
+          gallery.first.url != imageUrl ||
+          statusRaw is! String ||
+          !<String>{'active', 'inactive'}.contains(statusRaw) ||
+          createdAt is! Timestamp ||
+          updatedAt is! Timestamp) {
+        return null;
+      }
+      return SportPlace(
+        id: id,
+        name: name.trim(),
+        nameLower: nameLower,
+        description: description.trim(),
+        address: address,
+        coordinates: LatLng(coordinatesRaw.latitude, coordinatesRaw.longitude),
+        sports: List<Sport>.unmodifiable(sports),
+        primarySport: primarySport,
+        status: PlaceStatus.values.byName(statusRaw),
+        imageUrl: imageUrl,
+        images: List<SportPlaceImage>.unmodifiable(gallery),
+        accessType: accessType,
+        contactPhone: contactPhone,
+        createdAt: createdAt.toDate(),
+        updatedAt: updatedAt.toDate(),
+      );
+    } catch (_) {
+      // Documento incompatível/malformado é ignorado sem derrubar o stream.
+      return null;
     }
-    return null;
   }
 
   @override
   List<Object?> get props => <Object?>[
         id,
         name,
-        city,
+        nameLower,
+        description,
         address,
         coordinates,
-        allowedSports,
+        sports,
+        primarySport,
+        status,
         imageUrl,
-        rating,
-        ratingsCount,
-        description,
+        images,
+        accessType,
+        contactPhone,
+        createdAt,
+        updatedAt,
       ];
+}
+
+List<SportPlaceImage>? _parseGallery(Object? raw, String legacyImageUrl) {
+  if (raw == null) {
+    return <SportPlaceImage>[SportPlaceImage(url: legacyImageUrl)];
+  }
+  if (raw is! List || raw.isEmpty || raw.length > 8) return null;
+  final images = raw.map(SportPlaceImage.tryFromMap).toList();
+  if (images.any((image) => image == null)) return null;
+  return images.cast<SportPlaceImage>();
 }

@@ -22,6 +22,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
     /// Chaves que mudaram entre o estado atual e o escrito.
     function changed() {
       return request.resource.data.diff(resource.data).affectedKeys();
@@ -36,20 +40,47 @@ service cloud.firestore {
     // qualquer autenticado, contrariando a RN-06. Ele vive em
     // `users/{uid}/private/contact`, no bloco aninhado no fim deste match.
     //
-    // Não é validado de propósito: `handle` e `createdAt` continuam
-    // reescrevíveis pelo dono porque `_writeUserProfile` os regrava em batch no
-    // re-cadastro, e as regras não enxergam as outras escritas do mesmo batch.
+    // `nameLower` entra no contrato novo de pesquisa administrativa. A fase
+    // transitória ainda aceita perfis legados sem ele, mas todo perfil novo o
+    // recebe e um perfil que já o possui não pode removê-lo. O normalizador
+    // pt-BR exato fica no cliente e no script confiável: Rules validam forma e
+    // que uma troca de nome resulte em um `nameLower` presente.
     match /users/{userId} {
       function validProfile() {
         return request.resource.data.keys().hasOnly(
-                 ['id', 'name', 'handle', 'avatarUrl', 'createdAt',
+                 ['id', 'name', 'nameLower', 'handle', 'avatarUrl', 'createdAt',
                   'favoriteSports'])
             && request.resource.data.id == userId
             && request.resource.data.name is string
             && request.resource.data.name.size() <= 60
+            && validOptionalNameLower()
             && request.resource.data.handle is string
             && request.resource.data.handle.size() <= 21
             && validFavoriteSports();
+      }
+
+      function hasValidNameLower() {
+        return 'nameLower' in request.resource.data.keys()
+            && request.resource.data.nameLower is string
+            && request.resource.data.nameLower.size() > 0
+            && request.resource.data.nameLower.size() <= 60;
+      }
+
+      function validOptionalNameLower() {
+        return !('nameLower' in request.resource.data.keys())
+            || hasValidNameLower();
+      }
+
+      function preservesProfileIdentity() {
+        return request.resource.data.handle == resource.data.handle
+            && request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      function validNameLowerTransition() {
+        return (!('nameLower' in resource.data.keys())
+                || 'nameLower' in request.resource.data.keys())
+            && (request.resource.data.name == resource.data.name
+                || hasValidNameLower());
       }
 
       // Tarefa 13: no máximo 8 esportes (tamanho do enum `Sport`), lista de
@@ -61,9 +92,15 @@ service cloud.firestore {
       }
 
       allow read: if signedIn();
-      allow create, update: if signedIn()
-                            && request.auth.uid == userId
-                            && validProfile();
+      allow create: if signedIn()
+                    && request.auth.uid == userId
+                    && validProfile()
+                    && hasValidNameLower();
+      allow update: if signedIn()
+                    && request.auth.uid == userId
+                    && validProfile()
+                    && preservesProfileIdentity()
+                    && validNameLowerTransition();
       // Exclusão de conta: o dono apaga o próprio perfil. Sem isto, o
       // documento sobrevive à conta e vira registro órfão de gente que
       // pediu para sair.
@@ -133,6 +170,39 @@ service cloud.firestore {
                <= request.resource.data.totalSpots;
       }
 
+      function eventPlacePath(placeId) {
+        return /databases/$(database)/documents/places/$(placeId);
+      }
+
+      function newPlaceSnapshotMatchesCurrentPlace() {
+        let place = get(eventPlacePath(request.resource.data.placeId)).data;
+        return request.resource.data.placeId is string
+            && request.resource.data.placeId.size() > 0
+            && request.resource.data.placeSnapshot is map
+            && request.resource.data.placeSnapshot.keys().hasAll(
+                 ['name', 'address', 'coordinates'])
+            && request.resource.data.placeSnapshot.keys().hasOnly(
+                 ['name', 'address', 'coordinates'])
+            && exists(eventPlacePath(request.resource.data.placeId))
+            && place.status == 'active'
+            && request.resource.data.sport in place.sports
+            && request.resource.data.placeSnapshot.name == place.name
+            && request.resource.data.placeSnapshot.address == place.address
+            && request.resource.data.placeSnapshot.coordinates is latlng
+            && request.resource.data.placeSnapshot.coordinates
+               == place.coordinates
+            && request.resource.data.coordinates is latlng
+            && request.resource.data.coordinates == place.coordinates
+            && request.resource.data.geohash is string
+            && request.resource.data.geohash.size() == 9
+            && request.resource.data.location
+               == place.name + ', ' + place.address.city;
+      }
+
+      function historicalEventFieldsUnchanged() {
+        return !changed().hasAny(['sport', 'placeId', 'placeSnapshot']);
+      }
+
       // `participantIds` é o array de uids que a seção "Participando"
       // consulta (`arrayContains`) — `participants`, sendo array de mapas, não
       // é consultável. Por isso ele entra na regra: se pudesse crescer sozinho,
@@ -177,8 +247,12 @@ service cloud.firestore {
                        == [request.auth.uid]
                     && request.resource.data.totalSpots is int
                     && request.resource.data.totalSpots > 0
-                    && spotsCoherent();
-      allow update: if (isCreator() && ownerUnchanged() && spotsCoherent())
+                    && spotsCoherent()
+                    && newPlaceSnapshotMatchesCurrentPlace();
+      allow update: if (isCreator()
+                       && ownerUnchanged()
+                       && spotsCoherent()
+                       && historicalEventFieldsUnchanged())
                     || isJoin();
       allow delete: if false;
     }
@@ -223,24 +297,191 @@ service cloud.firestore {
       allow delete: if false;
 
       match /messages/{messageId} {
+        function hasActivePlaceForMessage() {
+          return request.resource.data.placeId is string
+              && request.resource.data.placeId.size() > 0
+              && exists(/databases/$(database)/documents/places/$(request.resource.data.placeId))
+              && get(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.status == 'active';
+        }
+
+        function validPlaceMessageSnapshot() {
+          return request.resource.data.keys().hasAll(
+                   ['senderId', 'text', 'sentAt', 'placeId', 'placeSnapshot'])
+              && request.resource.data.keys().hasOnly(
+                   ['senderId', 'text', 'sentAt', 'placeId', 'placeSnapshot'])
+              && hasActivePlaceForMessage()
+              && request.resource.data.placeSnapshot is map
+              && request.resource.data.placeSnapshot.keys().hasAll(
+                   ['name', 'imageUrl', 'primarySport'])
+              && request.resource.data.placeSnapshot.keys().hasOnly(
+                   ['name', 'imageUrl', 'primarySport'])
+              && request.resource.data.placeSnapshot.name
+                 == get(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.name
+              && request.resource.data.placeSnapshot.imageUrl
+                 == get(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.imageUrl
+              && request.resource.data.placeSnapshot.primarySport
+                 == get(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.primarySport;
+        }
+
         allow read: if isMemberOfParent();
         allow create: if isMemberOfParent()
-                      && request.resource.data.senderId == request.auth.uid;
+                      && request.resource.data.senderId == request.auth.uid
+                      && ((!('placeId' in request.resource.data)
+                           && !('placeSnapshot' in request.resource.data))
+                          || validPlaceMessageSnapshot());
         // Mensagem enviada não se edita nem se apaga.
         allow update, delete: if false;
       }
     }
 
-    // ── places (não existe) ──────────────────────────────────────────
-    // Tarefa 6. O catálogo de locais é curado pela equipe (RN-04), é pequeno e
-    // muda raramente: ele vive **em código**, em `lib/shared/models/
-    // sport_place.dart` (`SportPlace.all`), que alimenta tanto os pins do mapa
-    // quanto o seletor de "Criar evento".
-    //
-    // A regra de `places` foi removida junto com o `PlacesRemoteDataSource`:
-    // nada aponta mais para a coleção, e o deny-by-default cuida do resto. Se
-    // um dia a equipe precisar cadastrar locais sem publicar app novo, é aqui
-    // que a regra volta.
+    // ── places ───────────────────────────────────────────────────────
+    // Contrato final de Locais Esportivos. Novos eventos e mensagens de local
+    // precisam usar documentos ativos e snapshots validados no commit.
+    match /places/{placeId} {
+      function validRequiredString(value, maximum) {
+        return value is string && value.size() > 0 && value.size() <= maximum;
+      }
+
+      function validOptionalAddressString(field, maximum) {
+        return !(field in request.resource.data.address)
+            || (request.resource.data.address[field] is string
+                && request.resource.data.address[field].size() > 0
+                && request.resource.data.address[field].size() <= maximum);
+      }
+
+      function validAddress() {
+        return request.resource.data.address is map
+            && request.resource.data.address.keys().hasAll(
+                 ['street', 'city', 'cityLower', 'state'])
+            && request.resource.data.address.keys().hasOnly(
+                 ['street', 'city', 'cityLower', 'state', 'number',
+                  'complement', 'neighborhood', 'postalCode'])
+            && validRequiredString(request.resource.data.address.street, 160)
+            && validRequiredString(request.resource.data.address.city, 100)
+            && validRequiredString(request.resource.data.address.cityLower, 100)
+            && request.resource.data.address.state in [
+                 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO',
+                 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI',
+                 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
+            && validOptionalAddressString('number', 20)
+            && validOptionalAddressString('complement', 120)
+            && validOptionalAddressString('neighborhood', 100)
+            && (!('postalCode' in request.resource.data.address)
+                || (request.resource.data.address.postalCode is string
+                    && request.resource.data.address.postalCode.matches(
+                         '^[0-9]{8}$')));
+      }
+
+      function validSports() {
+        return request.resource.data.sports is list
+            && request.resource.data.sports.size() >= 1
+            && request.resource.data.sports.size() <= 8
+            && request.resource.data.sports.toSet().size()
+               == request.resource.data.sports.size()
+            && request.resource.data.sports.toSet().hasOnly(
+                 ['futebol', 'basquete', 'volei', 'tenisDeMesa', 'futsal',
+                  'corrida', 'ciclismo', 'caminhada'])
+            && request.resource.data.primarySport in request.resource.data.sports;
+      }
+
+      function validCoordinates() {
+        return request.resource.data.coordinates is latlng
+            && request.resource.data.coordinates.latitude() >= -90
+            && request.resource.data.coordinates.latitude() <= 90
+            && request.resource.data.coordinates.longitude() >= -180
+            && request.resource.data.coordinates.longitude() <= 180;
+      }
+
+      function validPlaceImage(image) {
+        return image is map
+            && image.keys().hasOnly(['url', 'source'])
+            && image.url is string
+            && image.url.size() <= 2048
+            && image.url.matches('^https://.+')
+            && (!('source' in image)
+                || (image.source is string && image.source.size() <= 200));
+      }
+
+      function validPlaceImages() {
+        // Rules do not support list iteration. Validate the gallery bounds and
+        // cover here; the Admin validates each remaining entry before writing.
+        return !('images' in request.resource.data)
+            || (request.resource.data.images is list
+                && request.resource.data.images.size() > 0
+                && request.resource.data.images.size() <= 8
+                && validPlaceImage(request.resource.data.images[0])
+                && request.resource.data.imageUrl
+                   == request.resource.data.images[0].url);
+      }
+
+      function validPlaceAccess() {
+        return (!('accessType' in request.resource.data)
+                || request.resource.data.accessType in ['public', 'private'])
+            && (!('contactPhone' in request.resource.data)
+                || (request.resource.data.contactPhone is string
+                    && request.resource.data.contactPhone.matches(
+                         '^[1-9][0-9][0-9]{8,9}$')))
+            && (!('accessType' in request.resource.data)
+                || request.resource.data.accessType != 'private'
+                || ('contactPhone' in request.resource.data
+                    && request.resource.data.contactPhone is string
+                    && request.resource.data.contactPhone.matches(
+                         '^[1-9][0-9][0-9]{8,9}$')));
+      }
+
+      function validPlace() {
+        return request.resource.data.keys().hasAll(
+                 ['name', 'nameLower', 'description', 'address', 'sports',
+                  'primarySport', 'coordinates', 'imageUrl', 'status',
+                  'createdAt', 'updatedAt'])
+            && request.resource.data.keys().hasOnly(
+                 ['name', 'nameLower', 'description', 'address', 'sports',
+                  'primarySport', 'coordinates', 'imageUrl', 'status',
+                  'createdAt', 'updatedAt', 'images', 'accessType',
+                  'contactPhone'])
+            && validRequiredString(request.resource.data.name, 120)
+            && validRequiredString(request.resource.data.nameLower, 120)
+            && validRequiredString(request.resource.data.description, 1500)
+            && validAddress()
+            && validSports()
+            && validCoordinates()
+            && request.resource.data.imageUrl is string
+            && request.resource.data.imageUrl.size() > 0
+            && request.resource.data.imageUrl.size() <= 2048
+            && request.resource.data.imageUrl.matches('^https://.+')
+            && validPlaceImages()
+            && validPlaceAccess()
+            && request.resource.data.status in ['active', 'inactive']
+            && request.resource.data.createdAt is timestamp
+            && request.resource.data.updatedAt is timestamp;
+      }
+
+      // Um usuário comum só consegue listar ativos porque a regra se aplica a
+      // cada resultado potencial da query. `get` por ID mantém o contexto
+      // histórico de Eventos e Mensagens, inclusive para locais inativos.
+      allow get: if signedIn();
+      allow list: if isAdmin()
+                  || (signedIn() && resource.data.status == 'active');
+      allow create: if isAdmin()
+                    && validPlace()
+                    && ('accessType' in request.resource.data)
+                    && request.resource.data.status == 'inactive'
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.updatedAt == request.time;
+      allow update: if isAdmin()
+                    && validPlace()
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // Registros de suspensão são exclusivos do Admin SDK. Nem mesmo uma
+    // sessão com claim administrativa recebe acesso direto: o painel usa a
+    // Callable idempotente para não expor auditoria mínima, motivos ou o
+    // protocolo pending/succeeded/failed ao cliente.
+    match /adminOperations/{operationId} {
+      allow read, write: if false;
+    }
 
     // ── ratings ──────────────────────────────────────────────────────
     // Tarefa 14. Coleção nova — antes caía no deny-by-default.
@@ -250,8 +491,9 @@ service cloud.firestore {
     // gravada junto da avaliação. Sem `read`, o comentário não vaza nem para
     // quem inspeciona o tráfego.
     //
-    // D12: nota abaixo de 3 estrelas exige justificativa — vale para os três
-    // alvos, e é validado aqui além da UI.
+    // D12: nota abaixo de 3 estrelas exige justificativa — vale para os dois
+    // alvos ainda suportados, e é validado aqui além da UI. Avaliações de
+    // Local Esportivo ficam fora do escopo até existir um sistema real.
     //
     // Avaliação enviada não se reescreve: é a única garantia de integridade da
     // média sem backend.
@@ -263,7 +505,7 @@ service cloud.firestore {
             && request.resource.data.keys().hasOnly(
                  ['eventId', 'fromUid', 'targetType', 'targetId', 'stars',
                   'comment', 'createdAt'])
-            && request.resource.data.targetType in ['user', 'event', 'place']
+            && request.resource.data.targetType in ['user', 'event']
             && request.resource.data.stars is int
             && request.resource.data.stars >= 1
             && request.resource.data.stars <= 5

@@ -1,0 +1,6 @@
+Taquara, 22 de Outubro de 2026
+
+- Hoje atualizamos o cadastro de locais para diferenciar acesso público e privado, exigir telefone válido apenas para locais privados e manter dados antigos sem classificação. Também adicionamos até oito fotos com fontes independentes, ordenação e prévias no Admin, além do carrossel, créditos e discador no aplicativo. Ajustamos as Rules e cobrimos a compatibilidade e os novos fluxos com testes locais.
+- Hoje corrigimos a publicação do painel: configuramos o Hosting para revalidar os arquivos a cada abertura, evitando que o navegador mantenha por uma hora a interface anterior ao deploy. O script de release agora inclui a foto estática do Parque do Trabalhador no build automaticamente.
+- Hoje acrescentamos um identificador do build às URLs de entrada do painel para forçar o navegador a buscar o JavaScript novo em cada publicação. Fizemos isso após confirmar que o formulário antigo ainda aparecia em uma sessão do Chrome, embora o Hosting já servisse o bundle atualizado.
+- Hoje ajustamos o espaçamento do tipo de local e do telefone, e organizamos os cartões das fotos com borda, campos alinhados e prévia separada. Assim os controles e as mensagens de validação deixam de ficar colados uns aos outros.

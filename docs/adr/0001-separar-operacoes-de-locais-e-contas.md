@@ -1,0 +1,3 @@
+# Separar operações de locais e contas
+
+O Painel Administrativo administrará `places` diretamente pelo Firestore, protegido pela custom claim `admin: true`, por validação estrita nas Security Rules e por testes dessas regras. Informações privilegiadas e qualquer mutação de Contas de Usuário passarão por Callable Cloud Functions que validam a mesma claim e usam o Firebase Admin SDK; o cliente administrativo não receberá acesso direto amplo aos dados privados nem permissão para alterar documentos de usuários. Essa separação mantém simples o CRUD de dados da aplicação sem expor operações de identidade que exigem um ambiente confiável.

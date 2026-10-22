@@ -6,7 +6,7 @@
   <img src="docs/assets/banner-light.png" alt="COMPY — Come Play." width="760">
 </picture>
 
-### Marcou o jogo? Agora é só aparecer.
+### Marcou o jogo? Come play.
 
 Aplicativo móvel que conecta praticantes de esporte em **Taquara/RS**.
 
@@ -21,8 +21,8 @@ Aplicativo móvel que conecta praticantes de esporte em **Taquara/RS**.
 [![Android](https://img.shields.io/badge/Android-br.com.compy.app-3DDC84?style=for-the-badge&logo=android&logoColor=white)](android/app/build.gradle.kts)
 
 ![Versão](https://img.shields.io/badge/Vers%C3%A3o-v0.1.0-1F3A8A?style=for-the-badge)
-![Testes](https://img.shields.io/badge/Testes-169%20passando-10B981?style=for-the-badge)
-![Regras](https://img.shields.io/badge/Regras%20do%20Firestore-83%20casos-F59E0B?style=for-the-badge)
+![Testes](https://img.shields.io/badge/Testes-208%20passando-10B981?style=for-the-badge)
+![Regras](https://img.shields.io/badge/Regras%20do%20Firestore-132%20casos-F59E0B?style=for-the-badge)
 ![Licença](https://img.shields.io/badge/Uso-acad%C3%AAmico-6B7280?style=for-the-badge)
 
 </div>
@@ -40,7 +40,7 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 | | Tela | Recursos |
 |:--:|---|---|
 | 🏠 | **Início** | Saudação com o nome de quem entrou, categorias por modalidade, prévia do mapa e os **eventos próximos** — busca real por raio de 10 km a partir da sua localização. Campo de busca por nome do evento ou modalidade. |
-| 🗺️ | **Mapa** | Locais esportivos da cidade em um mapa OpenStreetMap, com ficha do local (modalidades aceitas, avaliação e atalho para criar um evento ali). |
+| 🗺️ | **Mapa** | Locais esportivos da cidade em um mapa OpenStreetMap, com ficha do local (modalidades aceitas e atalho para criar um evento ali). |
 | 📅 | **Eventos** | Lista em três seções — *Criados por mim*, *Participando* e *Todos os eventos* — com filtros de modalidade, nível de habilidade e data. O detalhe traz local, horário, duração, vagas restantes e a lista de participantes. |
 | ➕ | **Criar** | Título, modalidade, local, data, horário, duração, nível de habilidade, número de participantes e descrição. |
 | 💬 | **Chat** | Conversas em tempo real entre os participantes, direto sobre os streams do Firestore, com envio do local do evento como cartão na conversa. |
@@ -142,7 +142,7 @@ flutter run
 ## Testes e qualidade
 
 ```bash
-flutter test     # 169 testes de unidade e de widget
+flutter test     # 208 testes de unidade e de widget
 dart analyze     # analisador estático — sem erros (só sugestões de estilo)
 ```
 
@@ -150,7 +150,7 @@ As regras do Firestore têm suíte própria, em Node, porque não há como test�
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 83 casos
+npm test --prefix tools/firestore-rules-tests      # 132 casos
 ```
 
 ---
@@ -164,6 +164,9 @@ npm test --prefix tools/firestore-rules-tests      # 83 casos
 | `assets/images/` | Logo e ícone do app |
 | `firestore.rules` · `firestore.indexes.json` | Regras de segurança e índices do Firestore |
 | `tools/firestore-rules-tests/` | Suíte Node que exercita as regras no emulador |
+| `admin/` | Painel administrativo (Flutter Web) para locais esportivos e contas — ver [`docs/admin/painel-administrativo.md`](docs/admin/painel-administrativo.md) |
+| `functions/` | Cloud Functions do painel (TypeScript) |
+| `tools/firebase-admin/` | Scripts locais com Admin SDK (bootstrap do administrador, migrações) |
 | `docs/` | Roadmap, checklist de publicação, decisões de produto e notas de depuração |
 
 ---
@@ -188,7 +191,7 @@ main  ←  develop  ←  feature/… · fix/… · refactor/… · chore/… · 
 - Ampliação do catálogo de locais esportivos da cidade
 - Telas de configurações e de insígnias, hoje em construção
 
-O planejamento completo, com tamanho e critério de aceite de cada tarefa, está em [`docs/roadmap-prioridade-alta.md`](docs/roadmap-prioridade-alta.md).
+O planejamento completo, com tamanho e critério de aceite de cada tarefa, está em [`docs/roadmap.md`](docs/roadmap.md).
 
 ---
 

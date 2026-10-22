@@ -1,5 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../shared/models/sport_place.dart';
+import '../../domain/entities/message.dart';
+import '../../domain/entities/place_cannot_be_shared_exception.dart';
+
 /// Datasource Firestore real do chat. Quando a flag `kUseFirebaseRepos`
 /// estiver ligada, este componente entrega streams reais via
 /// `snapshots()`, atendendo o RNF02 (sincronização instantânea).
@@ -61,7 +65,8 @@ class ChatRemoteDataSource {
     return _firestore.collection('conversations').doc(conversationId).get();
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> watchMessages(String conversationId) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchMessages(
+      String conversationId) {
     return _firestore
         .collection('conversations')
         .doc(conversationId)
@@ -116,6 +121,16 @@ class ChatRemoteDataSource {
     required String text,
     String? placeId,
   }) {
+    if (placeId != null) {
+      return _sendPlaceMessage(
+        conversationId: conversationId,
+        senderId: senderId,
+        peerId: peerId,
+        text: text,
+        placeId: placeId,
+      );
+    }
+
     final batch = _firestore.batch();
     final convRef = _firestore.collection('conversations').doc(conversationId);
     final msgRef = convRef.collection('messages').doc();
@@ -123,9 +138,6 @@ class ChatRemoteDataSource {
       'senderId': senderId,
       'text': text,
       'sentAt': FieldValue.serverTimestamp(),
-      // Só entra no documento quando existe: mensagem de texto não carrega
-      // a chave, e o mapper decide o formato do balão pela presença dela.
-      if (placeId != null) 'placeId': placeId,
     });
     batch.update(convRef, <String, Object?>{
       'lastMessage': text,
@@ -136,6 +148,52 @@ class ChatRemoteDataSource {
       'unreadCounts.$peerId': FieldValue.increment(1),
     });
     return batch.commit();
+  }
+
+  /// Compartilhamento usa transação, não batch enfileirável: transações
+  /// precisam de servidor e falham offline sem deixar uma Mensagem de Local
+  /// pendente para sincronizar depois. A leitura do local dentro da transação
+  /// também fecha a corrida entre seleção e envio; Rules repetem a validação
+  /// no commit como autoridade final.
+  Future<void> _sendPlaceMessage({
+    required String conversationId,
+    required String senderId,
+    required String peerId,
+    required String text,
+    required String placeId,
+  }) {
+    final convRef = _firestore.collection('conversations').doc(conversationId);
+    final placeRef = _firestore.collection('places').doc(placeId);
+    final messageRef = convRef.collection('messages').doc();
+
+    return _firestore.runTransaction<void>((transaction) async {
+      final placeSnapshot = await transaction.get(placeRef);
+      final placeData = placeSnapshot.data();
+      final place = placeSnapshot.exists && placeData != null
+          ? SportPlace.tryFromFirestore(placeSnapshot.id, placeData)
+          : null;
+      if (place == null || place.status != PlaceStatus.active) {
+        throw const PlaceCannotBeSharedException();
+      }
+
+      final snapshot = PlaceMessageSnapshot(
+        name: place.name,
+        imageUrl: place.imageUrl,
+        primarySport: place.primarySport,
+      );
+      transaction.set(messageRef, <String, Object?>{
+        'senderId': senderId,
+        'text': text,
+        'sentAt': FieldValue.serverTimestamp(),
+        'placeId': place.id,
+        'placeSnapshot': snapshot.toMap(),
+      });
+      transaction.update(convRef, <String, Object?>{
+        'lastMessage': text,
+        'lastMessageAt': FieldValue.serverTimestamp(),
+        'unreadCounts.$peerId': FieldValue.increment(1),
+      });
+    });
   }
 
   /// Zera o contador de não-lidas de [userId] na conversa.

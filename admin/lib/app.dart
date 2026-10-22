@@ -1,0 +1,237 @@
+import 'package:flutter/material.dart';
+
+import 'core/constants/admin_strings.dart';
+import 'core/routing/admin_router.dart';
+import 'core/theme/admin_court.dart';
+import 'core/theme/admin_theme.dart';
+import 'features/auth/presentation/admin_auth_feature.dart';
+import 'features/dashboard/data/admin_dashboard_repository.dart';
+import 'features/places/data/admin_places_repository.dart';
+import 'features/users/data/admin_users_repository.dart';
+
+typedef FirebaseInitializer = Future<void> Function();
+
+/// Limite de inicialização do painel.
+///
+/// O shell, as rotas protegidas e as leituras administrativas entram no ticket
+/// de autenticação. Até lá, este widget garante que o Firebase esteja pronto
+/// antes de exibir a fundação neutra do app.
+class CompyAdminBootstrap extends StatefulWidget {
+  const CompyAdminBootstrap({
+    required this.initialize,
+    this.authGatewayFactory = FirebaseAdminAuthGateway.new,
+    this.initialLocation,
+    super.key,
+  });
+
+  final FirebaseInitializer initialize;
+  final AdminAuthGateway Function() authGatewayFactory;
+
+  /// Deep link lido da URL antes de as telas de carregamento a sobrescreverem.
+  final String? initialLocation;
+
+  @override
+  State<CompyAdminBootstrap> createState() => _CompyAdminBootstrapState();
+}
+
+class _CompyAdminBootstrapState extends State<CompyAdminBootstrap> {
+  late final Future<void> _initialization = widget.initialize();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: _initialization,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const _AdminStartupApp(
+            screen: _AdminStartupScreen(
+              title: AdminStrings.initializationErrorTitle,
+              body: AdminStrings.initializationErrorBody,
+              icon: Icons.cloud_off_outlined,
+            ),
+          );
+        }
+
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const _AdminStartupApp(
+            screen: _AdminStartupScreen(
+              title: AdminStrings.initializingTitle,
+              body: AdminStrings.initializingBody,
+              showProgress: true,
+            ),
+          );
+        }
+
+        return CompyAdminApp(
+          authGateway: widget.authGatewayFactory(),
+          initialLocation: widget.initialLocation,
+        );
+      },
+    );
+  }
+}
+
+/// O shell nunca é renderizado antes da validação completa da sessão.
+class CompyAdminApp extends StatefulWidget {
+  const CompyAdminApp({
+    required this.authGateway,
+    this.initialLocation,
+    this.dashboardRepository,
+    this.placesRepository,
+    this.usersRepository,
+    super.key,
+  });
+
+  final AdminAuthGateway authGateway;
+  final String? initialLocation;
+  final AdminDashboardRepository? dashboardRepository;
+  final AdminPlacesRepository? placesRepository;
+  final AdminUsersRepository? usersRepository;
+
+  @override
+  State<CompyAdminApp> createState() => _CompyAdminAppState();
+}
+
+class _CompyAdminAppState extends State<CompyAdminApp> {
+  late final AdminAuthController _authController = AdminAuthController(
+    widget.authGateway,
+  );
+  late final _router = createAdminRouter(
+    authController: _authController,
+    initialLocation: widget.initialLocation,
+    dashboardRepository: widget.dashboardRepository,
+    placesRepository: widget.placesRepository,
+    usersRepository: widget.usersRepository,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _authController.addListener(_onAccessChanged);
+    _authController.start();
+  }
+
+  void _onAccessChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _authController.removeListener(_onAccessChanged);
+    _router.dispose();
+    _authController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_authController.state == AdminAccessState.loading) {
+      return const _AdminStartupApp(
+        screen: _AdminStartupScreen(
+          title: AdminStrings.authorizationLoadingTitle,
+          body: AdminStrings.authorizationLoadingBody,
+          showProgress: true,
+        ),
+      );
+    }
+
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      title: AdminStrings.appTitle,
+      theme: AdminTheme.light,
+      routerConfig: _router,
+    );
+  }
+}
+
+/// App das telas de carregamento, exibido antes de o GoRouter existir.
+///
+/// Abre sempre a própria tela: sem router, não deve tentar a rota da URL (que
+/// chega ao GoRouter por `initialLocation`, capturada no `main`).
+class _AdminStartupApp extends StatelessWidget {
+  const _AdminStartupApp({required this.screen});
+
+  final Widget screen;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: AdminStrings.appTitle,
+      theme: AdminTheme.light,
+      onGenerateRoute: _route,
+      onGenerateInitialRoutes: (_) => <Route<void>>[_route(null)],
+    );
+  }
+
+  Route<void> _route(RouteSettings? settings) =>
+      MaterialPageRoute<void>(settings: settings, builder: (_) => screen);
+}
+
+class _AdminStartupScreen extends StatelessWidget {
+  const _AdminStartupScreen({
+    required this.title,
+    required this.body,
+    this.icon = Icons.admin_panel_settings_outlined,
+    this.showProgress = false,
+  });
+
+  final String title;
+  final String body;
+  final IconData icon;
+  final bool showProgress;
+
+  @override
+  Widget build(BuildContext context) {
+    const onCourt = Colors.white;
+    return Scaffold(
+      body: AdminCourtSurface(
+        horizontal: MediaQuery.sizeOf(context).aspectRatio > 1,
+        child: Center(
+          child: Semantics(
+            liveRegion: true,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(icon, size: 40, color: onCourt),
+                    const SizedBox(height: 20),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineSmall?.copyWith(color: onCourt),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      body,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: onCourt.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    if (showProgress) ...<Widget>[
+                      const SizedBox(height: 28),
+                      const SizedBox.square(
+                        dimension: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: onCourt,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
