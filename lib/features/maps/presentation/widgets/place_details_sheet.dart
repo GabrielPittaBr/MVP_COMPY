@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -55,24 +56,7 @@ class PlaceDetailsSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(8)),
-                child: CachedNetworkImage(
-                  imageUrl: place.imageUrl,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => Container(
-                    height: 200,
-                    color: AppColors.surfaceMuted,
-                    child: Icon(
-                      place.primarySport.icon,
-                      size: 60,
-                      color: place.primarySport.color,
-                    ),
-                  ),
-                ),
-              ),
+              _PlaceImageCarousel(place: place),
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -85,6 +69,13 @@ class PlaceDetailsSheet extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    _PlaceAccessBadge(place: place),
+                    if (place.accessType == PlaceAccessType.private &&
+                        place.contactPhone != null) ...<Widget>[
+                      const SizedBox(height: 6),
+                      _ContactPhone(place: place),
+                    ],
                     if (place.status == PlaceStatus.inactive) ...<Widget>[
                       const SizedBox(height: 8),
                       Semantics(
@@ -159,6 +150,228 @@ class PlaceDetailsSheet extends StatelessWidget {
       },
     );
   }
+}
+
+class _PlaceImageCarousel extends StatefulWidget {
+  const _PlaceImageCarousel({required this.place});
+
+  final SportPlace place;
+
+  @override
+  State<_PlaceImageCarousel> createState() => _PlaceImageCarouselState();
+}
+
+class _PlaceImageCarouselState extends State<_PlaceImageCarousel> {
+  late final PageController _controller;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final images = widget.place.gallery;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          height: 200,
+          child: PageView.builder(
+            controller: _controller,
+            itemCount: images.length,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemBuilder: (context, index) {
+              final image = images[index];
+              return Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  CachedNetworkImage(
+                    imageUrl: image.url,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => Container(
+                      color: AppColors.surfaceMuted,
+                      child: Icon(
+                        widget.place.primarySport.icon,
+                        size: 60,
+                        color: widget.place.primarySport.color,
+                      ),
+                    ),
+                  ),
+                  if (image.source?.isNotEmpty == true)
+                    Positioned(
+                      right: 10,
+                      bottom: 10,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width * 0.68,
+                        ),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: const Color.fromRGBO(0, 0, 0, 0.58),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 5,
+                            ),
+                            child: Text(
+                              image.source!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                height: 1.1,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (images.length > 1)
+                    Positioned(
+                      left: 10,
+                      bottom: 14,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: List<Widget>.generate(images.length, (dot) {
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: dot == _currentPage ? 16 : 6,
+                            height: 6,
+                            margin: const EdgeInsets.only(right: 4),
+                            decoration: BoxDecoration(
+                              color: dot == _currentPage
+                                  ? Colors.white
+                                  : Colors.white70,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaceAccessBadge extends StatelessWidget {
+  const _PlaceAccessBadge({required this.place});
+
+  final SportPlace place;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = switch (place.accessType) {
+      PlaceAccessType.public => AppStrings.mapsPlacePublic,
+      PlaceAccessType.private => AppStrings.mapsPlacePrivate,
+      null => AppStrings.mapsPlaceTypeUnknown,
+    };
+    final icon = switch (place.accessType) {
+      PlaceAccessType.public => Icons.public,
+      PlaceAccessType.private => Icons.lock_outline,
+      null => Icons.help_outline,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(
+            icon,
+            size: 14,
+            color: AppColors.onSurfaceMuted,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.onSurfaceMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContactPhone extends StatelessWidget {
+  const _ContactPhone({required this.place});
+
+  final SportPlace place;
+
+  @override
+  Widget build(BuildContext context) {
+    final phone = place.contactPhone!;
+    return Semantics(
+      button: true,
+      label: '${AppStrings.mapsPlaceContact}: ${_formatPlacePhone(phone)}',
+      child: InkWell(
+        onTap: () async {
+          try {
+            await launchUrl(
+              Uri(scheme: 'tel', path: phone),
+              mode: LaunchMode.externalApplication,
+            );
+          } catch (_) {
+            // A device without a dialer still retains the readable number.
+          }
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Icon(Icons.phone_outlined,
+                  size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                _formatPlacePhone(phone),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _formatPlacePhone(String phone) {
+  final digits = phone.replaceAll(RegExp(r'\D'), '');
+  if (digits.length < 10) return phone;
+  final ddd = digits.substring(0, 2);
+  final subscriber = digits.substring(2);
+  final splitAt = subscriber.length > 8 ? 5 : 4;
+  return '($ddd) ${subscriber.substring(0, splitAt)}-${subscriber.substring(splitAt)}';
 }
 
 class _SportsWrap extends StatelessWidget {
