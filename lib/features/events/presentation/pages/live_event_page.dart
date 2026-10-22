@@ -12,6 +12,7 @@ import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_status.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/event_status_chip.dart';
+import '../../../../shared/widgets/pill_tag.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/user_avatar.dart';
 import '../../../chat/presentation/providers/chat_providers.dart';
@@ -541,15 +542,11 @@ class _ParticipantTile extends StatelessWidget {
                       ),
                     ),
                     if (isOrganizer)
-                      const _Tag(
+                      const PillTag(
                         label: AppStrings.eventLiveOrganizer,
                         color: AppColors.primary,
                       ),
-                    if (isMe)
-                      const _Tag(
-                        label: AppStrings.eventLiveYou,
-                        color: AppColors.onSurface,
-                      ),
+                    if (isMe) const PillTag(label: AppStrings.eventLiveYou),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -575,34 +572,6 @@ class _ParticipantTile extends StatelessWidget {
               icon: const Icon(Icons.chat_bubble_outline, size: 20),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  const _Tag({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 22,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
       ),
     );
   }

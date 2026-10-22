@@ -9,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_status.dart';
 import '../../../../shared/models/user_summary.dart';
+import '../../../../shared/widgets/pill_tag.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/user_avatar.dart';
 import '../../../events/presentation/providers/events_providers.dart';
@@ -321,27 +322,19 @@ class _ParticipantsStep extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       children: <Widget>[
-        Wrap(
+        const Wrap(
           spacing: 10,
           runSpacing: 6,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: <Widget>[
-            const Text(
+            Text(
               AppStrings.ratingParticipantsQuestion,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
             ),
-            Container(
+            PillTag(
+              label: AppStrings.ratingOptional,
               height: 24,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceMuted,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                AppStrings.ratingOptional,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
+              fontSize: 12,
             ),
           ],
         ),
@@ -423,7 +416,11 @@ class _PersonCard extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        if (isOrganizer) const _OrganizerTag(),
+                        if (isOrganizer)
+                          const PillTag(
+                            label: AppStrings.eventLiveOrganizer,
+                            color: AppColors.primary,
+                          ),
                       ],
                     ),
                     Text(
@@ -493,31 +490,6 @@ class _SkippedCard extends StatelessWidget {
             child: const Text(AppStrings.ratingUndo),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _OrganizerTag extends StatelessWidget {
-  const _OrganizerTag();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 22,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: const Text(
-        AppStrings.eventLiveOrganizer,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: AppColors.primary,
-        ),
       ),
     );
   }
