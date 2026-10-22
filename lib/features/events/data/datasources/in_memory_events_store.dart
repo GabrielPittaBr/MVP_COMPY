@@ -49,6 +49,10 @@ class InMemoryEventsStore {
   List<Event> joinedBy(String uid, EventsFilter filter) =>
       _sortedByDate((e) => e.participantIds.contains(uid), filter);
 
+  /// [joinedBy] em tempo real, sem filtro da folha.
+  Stream<List<Event>> watchJoinedBy(String uid) =>
+      watchAll().map((_) => joinedBy(uid, const EventsFilter()));
+
   /// As duas seções não são paginadas, então (ao contrário da lista
   /// principal) podem ordenar em memória sem risco de cursor inconsistente.
   List<Event> _sortedByDate(bool Function(Event) test, EventsFilter filter) {

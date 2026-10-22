@@ -35,6 +35,7 @@ void main() {
     AppRoutes.profileFavoriteSports,
     AppRoutes.maps,
     '/events/abc',
+    '/events/abc/ao-vivo',
   ];
 
   const List<String> todasAsRotas = <String>[

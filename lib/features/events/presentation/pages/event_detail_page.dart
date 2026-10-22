@@ -2,9 +2,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/duration_format.dart';
 import '../../../../shared/models/event.dart';
@@ -229,6 +231,9 @@ enum _DetailAction {
   /// O mesmo, com o evento lotado (RN-05).
   full,
 
+  /// Acontecendo, para quem participa ou criou.
+  openLive,
+
   /// Agendado, para quem participa.
   youAreIn,
 
@@ -241,12 +246,13 @@ enum _DetailAction {
 
 _DetailAction _actionFor(Event event, EventStatus status, String? uid) {
   if (status == EventStatus.ended) return _DetailAction.ended;
-  // Até a tela ao vivo existir, quem participa de um evento acontecendo vê
-  // a mesma ação desabilitada do agendado.
-  if (uid != null && event.creator.id == uid) return _DetailAction.youOrganize;
-  if (uid != null && event.participantIds.contains(uid)) {
-    return _DetailAction.youAreIn;
+  final isCreator = uid != null && event.creator.id == uid;
+  final isParticipant = uid != null && event.participantIds.contains(uid);
+  if (status == EventStatus.happening && (isCreator || isParticipant)) {
+    return _DetailAction.openLive;
   }
+  if (isCreator) return _DetailAction.youOrganize;
+  if (isParticipant) return _DetailAction.youAreIn;
   return event.isFull ? _DetailAction.full : _DetailAction.join;
 }
 
@@ -275,6 +281,12 @@ class _ActionBar extends ConsumerWidget {
               _DetailAction.join => PrimaryButton(
                   label: AppStrings.eventJoin,
                   onPressed: () => _join(context, ref),
+                ),
+              _DetailAction.openLive => PrimaryButton(
+                  label: AppStrings.eventLiveOpenFromDetail,
+                  icon: Icons.sensors,
+                  onPressed: () =>
+                      context.go(AppRoutes.liveEventPath(event.id)),
                 ),
               _DetailAction.full => const PrimaryButton(
                   label: AppStrings.eventFull,

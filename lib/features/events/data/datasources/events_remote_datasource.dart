@@ -97,6 +97,21 @@ class EventsRemoteDataSource {
     ).orderBy('dateTime').limit(limit).get();
   }
 
+  /// [fetchJoinedBy] em tempo real — alimenta o card do evento ao vivo e a
+  /// seção "Participando" (tarefa 14) com uma única consulta.
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchJoinedBy(
+    String uid, {
+    int limit = 50,
+    DateTime? notBefore,
+  }) {
+    return _since(
+      _firestore
+          .collection('events')
+          .where('participantIds', arrayContains: uid),
+      notBefore,
+    ).orderBy('dateTime').limit(limit).snapshots();
+  }
+
   /// Aplica o limite inferior de `dateTime`, se houver. Os índices
   /// `creator.id + dateTime` e `participantIds + dateTime` já cobrem o
   /// intervalo, porque ele fica no campo do `orderBy`.

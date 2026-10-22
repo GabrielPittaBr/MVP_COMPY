@@ -123,6 +123,25 @@ abstract final class AppStrings {
   static const String eventYouOrganize = 'Você organiza este evento';
   static const String eventAlreadyEnded = 'Este evento já terminou';
 
+  // Evento ao vivo (tarefa 14)
+  static const String eventLiveBadge = 'AO VIVO';
+  static String eventLiveEndsAt(String time) => 'Termina às $time';
+  static const String eventLiveOverdue = 'Horário previsto encerrado';
+  static const String eventLiveOpen = 'Abrir evento';
+  static const String eventLiveOpenFromDetail = 'Abrir evento ao vivo';
+  static const String eventLiveTitle = 'Evento ao vivo';
+  static String eventLiveSchedule(String start, String end) =>
+      'Começou às $start · termina às $end';
+  static String eventLiveRemaining(String duration) => 'Faltam $duration';
+  static String eventLiveOverdueBy(String duration) =>
+      'Passou $duration do previsto';
+  static const String eventLiveOrganizer = 'Organizador';
+  static const String eventLiveYou = 'Você';
+  static String eventLiveMessage(String name) => 'Mandar mensagem para $name';
+  static const String eventLiveTalkToOrganizer = 'Falar com o organizador';
+  static String eventParticipantsShort(int count) =>
+      count == 1 ? '1 participante' : '$count participantes';
+
   // Profile
   static const String profileTitle = 'Perfil';
   static const String profileEdit = 'Editar perfil';

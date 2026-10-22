@@ -12,6 +12,7 @@ import '../../../../shared/widgets/event_status_chip.dart';
 import '../../domain/entities/events_filter.dart';
 import '../providers/events_providers.dart';
 import '../widgets/events_filter_sheet.dart';
+import '../widgets/live_event_card.dart';
 
 /// Aba "Eventos" — três seções ("Criados por mim", "Participando" e
 /// "Todos os eventos"), sendo a última paginada com scroll infinito.
@@ -69,6 +70,10 @@ class _Sections extends ConsumerWidget {
     final allAsync = ref.watch(paginatedEventsProvider);
     final mineAsync = ref.watch(myEventsProvider);
     final joinedAsync = ref.watch(joinedEventsProvider);
+    // Só a presença do card importa aqui: o andamento dele muda a cada 30s,
+    // e quem se redesenha com isso é só o [_LiveEventsSliver].
+    final hasLive =
+        ref.watch(liveEventsProvider.select((events) => events.isNotEmpty));
 
     return allAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -110,6 +115,11 @@ class _Sections extends ConsumerWidget {
         } else {
           addSection(AppStrings.eventsSectionAll, allContent);
         }
+
+        // O card ao vivo entra por último, mas no topo: assim a primeira
+        // seção continua sem divisória em cima, e o card não depende do
+        // filtro da folha (tarefa 14).
+        if (hasLive) slivers.insert(0, const _LiveEventsSliver());
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -176,6 +186,30 @@ class _Sections extends ConsumerWidget {
               disableWhenFull: false,
               onAction: () => context.go('${AppRoutes.events}/${e.id}'),
             ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Card(s) do evento acontecendo de que o usuário participa.
+class _LiveEventsSliver extends ConsumerWidget {
+  const _LiveEventsSliver();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final events = ref.watch(liveEventsProvider);
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      sliver: SliverList.separated(
+        itemCount: events.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, i) {
+          final event = events[i];
+          return LiveEventCard(
+            event: event,
+            onOpen: () => context.go(AppRoutes.liveEventPath(event.id)),
           );
         },
       ),

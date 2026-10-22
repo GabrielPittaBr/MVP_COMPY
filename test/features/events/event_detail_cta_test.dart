@@ -139,6 +139,22 @@ void main() {
     });
   });
 
+  group('acontecendo, participante ou criador', () {
+    for (final quem in <UserSummary>[_participante, _dono]) {
+      testWidgets('${quem.id} vê "Abrir evento ao vivo"', (tester) async {
+        await _abrir(
+          tester,
+          evento: Stream.value(_evento(inicioEm: const Duration(minutes: -20))),
+          quem: quem,
+        );
+
+        expect(find.text(AppStrings.eventStatusLive), findsOneWidget);
+        expect(_botao(AppStrings.eventLiveOpenFromDetail), findsOneWidget);
+        expect(_botao(AppStrings.eventJoin), findsNothing);
+      });
+    }
+  });
+
   testWidgets('acontecendo, quem não participa ainda vê "Participar"',
       (tester) async {
     await _abrir(

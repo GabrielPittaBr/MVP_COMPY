@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_flags.dart';
 import '../../../../core/providers/clock_providers.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/event_status.dart';
 import '../../../../shared/models/paged_result.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/events_remote_datasource.dart';
@@ -13,6 +14,7 @@ import '../../domain/repositories/events_repository.dart';
 import '../../domain/usecases/create_event.dart';
 import '../../domain/usecases/join_event.dart';
 import '../../domain/usecases/watch_event_detail.dart';
+import '../../domain/usecases/watch_joined_active_events.dart';
 
 final eventsRemoteDataSourceProvider = Provider<EventsRemoteDataSource?>(
   (ref) => kUseFirebaseRepos ? EventsRemoteDataSource(FirebaseFirestore.instance) : null,
@@ -31,6 +33,10 @@ final watchEventDetailProvider = Provider<WatchEventDetail>(
 
 final joinEventProvider = Provider<JoinEvent>(
   (ref) => JoinEvent(ref.watch(eventsRepositoryProvider)),
+);
+
+final watchJoinedActiveEventsProvider = Provider<WatchJoinedActiveEvents>(
+  (ref) => WatchJoinedActiveEvents(ref.watch(eventsRepositoryProvider)),
 );
 
 final createEventProvider = Provider<CreateEvent>(
@@ -155,13 +161,36 @@ final myEventsProvider = FutureProvider<List<Event>>((ref) async {
   return repository.fetchCreatedBy(user.id, filter: filter);
 });
 
-/// Seção "Participando" — eventos em que o usuário está inscrito, inclusive
-/// os que ele mesmo criou (a duplicação entre as seções é intencional).
-final joinedEventsProvider = FutureProvider<List<Event>>((ref) async {
-  final filter = ref.watch(eventsFilterProvider);
-  final repository = ref.watch(eventsRepositoryProvider);
+/// Eventos não encerrados de que o usuário participa, inclusive os que ele
+/// mesmo criou, em tempo real (tarefa 14). É a fonte única do card do
+/// evento ao vivo e da seção "Participando".
+final joinedActiveEventsProvider = StreamProvider<List<Event>>((ref) async* {
+  final watchJoined = ref.watch(watchJoinedActiveEventsProvider);
   final user = await ref.watch(currentUserSummaryProvider.future);
-  return repository.fetchJoinedBy(user.id, filter: filter);
+  yield* watchJoined(user.id);
+});
+
+/// Seção "Participando" — o [joinedActiveEventsProvider] com o filtro da
+/// folha aplicado no cliente (a duplicação com "Criados por mim" é
+/// intencional).
+final joinedEventsProvider = Provider<AsyncValue<List<Event>>>((ref) {
+  final filter = ref.watch(eventsFilterProvider);
+  return ref
+      .watch(joinedActiveEventsProvider)
+      .whenData((events) => events.where(filter.matches).toList());
+});
+
+/// Eventos acontecendo agora de que o usuário participa — o card ao vivo
+/// do topo da aba Eventos. Ignora o filtro da folha de propósito: o atalho
+/// para o jogo em andamento não pode sumir por causa de um filtro.
+final liveEventsProvider = Provider<List<Event>>((ref) {
+  final events = ref.watch(joinedActiveEventsProvider).valueOrNull;
+  if (events == null || events.isEmpty) return const <Event>[];
+  final now = ref.watch(nowProvider).valueOrNull ?? ref.watch(clockProvider)();
+  return <Event>[
+    for (final event in events)
+      if (event.statusAt(now) == EventStatus.happening) event,
+  ];
 });
 
 /// Recarrega as três seções da aba Eventos.
@@ -172,7 +201,7 @@ final joinedEventsProvider = FutureProvider<List<Event>>((ref) async {
 void invalidateEventLists(WidgetRef ref) {
   ref.invalidate(paginatedEventsProvider);
   ref.invalidate(myEventsProvider);
-  ref.invalidate(joinedEventsProvider);
+  ref.invalidate(joinedActiveEventsProvider);
 }
 
 /// Detalhe de um evento por id, em tempo real (tarefa 14): um join ou um

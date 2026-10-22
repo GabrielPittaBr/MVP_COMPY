@@ -106,6 +106,23 @@ class EventsRepositoryImpl implements EventsRepository {
     );
   }
 
+  @override
+  Stream<List<Event>> watchJoinedActive(String uid) {
+    if (!kUseFirebaseRepos || _remote == null) {
+      return InMemoryEventsStore.instance
+          .watchJoinedBy(uid)
+          .map((events) => withoutEnded(events, _clock()));
+    }
+    return _remote
+        .watchJoinedBy(uid, notBefore: openEventsNotBefore(_clock()))
+        .map(
+          (snapshot) => withoutEnded(
+            snapshot.docs.map((doc) => Event.fromMap(doc.id, doc.data())),
+            _clock(),
+          ),
+        );
+  }
+
   /// Aplica o filtro depois de buscar — legítimo aqui porque as duas seções
   /// vêm inteiras (ver `EventsRemoteDataSource.fetchCreatedBy`); na lista
   /// paginada isso produziria páginas quase vazias.

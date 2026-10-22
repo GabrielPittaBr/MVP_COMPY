@@ -14,6 +14,7 @@ import '../../features/chat/presentation/pages/new_conversation_page.dart';
 import '../../features/events/presentation/pages/create_event_page.dart';
 import '../../features/events/presentation/pages/event_detail_page.dart';
 import '../../features/events/presentation/pages/events_list_page.dart';
+import '../../features/events/presentation/pages/live_event_page.dart';
 import '../../features/events/presentation/pages/search_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/maps/presentation/pages/maps_page.dart';
@@ -39,6 +40,12 @@ abstract final class AppRoutes {
   static const String home = '/home';
   static const String events = '/events';
   static const String eventDetail = '/events/:id';
+
+  /// Tela do evento em andamento (tarefa 14) — filha do detalhe, no branch
+  /// de Eventos.
+  static const String liveEvent = '/events/:id/ao-vivo';
+  static String eventDetailPath(String id) => '$events/$id';
+  static String liveEventPath(String id) => '$events/$id/ao-vivo';
   static const String create = '/create';
   static const String chat = '/chat';
   static const String chatRoom = '/chat/:conversationId';
@@ -258,6 +265,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: ':id',
                     builder: (context, state) =>
                         EventDetailPage(eventId: state.pathParameters['id']!),
+                    routes: <RouteBase>[
+                      GoRoute(
+                        path: 'ao-vivo',
+                        builder: (context, state) =>
+                            LiveEventPage(eventId: state.pathParameters['id']!),
+                      ),
+                    ],
                   ),
                 ],
               ),

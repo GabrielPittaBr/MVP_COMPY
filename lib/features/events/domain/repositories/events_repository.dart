@@ -28,6 +28,12 @@ abstract interface class EventsRepository {
   /// características de [fetchCreatedBy].
   Future<List<Event>> fetchJoinedBy(String uid, {EventsFilter filter});
 
+  /// Eventos não encerrados em que [uid] está inscrito, em tempo real e sem
+  /// o filtro da folha (tarefa 14). Alimenta o card do evento ao vivo, que
+  /// ignora o filtro, e a seção "Participando", que aplica o filtro no
+  /// cliente.
+  Stream<List<Event>> watchJoinedActive(String uid);
+
   /// Busca eventos por nome (prefixo do título) ou modalidade esportiva.
   Future<List<Event>> search(String query);
 
