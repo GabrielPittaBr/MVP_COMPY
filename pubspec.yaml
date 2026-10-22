@@ -43,6 +43,7 @@ dependencies:
 
   # Imagens em rede com cache
   cached_network_image: ^3.3.1
+  url_launcher: ^6.3.1
 
   # Foto de perfil: escolher (galeria/câmera), recortar com zoom e reduzir
   # para JPEG antes do envio

@@ -20,7 +20,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     if (!kUseFirebaseRepos || _remote == null) return MockProfile.current;
 
     final doc = await _remote.fetchById(uid);
-    if (!doc.exists) return MockProfile.current;
+    if (!doc.exists) throw StateError('Perfil do usuário não encontrado.');
 
     final data = doc.data()!;
     final summary = UserSummary(
@@ -32,6 +32,39 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
     return UserProfile(
       summary: summary,
+      bio: (data['bio'] as String?) ?? '',
+      favoriteSports: Sport.parseList(data[Sport.favoriteSportsField]),
+      badges: const [],
+      friends: const [],
+      rating: const RatingSummary(average: 0, count: 0, breakdown: {}),
+      gallery: const [],
+    );
+  }
+
+  @override
+  Future<UserProfile?> getPublicProfile(String uid) async {
+    if (uid.isEmpty ||
+        uid.trim() != uid ||
+        uid == '.' ||
+        uid == '..' ||
+        uid.contains('/') ||
+        uid.contains('\u0000')) {
+      return null;
+    }
+    if (!kUseFirebaseRepos || _remote == null) {
+      return MockProfile.publicById(uid);
+    }
+    final doc = await _remote.fetchById(uid);
+    if (!doc.exists) return null;
+    final data = doc.data();
+    if (data == null) return null;
+    return UserProfile(
+      summary: UserSummary(
+        id: doc.id,
+        name: (data['name'] as String?) ?? '',
+        handle: (data['handle'] as String?) ?? '',
+        avatarUrl: (data['avatarUrl'] as String?) ?? '',
+      ),
       bio: (data['bio'] as String?) ?? '',
       favoriteSports: Sport.parseList(data[Sport.favoriteSportsField]),
       badges: const [],
@@ -110,7 +143,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
       return MockProfile.searchable
           .where(
             (user) =>
-                user.id != excludeUid && TextNormalizer.normalize(user.name).startsWith(prefix),
+                user.id != excludeUid &&
+                TextNormalizer.normalize(user.name).startsWith(prefix),
           )
           .take(limit)
           .toList();

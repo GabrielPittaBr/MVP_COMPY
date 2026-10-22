@@ -40,6 +40,10 @@ abstract final class AppStrings {
   // Maps
   static const String mapsSearchHint = 'Encontre esportes';
   static const String mapsPlaceInfo = 'Informações';
+  static const String mapsPlacePublic = 'Público';
+  static const String mapsPlacePrivate = 'Privado';
+  static const String mapsPlaceTypeUnknown = 'Tipo não informado';
+  static const String mapsPlaceContact = 'Telefone para contato';
   static const String mapsOfflineNoCache =
       'Sem conexão e nenhum local salvo neste dispositivo.';
 
@@ -110,6 +114,13 @@ abstract final class AppStrings {
 
   // Profile
   static const String profileTitle = 'Perfil';
+  static const String profilePublicTitle = 'Perfil do usuário';
+  static const String profilePublicNotFound = 'Perfil não encontrado.';
+  static const String profilePublicError =
+      'Não foi possível carregar este perfil.';
+  static const String profileMessage = 'Mensagem';
+  static const String profileNoFavoriteSports =
+      'Nenhum esporte favorito informado.';
   static const String profileEdit = 'Editar perfil';
   static const String profileEditFavoriteSports = 'Editar esportes favoritos';
   static const String profileFavoriteSports = 'Esportes favoritos';
@@ -197,7 +208,8 @@ abstract final class AppStrings {
   static const String authLoginWithEmail = 'Entrar com email';
   static const String authLoginWithGoogle = 'Entrar com Google';
   static const String authCreateAccount = 'Criar Conta';
-  static const String authPrivacyPrefix = 'Ao continuar, você concorda com nossa';
+  static const String authPrivacyPrefix =
+      'Ao continuar, você concorda com nossa';
   static const String authPrivacyPolicy = 'Política de Privacidade';
   static const String authName = 'Nome completo';
   static const String authUsername = 'Username (ex.: @joao)';
@@ -223,14 +235,17 @@ abstract final class AppStrings {
   static const String authErrorUsernameInvalidChars =
       'Use apenas letras, números, ponto e _ — sem começar ou terminar com ponto.';
   static const String authErrorEmailInvalid = 'Informe um e-mail válido.';
-  static const String authErrorPasswordShort = 'A senha precisa ter ao menos 6 caracteres.';
+  static const String authErrorPasswordShort =
+      'A senha precisa ter ao menos 6 caracteres.';
   static const String authErrorNameEmpty = 'Informe seu nome.';
   static const String authErrorGeneric = 'Ocorreu um erro. Tente novamente.';
   static const String authErrorProfileLookup =
       'Não foi possível carregar seu perfil. Verifique a conexão e tente novamente.';
   static const String authRetry = 'Tentar novamente';
-  static const String authErrorInvalidCredential = 'E-mail ou senha incorretos.';
-  static const String authErrorEmailAlreadyInUse = 'Este e-mail já está cadastrado.';
+  static const String authErrorInvalidCredential =
+      'E-mail ou senha incorretos.';
+  static const String authErrorEmailAlreadyInUse =
+      'Este e-mail já está cadastrado.';
   static const String authErrorRequiresRecentLogin =
       'Por segurança, entre novamente para concluir a exclusão da conta.';
 

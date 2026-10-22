@@ -7,6 +7,46 @@ import 'sport.dart';
 
 enum PlaceStatus { active, inactive }
 
+enum PlaceAccessType { public, private }
+
+class SportPlaceImage extends Equatable {
+  const SportPlaceImage({required this.url, this.source});
+
+  final String url;
+  final String? source;
+
+  static SportPlaceImage? tryFromMap(Object? raw) {
+    if (raw is! Map) return null;
+    final map = Map<String, dynamic>.from(raw);
+    if (map.keys
+            .toSet()
+            .difference(const <String>{'url', 'source'}).isNotEmpty ||
+        !map.keys.toSet().contains('url')) {
+      return null;
+    }
+    final url = map['url'];
+    final sourceRaw = map['source'];
+    final uri = url is String ? Uri.tryParse(url) : null;
+    if (url is! String ||
+        url.length > 2048 ||
+        uri == null ||
+        uri.scheme != 'https' ||
+        uri.host.isEmpty ||
+        (sourceRaw != null && sourceRaw is! String)) {
+      return null;
+    }
+    final source = sourceRaw is String ? sourceRaw.trim() : null;
+    if (source != null && source.length > 200) return null;
+    return SportPlaceImage(
+      url: url,
+      source: source == null || source.isEmpty ? null : source,
+    );
+  }
+
+  @override
+  List<Object?> get props => <Object?>[url, source];
+}
+
 class PlaceAddress extends Equatable {
   const PlaceAddress({
     required this.street,
@@ -167,6 +207,9 @@ class SportPlace extends Equatable {
     required this.primarySport,
     required this.status,
     required this.imageUrl,
+    this.images = const <SportPlaceImage>[],
+    this.accessType,
+    this.contactPhone,
     this.createdAt,
     this.updatedAt,
   });
@@ -181,8 +224,15 @@ class SportPlace extends Equatable {
   final Sport primarySport;
   final PlaceStatus status;
   final String imageUrl;
+  final List<SportPlaceImage> images;
+  final PlaceAccessType? accessType;
+  final String? contactPhone;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  List<SportPlaceImage> get gallery => images.isEmpty
+      ? <SportPlaceImage>[SportPlaceImage(url: imageUrl)]
+      : images;
 
   // Compatibilidade temporária dos consumidores existentes; os tickets de
   // mapa/eventos/mensagens migram esses acessos para o contrato explícito.
@@ -201,6 +251,9 @@ class SportPlace extends Equatable {
         primarySport: primarySport,
         status: newStatus,
         imageUrl: imageUrl,
+        images: images,
+        accessType: accessType,
+        contactPhone: contactPhone,
         createdAt: createdAt,
         updatedAt: updatedAt,
       );
@@ -210,7 +263,7 @@ class SportPlace extends Equatable {
     Map<String, dynamic> data,
   ) {
     try {
-      const allowedFields = <String>{
+      const requiredFields = <String>{
         'name',
         'nameLower',
         'description',
@@ -223,8 +276,14 @@ class SportPlace extends Equatable {
         'createdAt',
         'updatedAt',
       };
+      const allowedFields = <String>{
+        ...requiredFields,
+        'images',
+        'accessType',
+        'contactPhone',
+      };
       if (!allowedFields.containsAll(data.keys) ||
-          !data.keys.toSet().containsAll(allowedFields)) {
+          !data.keys.toSet().containsAll(requiredFields)) {
         return null;
       }
       final name = data['name'];
@@ -241,6 +300,18 @@ class SportPlace extends Equatable {
       final sports = Sport.parseList(sportsRaw);
       if (imageUrl is! String || imageUrl.length > 2048) return null;
       final uri = Uri.tryParse(imageUrl);
+      final accessTypeRaw = data['accessType'];
+      final accessType = switch (accessTypeRaw) {
+        null => null,
+        'public' => PlaceAccessType.public,
+        'private' => PlaceAccessType.private,
+        _ => null,
+      };
+      final contactPhoneRaw = data['contactPhone'];
+      final contactPhone = contactPhoneRaw is String ? contactPhoneRaw : null;
+      final gallery = _parseGallery(data['images'], imageUrl);
+      final phoneIsValid = contactPhone == null ||
+          RegExp(r'^[1-9][0-9][0-9]{8,9}$').hasMatch(contactPhone);
       if (name is! String ||
           name.trim().length < 3 ||
           name.trim().length > 120 ||
@@ -267,6 +338,12 @@ class SportPlace extends Equatable {
           uri == null ||
           uri.scheme != 'https' ||
           uri.host.isEmpty ||
+          (accessTypeRaw != null && accessType == null) ||
+          (contactPhoneRaw != null && contactPhone == null) ||
+          !phoneIsValid ||
+          (accessType == PlaceAccessType.private && contactPhone == null) ||
+          gallery == null ||
+          gallery.first.url != imageUrl ||
           statusRaw is! String ||
           !<String>{'active', 'inactive'}.contains(statusRaw) ||
           createdAt is! Timestamp ||
@@ -284,6 +361,9 @@ class SportPlace extends Equatable {
         primarySport: primarySport,
         status: PlaceStatus.values.byName(statusRaw),
         imageUrl: imageUrl,
+        images: List<SportPlaceImage>.unmodifiable(gallery),
+        accessType: accessType,
+        contactPhone: contactPhone,
         createdAt: createdAt.toDate(),
         updatedAt: updatedAt.toDate(),
       );
@@ -305,7 +385,20 @@ class SportPlace extends Equatable {
         primarySport,
         status,
         imageUrl,
+        images,
+        accessType,
+        contactPhone,
         createdAt,
         updatedAt,
       ];
+}
+
+List<SportPlaceImage>? _parseGallery(Object? raw, String legacyImageUrl) {
+  if (raw == null) {
+    return <SportPlaceImage>[SportPlaceImage(url: legacyImageUrl)];
+  }
+  if (raw is! List || raw.isEmpty || raw.length > 8) return null;
+  final images = raw.map(SportPlaceImage.tryFromMap).toList();
+  if (images.any((image) => image == null)) return null;
+  return images.cast<SportPlaceImage>();
 }

@@ -403,6 +403,43 @@ service cloud.firestore {
             && request.resource.data.coordinates.longitude() <= 180;
       }
 
+      function validPlaceImage(image) {
+        return image is map
+            && image.keys().hasOnly(['url', 'source'])
+            && image.url is string
+            && image.url.size() <= 2048
+            && image.url.matches('^https://.+')
+            && (!('source' in image)
+                || (image.source is string && image.source.size() <= 200));
+      }
+
+      function validPlaceImages() {
+        // Rules do not support list iteration. Validate the gallery bounds and
+        // cover here; the Admin validates each remaining entry before writing.
+        return !('images' in request.resource.data)
+            || (request.resource.data.images is list
+                && request.resource.data.images.size() > 0
+                && request.resource.data.images.size() <= 8
+                && validPlaceImage(request.resource.data.images[0])
+                && request.resource.data.imageUrl
+                   == request.resource.data.images[0].url);
+      }
+
+      function validPlaceAccess() {
+        return (!('accessType' in request.resource.data)
+                || request.resource.data.accessType in ['public', 'private'])
+            && (!('contactPhone' in request.resource.data)
+                || (request.resource.data.contactPhone is string
+                    && request.resource.data.contactPhone.matches(
+                         '^[1-9][0-9][0-9]{8,9}$')))
+            && (!('accessType' in request.resource.data)
+                || request.resource.data.accessType != 'private'
+                || ('contactPhone' in request.resource.data
+                    && request.resource.data.contactPhone is string
+                    && request.resource.data.contactPhone.matches(
+                         '^[1-9][0-9][0-9]{8,9}$')));
+      }
+
       function validPlace() {
         return request.resource.data.keys().hasAll(
                  ['name', 'nameLower', 'description', 'address', 'sports',
@@ -411,7 +448,8 @@ service cloud.firestore {
             && request.resource.data.keys().hasOnly(
                  ['name', 'nameLower', 'description', 'address', 'sports',
                   'primarySport', 'coordinates', 'imageUrl', 'status',
-                  'createdAt', 'updatedAt'])
+                  'createdAt', 'updatedAt', 'images', 'accessType',
+                  'contactPhone'])
             && validRequiredString(request.resource.data.name, 120)
             && validRequiredString(request.resource.data.nameLower, 120)
             && validRequiredString(request.resource.data.description, 1500)
@@ -422,6 +460,8 @@ service cloud.firestore {
             && request.resource.data.imageUrl.size() > 0
             && request.resource.data.imageUrl.size() <= 2048
             && request.resource.data.imageUrl.matches('^https://.+')
+            && validPlaceImages()
+            && validPlaceAccess()
             && request.resource.data.status in ['active', 'inactive']
             && request.resource.data.createdAt is timestamp
             && request.resource.data.updatedAt is timestamp;
@@ -435,6 +475,7 @@ service cloud.firestore {
                   || (signedIn() && resource.data.status == 'active');
       allow create: if isAdmin()
                     && validPlace()
+                    && ('accessType' in request.resource.data)
                     && request.resource.data.status == 'inactive'
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.updatedAt == request.time;

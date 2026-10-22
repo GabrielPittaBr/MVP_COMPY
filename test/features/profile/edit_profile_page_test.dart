@@ -103,6 +103,10 @@ class _FakeProfileRepository implements ProfileRepository {
       throw UnimplementedError();
 
   @override
+  Future<UserProfile?> getPublicProfile(String uid) =>
+      throw UnimplementedError();
+
+  @override
   Future<void> updateFavoriteSports(String uid, List<Sport> sports) =>
       throw UnimplementedError();
 
