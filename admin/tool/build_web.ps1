@@ -23,6 +23,26 @@ try {
       New-Item -ItemType Directory -Path $placesOutput -Force | Out-Null
       Copy-Item -Path (Join-Path $placesSource '*') -Destination $placesOutput -Recurse -Force
     }
+
+    $buildRoot = Join-Path $adminRoot 'build/web'
+    $releaseId = (Get-FileHash -Algorithm SHA256 (Join-Path $buildRoot 'main.dart.js')).Hash.Substring(0, 12).ToLowerInvariant()
+    $utf8 = [System.Text.UTF8Encoding]::new($false)
+
+    $indexPath = Join-Path $buildRoot 'index.html'
+    $index = [System.IO.File]::ReadAllText($indexPath)
+    if (-not $index.Contains('flutter_bootstrap.js"')) {
+      throw 'O index.html do Flutter não contém a referência esperada ao bootstrap.'
+    }
+    $index = $index.Replace('flutter_bootstrap.js"', "flutter_bootstrap.js?release=$releaseId`"")
+    [System.IO.File]::WriteAllText($indexPath, $index, $utf8)
+
+    $bootstrapPath = Join-Path $buildRoot 'flutter_bootstrap.js'
+    $bootstrap = [System.IO.File]::ReadAllText($bootstrapPath)
+    if (-not $bootstrap.Contains('"mainJsPath":"main.dart.js"')) {
+      throw 'O bootstrap do Flutter não contém a referência esperada ao aplicativo.'
+    }
+    $bootstrap = $bootstrap.Replace('"mainJsPath":"main.dart.js"', "`"mainJsPath`":`"main.dart.js?release=$releaseId`"")
+    [System.IO.File]::WriteAllText($bootstrapPath, $bootstrap, $utf8)
   }
 }
 finally {
