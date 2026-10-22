@@ -792,7 +792,8 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
                                 ),
                               ),
                             ),
-                            if (_accessType == 'private')
+                            if (_accessType == 'private') ...<Widget>[
+                              const SizedBox(height: 20),
                               _textField(
                                 controller: _contactPhone,
                                 label: 'Telefone para contato',
@@ -804,6 +805,7 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
                                 ],
                                 onChanged: (_) => _markDirty(),
                               ),
+                            ],
                           ],
                         ),
                         _FormSection(
@@ -953,11 +955,12 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
     final image = _images[index];
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -996,21 +999,26 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
               ),
             ],
           ),
+          const SizedBox(height: 16),
           _textField(
             controller: image.url,
             label: 'URL HTTPS da imagem',
             keyName: index == 0 ? 'imageUrl' : 'imageUrl-$index',
             maxLength: 2048,
+            maxWidth: double.infinity,
             keyboardType: TextInputType.url,
             onChanged: (_) => _markDirty(),
           ),
+          const SizedBox(height: 8),
           _textField(
             controller: image.source,
             label: 'Fonte da imagem (opcional)',
             keyName: 'imageSource-$index',
             maxLength: 200,
+            maxWidth: double.infinity,
             onChanged: (_) => _markDirty(),
           ),
+          const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
             child: _ImagePreview(url: image.url.text),
@@ -1056,13 +1064,14 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
     required ValueChanged<String> onChanged,
     FocusNode? focusNode,
     int? maxLength,
+    double maxWidth = 680,
     int maxLines = 1,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 680),
+      constraints: BoxConstraints(maxWidth: maxWidth),
       child: TextFormField(
         key: ValueKey<String>('place-$keyName'),
         controller: controller,
