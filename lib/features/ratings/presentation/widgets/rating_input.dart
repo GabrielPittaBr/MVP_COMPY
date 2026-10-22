@@ -15,11 +15,17 @@ class RatingInput extends StatefulWidget {
   const RatingInput({
     required this.draft,
     required this.onChanged,
+    this.compact = false,
     super.key,
   });
 
   final RatingDraft draft;
   final ValueChanged<RatingDraft> onChanged;
+
+  /// Versão dos cards de participantes: estrelas menores com o rótulo ao
+  /// lado, comentário de 3 linhas e sem o aviso de privacidade (que o passo
+  /// mostra uma vez só, embaixo dos cards).
+  final bool compact;
 
   @override
   State<RatingInput> createState() => _RatingInputState();
@@ -49,8 +55,23 @@ class _RatingInputState extends State<RatingInput> {
             ? AppStrings.ratingCommentReasonHint
             : AppStrings.ratingCommentHint;
 
+    final compact = widget.compact;
+    final label = Text(
+      stars == null ? '' : AppStrings.ratingStarLabels[stars - 1],
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: compact ? 14 : 16,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+    final starRating = StarRating(
+      value: stars,
+      size: compact ? 30 : 40,
+      onChanged: (value) => widget.onChanged(draft.withStars(value)),
+    );
+
     OutlineInputBorder border(Color? color) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(compact ? 18 : 20),
           borderSide: color == null
               ? BorderSide.none
               : BorderSide(color: color, width: 1.5),
@@ -59,28 +80,26 @@ class _RatingInputState extends State<RatingInput> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Center(
-          child: StarRating(
-            value: stars,
-            size: 40,
-            onChanged: (value) => widget.onChanged(draft.withStars(value)),
-          ),
-        ),
-        const SizedBox(height: 6),
-        SizedBox(
-          height: 22,
-          child: Text(
-            stars == null ? '' : AppStrings.ratingStarLabels[stars - 1],
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-        ),
-        const SizedBox(height: 28),
+        if (compact)
+          Row(
+            children: <Widget>[
+              starRating,
+              const SizedBox(width: 6),
+              Expanded(
+                  child: Align(alignment: Alignment.centerLeft, child: label)),
+            ],
+          )
+        else ...<Widget>[
+          Center(child: starRating),
+          const SizedBox(height: 6),
+          SizedBox(height: 22, child: label),
+        ],
+        SizedBox(height: compact ? 8 : 28),
         TextField(
           controller: _comment,
           enabled: !locked,
-          minLines: 5,
-          maxLines: 5,
+          minLines: compact ? 3 : 5,
+          maxLines: compact ? 3 : 5,
           maxLength: kRatingCommentMaxLength,
           buildCounter: (_,
                   {required currentLength, required isFocused, maxLength}) =>
@@ -90,7 +109,7 @@ class _RatingInputState extends State<RatingInput> {
             hintText: hint,
             filled: true,
             fillColor: locked ? AppColors.surfaceCard : AppColors.surfaceMuted,
-            contentPadding: const EdgeInsets.all(16),
+            contentPadding: EdgeInsets.all(compact ? 14 : 16),
             border: border(null),
             enabledBorder: border(reasonMissing ? AppColors.error : null),
             focusedBorder:
@@ -98,58 +117,72 @@ class _RatingInputState extends State<RatingInput> {
             disabledBorder: border(null),
           ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Expanded(
-              child: reasonMissing
-                  ? Semantics(
-                      liveRegion: true,
-                      child: const Row(
-                        children: <Widget>[
-                          Icon(
-                            Icons.error_outline,
-                            size: 16,
-                            color: AppColors.error,
-                          ),
-                          SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              AppStrings.ratingReasonRequired,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.error,
+        if (!compact || reasonMissing) const SizedBox(height: 8),
+        if (!compact || reasonMissing)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                child: reasonMissing
+                    ? Semantics(
+                        liveRegion: true,
+                        child: const Row(
+                          children: <Widget>[
+                            Icon(
+                              Icons.error_outline,
+                              size: 16,
+                              color: AppColors.error,
+                            ),
+                            SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                AppStrings.ratingReasonRequired,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.error,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : const SizedBox.shrink(),
-            ),
-            Text(
-              '${_comment.text.length}/$kRatingCommentMaxLength',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.onSurfaceMuted,
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        const Row(
-          children: <Widget>[
-            Icon(Icons.lock_outline, size: 16, color: AppColors.onSurfaceMuted),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                AppStrings.ratingCommentPrivate,
-                style: TextStyle(fontSize: 13, color: AppColors.onSurfaceMuted),
-              ),
-            ),
-          ],
+              if (!compact)
+                Text(
+                  '${_comment.text.length}/$kRatingCommentMaxLength',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.onSurfaceMuted,
+                  ),
+                ),
+            ],
+          ),
+        if (!compact) ...<Widget>[
+          const SizedBox(height: 20),
+          const RatingPrivacyNote(),
+        ],
+      ],
+    );
+  }
+}
+
+/// "Seu comentário não fica público: só a média aparece." (D13)
+class RatingPrivacyNote extends StatelessWidget {
+  const RatingPrivacyNote({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: <Widget>[
+        Icon(Icons.lock_outline, size: 16, color: AppColors.onSurfaceMuted),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            AppStrings.ratingCommentPrivate,
+            style: TextStyle(fontSize: 13, color: AppColors.onSurfaceMuted),
+          ),
         ),
       ],
     );

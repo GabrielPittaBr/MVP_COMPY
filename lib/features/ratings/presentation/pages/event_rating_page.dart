@@ -8,7 +8,9 @@ import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_status.dart';
+import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/primary_button.dart';
+import '../../../../shared/widgets/user_avatar.dart';
 import '../../../events/presentation/providers/events_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../domain/entities/event_rating_submission.dart';
@@ -18,15 +20,17 @@ import '../../domain/repositories/ratings_repository.dart';
 import '../providers/ratings_providers.dart';
 import '../widgets/rating_input.dart';
 
-/// Passos da avaliação. O passo dos participantes entra no ticket 10.
-enum _RatingStep { event, place }
+/// Passos da avaliação, na ordem em que aparecem.
+enum _RatingStep { event, place, participants }
 
 /// Avaliação de um evento encerrado (tarefa 14), em tela cheia, fora do
 /// shell: `/avaliacao/:eventId`, aberta com `push`.
 ///
-/// O participante avalia o evento e o local; o criador só o local, porque
-/// não avalia o próprio evento (D14). Evento legado sem local pula esse
-/// passo. Tudo vai de uma vez, no fim, para a callable.
+/// O participante avalia o evento, o local e (se quiser) quem jogou; o
+/// criador avalia o local e quem jogou, porque não avalia o próprio evento
+/// (D14). Evento legado sem local pula esse passo, e sem outros
+/// participantes o último some. Tudo vai de uma vez, no fim, para a
+/// callable.
 class EventRatingPage extends ConsumerStatefulWidget {
   const EventRatingPage({required this.eventId, super.key});
 
@@ -38,6 +42,11 @@ class EventRatingPage extends ConsumerStatefulWidget {
 
 class _EventRatingPageState extends ConsumerState<EventRatingPage> {
   final Map<_RatingStep, RatingDraft> _drafts = <_RatingStep, RatingDraft>{};
+
+  /// Notas dos participantes, por uid. Um card pulado guarda a nota para o
+  /// "Desfazer", mas fica fora da validação e do envio.
+  final Map<String, RatingDraft> _people = <String, RatingDraft>{};
+  final Set<String> _skipped = <String>{};
   int _index = 0;
   bool _sending = false;
   bool _sent = false;
@@ -45,12 +54,31 @@ class _EventRatingPageState extends ConsumerState<EventRatingPage> {
   RatingDraft _draftOf(_RatingStep step) =>
       _drafts[step] ?? const RatingDraft();
 
-  bool get _hasInput => _drafts.values.any((draft) => !draft.isEmpty);
+  RatingDraft _personDraft(String uid) => _people[uid] ?? const RatingDraft();
+
+  bool get _hasInput =>
+      _drafts.values.any((draft) => !draft.isEmpty) ||
+      _people.values.any((draft) => !draft.isEmpty);
 
   static List<_RatingStep> _stepsFor(Event event, String uid) => <_RatingStep>[
         if (event.creator.id != uid) _RatingStep.event,
         if (event.placeId != null) _RatingStep.place,
+        if (_othersOf(event, uid).isNotEmpty) _RatingStep.participants,
       ];
+
+  /// Quem jogou, menos a própria pessoa, com o organizador no topo.
+  static List<UserSummary> _othersOf(Event event, String uid) => <UserSummary>[
+        ...event.participants
+            .where((p) => p.id == event.creator.id && p.id != uid),
+        ...event.participants
+            .where((p) => p.id != event.creator.id && p.id != uid),
+      ];
+
+  /// O passo de participantes só trava com nota abaixo de 3 sem motivo; card
+  /// sem estrelas é só alguém não avaliado.
+  bool _participantsValid(List<UserSummary> others) =>
+      others.where((p) => !_skipped.contains(p.id)).every(
+          (p) => RatingValidation.isValid(_personDraft(p.id), required: false));
 
   void _leave() {
     if (context.canPop()) {
@@ -101,6 +129,15 @@ class _EventRatingPageState extends ConsumerState<EventRatingPage> {
               place: steps.contains(_RatingStep.place)
                   ? _draftOf(_RatingStep.place)
                   : null,
+              participants: <ParticipantRating>[
+                for (final person in _othersOf(event, uid))
+                  if (!_skipped.contains(person.id) &&
+                      _personDraft(person.id).stars != null)
+                    ParticipantRating(
+                      uid: person.id,
+                      draft: _personDraft(person.id),
+                    ),
+              ],
             ),
           );
       if (!mounted) return;
@@ -166,7 +203,11 @@ class _EventRatingPageState extends ConsumerState<EventRatingPage> {
     final step = steps[index];
     final draft = _draftOf(step);
     final last = index == steps.length - 1;
-    final canGo = RatingValidation.isValid(draft) && !_sending;
+    final others = _othersOf(event, me.id);
+    final stepValid = step == _RatingStep.participants
+        ? _participantsValid(others)
+        : RatingValidation.isValid(draft);
+    final canGo = stepValid && !_sending;
 
     return PopScope(
       canPop: !_hasInput,
@@ -189,29 +230,44 @@ class _EventRatingPageState extends ConsumerState<EventRatingPage> {
           children: <Widget>[
             _StepProgress(index: index, total: steps.length),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                children: <Widget>[
-                  _TargetHeader(step: step, event: event),
-                  const SizedBox(height: 32),
-                  Text(
-                    step == _RatingStep.event
-                        ? AppStrings.ratingEventQuestion
-                        : AppStrings.ratingPlaceQuestion,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w600,
+              child: step == _RatingStep.participants
+                  ? _ParticipantsStep(
+                      others: others,
+                      organizerId: event.creator.id,
+                      draftOf: _personDraft,
+                      skipped: _skipped,
+                      onChanged: (uid, value) =>
+                          setState(() => _people[uid] = value),
+                      onSkip: (uid) => setState(() => _skipped.add(uid)),
+                      onUndo: (uid) => setState(() => _skipped.remove(uid)),
+                      onSkipAll: () => setState(
+                        () => _skipped.addAll(others.map((p) => p.id)),
+                      ),
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                      children: <Widget>[
+                        _TargetHeader(step: step, event: event),
+                        const SizedBox(height: 32),
+                        Text(
+                          step == _RatingStep.event
+                              ? AppStrings.ratingEventQuestion
+                              : AppStrings.ratingPlaceQuestion,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        RatingInput(
+                          key: ValueKey<_RatingStep>(step),
+                          draft: draft,
+                          onChanged: (value) =>
+                              setState(() => _drafts[step] = value),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  RatingInput(
-                    key: ValueKey<_RatingStep>(step),
-                    draft: draft,
-                    onChanged: (value) => setState(() => _drafts[step] = value),
-                  ),
-                ],
-              ),
             ),
           ],
         ),
@@ -232,6 +288,235 @@ class _EventRatingPageState extends ConsumerState<EventRatingPage> {
                       : () => setState(() => _index = index + 1),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Último passo, opcional: um card por pessoa que jogou.
+class _ParticipantsStep extends StatelessWidget {
+  const _ParticipantsStep({
+    required this.others,
+    required this.organizerId,
+    required this.draftOf,
+    required this.skipped,
+    required this.onChanged,
+    required this.onSkip,
+    required this.onUndo,
+    required this.onSkipAll,
+  });
+
+  final List<UserSummary> others;
+  final String organizerId;
+  final RatingDraft Function(String uid) draftOf;
+  final Set<String> skipped;
+  final void Function(String uid, RatingDraft draft) onChanged;
+  final ValueChanged<String> onSkip;
+  final ValueChanged<String> onUndo;
+  final VoidCallback onSkipAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      children: <Widget>[
+        Wrap(
+          spacing: 10,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: <Widget>[
+            const Text(
+              AppStrings.ratingParticipantsQuestion,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+            ),
+            Container(
+              height: 24,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceMuted,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                AppStrings.ratingOptional,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed:
+                others.every((p) => skipped.contains(p.id)) ? null : onSkipAll,
+            child: const Text(AppStrings.ratingSkipAll),
+          ),
+        ),
+        for (final person in others) ...<Widget>[
+          if (skipped.contains(person.id))
+            _SkippedCard(
+              key: ValueKey<String>('participant-${person.id}'),
+              person: person,
+              onUndo: () => onUndo(person.id),
+            )
+          else
+            _PersonCard(
+              key: ValueKey<String>('participant-${person.id}'),
+              person: person,
+              isOrganizer: person.id == organizerId,
+              draft: draftOf(person.id),
+              onChanged: (draft) => onChanged(person.id, draft),
+              onSkip: () => onSkip(person.id),
+            ),
+          const SizedBox(height: 12),
+        ],
+        const RatingPrivacyNote(),
+      ],
+    );
+  }
+}
+
+class _PersonCard extends StatelessWidget {
+  const _PersonCard({
+    required this.person,
+    required this.isOrganizer,
+    required this.draft,
+    required this.onChanged,
+    required this.onSkip,
+    super.key,
+  });
+
+  final UserSummary person;
+  final bool isOrganizer;
+  final RatingDraft draft;
+  final ValueChanged<RatingDraft> onChanged;
+  final VoidCallback onSkip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.outline),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              UserAvatar(user: person, radius: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: <Widget>[
+                        Text(
+                          person.name,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (isOrganizer) const _OrganizerTag(),
+                      ],
+                    ),
+                    Text(
+                      person.handle,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.onSurfaceMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: onSkip,
+                child: const Text(AppStrings.ratingSkip),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          RatingInput(draft: draft, onChanged: onChanged, compact: true),
+        ],
+      ),
+    );
+  }
+}
+
+/// Card de quem foi pulado: "Pulado · Desfazer".
+class _SkippedCard extends StatelessWidget {
+  const _SkippedCard({required this.person, required this.onUndo, super.key});
+
+  final UserSummary person;
+  final VoidCallback onUndo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.outline),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: <Widget>[
+          UserAvatar(user: person, radius: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  person.name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Text(
+                  AppStrings.ratingSkipped,
+                  style:
+                      TextStyle(fontSize: 13, color: AppColors.onSurfaceMuted),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onUndo,
+            child: const Text(AppStrings.ratingUndo),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrganizerTag extends StatelessWidget {
+  const _OrganizerTag();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: const Text(
+        AppStrings.eventLiveOrganizer,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
         ),
       ),
     );

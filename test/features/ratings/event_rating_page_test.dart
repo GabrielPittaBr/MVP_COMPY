@@ -34,6 +34,12 @@ const _participante = UserSummary(
   handle: '@brunolima',
   avatarUrl: '',
 );
+const _outra = UserSummary(
+  id: 'u_outra',
+  name: 'Carla Mendes',
+  handle: '@carlamendes',
+  avatarUrl: '',
+);
 
 const _local = EventPlaceSnapshot(
   name: 'Parque do Trabalhador',
@@ -46,7 +52,15 @@ const _local = EventPlaceSnapshot(
   coordinates: LatLng(-29.65, -50.78),
 );
 
-Event _encerrado({bool comLocal = true}) => Event(
+Event _encerrado({
+  bool comLocal = true,
+  List<UserSummary> participantes = const <UserSummary>[
+    _dono,
+    _participante,
+    _outra,
+  ],
+}) =>
+    Event(
       id: 'evt_fim',
       title: 'Rachão',
       sport: Sport.basquete,
@@ -56,10 +70,10 @@ Event _encerrado({bool comLocal = true}) => Event(
       durationMinutes: 60,
       skillLevel: SkillLevel.todos,
       totalSpots: 10,
-      remainingSpots: 8,
+      remainingSpots: 10 - participantes.length,
       bannerUrl: '',
       creator: _dono,
-      participants: const <UserSummary>[_dono, _participante],
+      participants: participantes,
       placeId: comLocal ? 'place_1' : null,
       placeSnapshot: comLocal ? _local : null,
       endedAt: _agora.subtract(const Duration(minutes: 50)),
@@ -95,7 +109,7 @@ Future<void> _abrir(
   Event? evento,
   _Avaliacoes? avaliacoes,
 }) async {
-  await tester.binding.setSurfaceSize(const Size(420, 1000));
+  await tester.binding.setSurfaceSize(const Size(420, 1400));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   final router = GoRouter(
     initialLocation: '/inicio',
@@ -142,31 +156,43 @@ Finder _botao(String label) => find.widgetWithText(FilledButton, label);
 bool _ativo(WidgetTester tester, String label) =>
     tester.widget<FilledButton>(_botao(label)).onPressed != null;
 
-TextField _comentario(WidgetTester tester) =>
-    tester.widget<TextField>(find.byType(TextField));
+Finder _card(UserSummary pessoa) =>
+    find.byKey(ValueKey<String>('participant-${pessoa.id}'));
 
-Future<void> _estrelas(WidgetTester tester, int n) async {
-  await tester.tap(find.byKey(ValueKey<String>('star-$n')));
+/// Toca a [n]-ésima estrela — no card de [pessoa], se houver.
+Future<void> _estrelas(WidgetTester tester, int n,
+    {UserSummary? pessoa}) async {
+  final estrela = find.byKey(ValueKey<String>('star-$n'));
+  await tester.tap(
+    pessoa == null
+        ? estrela
+        : find.descendant(of: _card(pessoa), matching: estrela),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _continuar(WidgetTester tester) async {
+  await tester.tap(_botao(AppStrings.ratingContinue));
   await tester.pumpAndSettle();
 }
 
 void main() {
-  testWidgets('o participante avalia o evento e o local e envia',
+  testWidgets('o participante passa por evento, local e quem jogou',
       (tester) async {
     final avaliacoes = _Avaliacoes();
     await _abrir(tester, quem: _participante, avaliacoes: avaliacoes);
 
-    expect(find.text(AppStrings.ratingStep(1, 2)), findsOneWidget);
+    expect(find.text(AppStrings.ratingStep(1, 3)), findsOneWidget);
     expect(find.text(AppStrings.ratingEventQuestion), findsOneWidget);
     // Sem estrelas: não avança e o comentário fica travado.
     expect(_ativo(tester, AppStrings.ratingContinue), isFalse);
-    expect(_comentario(tester).enabled, isFalse);
+    expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
     expect(find.text(AppStrings.ratingCommentLocked), findsOneWidget);
 
     // Nota baixa: o comentário destrava e vira obrigatório.
     await _estrelas(tester, 2);
     expect(find.text('Ruim'), findsOneWidget);
-    expect(_comentario(tester).enabled, isTrue);
+    expect(tester.widget<TextField>(find.byType(TextField)).enabled, isTrue);
     expect(find.text(AppStrings.ratingCommentReasonHint), findsOneWidget);
     expect(find.text(AppStrings.ratingReasonRequired), findsOneWidget);
     expect(_ativo(tester, AppStrings.ratingContinue), isFalse);
@@ -174,15 +200,24 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Começou bem atrasado');
     await tester.pump();
     expect(find.text(AppStrings.ratingReasonRequired), findsNothing);
-    expect(_ativo(tester, AppStrings.ratingContinue), isTrue);
+    await _continuar(tester);
 
-    await tester.tap(_botao(AppStrings.ratingContinue));
-    await tester.pumpAndSettle();
-    expect(find.text(AppStrings.ratingStep(2, 2)), findsOneWidget);
+    expect(find.text(AppStrings.ratingStep(2, 3)), findsOneWidget);
     expect(find.text(AppStrings.ratingPlaceQuestion), findsOneWidget);
-    expect(_ativo(tester, AppStrings.ratingSubmit), isFalse);
-
     await _estrelas(tester, 4);
+    await _continuar(tester);
+
+    expect(find.text(AppStrings.ratingStep(3, 3)), findsOneWidget);
+    expect(find.text(AppStrings.ratingParticipantsQuestion), findsOneWidget);
+    // A própria pessoa nunca aparece; o organizador vem com a etiqueta.
+    expect(_card(_participante), findsNothing);
+    expect(_card(_dono), findsOneWidget);
+    expect(_card(_outra), findsOneWidget);
+    expect(find.text(AppStrings.eventLiveOrganizer), findsOneWidget);
+    // O passo é opcional: sem nota nenhuma já dá para enviar.
+    expect(_ativo(tester, AppStrings.ratingSubmit), isTrue);
+
+    await _estrelas(tester, 5, pessoa: _dono);
     await tester.tap(_botao(AppStrings.ratingSubmit));
     await tester.pumpAndSettle();
 
@@ -192,6 +227,10 @@ void main() {
         raterId: 'u_participante',
         event: RatingDraft(stars: 2, comment: 'Começou bem atrasado'),
         place: RatingDraft(stars: 4),
+        // A Carla ficou sem estrelas: não entra no envio.
+        participants: <ParticipantRating>[
+          ParticipantRating(uid: 'u_dono', draft: RatingDraft(stars: 5)),
+        ],
       ),
     ]);
     expect(find.text(AppStrings.ratingSent), findsOneWidget);
@@ -201,21 +240,135 @@ void main() {
     expect(find.text('detalhe do evento'), findsOneWidget);
   });
 
-  testWidgets('o criador não tem o passo do evento (D14)', (tester) async {
+  testWidgets('o criador faz Local → Participantes, sem o evento (D14)',
+      (tester) async {
     await _abrir(tester, quem: _dono);
 
-    expect(find.text(AppStrings.ratingStep(1, 1)), findsOneWidget);
+    expect(find.text(AppStrings.ratingStep(1, 2)), findsOneWidget);
     expect(find.text(AppStrings.ratingPlaceQuestion), findsOneWidget);
     expect(find.text(AppStrings.ratingEventQuestion), findsNothing);
+
+    await _estrelas(tester, 4);
+    await _continuar(tester);
+
+    expect(find.text(AppStrings.ratingStep(2, 2)), findsOneWidget);
+    expect(_card(_dono), findsNothing);
+    expect(_card(_participante), findsOneWidget);
+    expect(_card(_outra), findsOneWidget);
+    // Ninguém mais é organizador na lista do próprio organizador.
+    expect(find.text(AppStrings.eventLiveOrganizer), findsNothing);
+  });
+
+  testWidgets('sem outros participantes, o passo some', (tester) async {
+    await _abrir(
+      tester,
+      quem: _dono,
+      evento: _encerrado(participantes: const <UserSummary>[_dono]),
+    );
+
+    expect(find.text(AppStrings.ratingStep(1, 1)), findsOneWidget);
+    expect(find.text(AppStrings.ratingSubmit), findsOneWidget);
   });
 
   testWidgets('evento legado sem local pula o passo do local', (tester) async {
-    await _abrir(tester,
-        quem: _participante, evento: _encerrado(comLocal: false));
+    await _abrir(
+      tester,
+      quem: _participante,
+      evento: _encerrado(comLocal: false),
+    );
 
-    expect(find.text(AppStrings.ratingStep(1, 1)), findsOneWidget);
+    expect(find.text(AppStrings.ratingStep(1, 2)), findsOneWidget);
     expect(find.text(AppStrings.ratingEventQuestion), findsOneWidget);
-    expect(find.text(AppStrings.ratingSubmit), findsOneWidget);
+    await _estrelas(tester, 5);
+    await _continuar(tester);
+    expect(find.text(AppStrings.ratingParticipantsQuestion), findsOneWidget);
+  });
+
+  group('passo de participantes', () {
+    Future<void> irAteParticipantes(WidgetTester tester, _Avaliacoes a) async {
+      await _abrir(tester, quem: _dono, avaliacoes: a);
+      await _estrelas(tester, 4);
+      await _continuar(tester);
+    }
+
+    testWidgets('"Pular todas" pula os cards e envia sem participantes',
+        (tester) async {
+      final avaliacoes = _Avaliacoes();
+      await irAteParticipantes(tester, avaliacoes);
+
+      await tester.tap(find.text(AppStrings.ratingSkipAll));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.ratingSkipped), findsNWidgets(2));
+      expect(find.text(AppStrings.ratingUndo), findsNWidgets(2));
+
+      await tester.tap(_botao(AppStrings.ratingSubmit));
+      await tester.pumpAndSettle();
+      expect(avaliacoes.enviadas.single.participants, isEmpty);
+    });
+
+    testWidgets('"Desfazer" devolve o card com a nota que já tinha',
+        (tester) async {
+      final avaliacoes = _Avaliacoes();
+      await irAteParticipantes(tester, avaliacoes);
+      await _estrelas(tester, 5, pessoa: _outra);
+
+      await tester.tap(find.descendant(
+        of: _card(_outra),
+        matching: find.text(AppStrings.ratingSkip),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.ratingSkipped), findsOneWidget);
+
+      await tester.tap(find.text(AppStrings.ratingUndo));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.ratingSkipped), findsNothing);
+      expect(
+        find.descendant(of: _card(_outra), matching: find.text('Excelente')),
+        findsOneWidget,
+      );
+
+      await tester.tap(_botao(AppStrings.ratingSubmit));
+      await tester.pumpAndSettle();
+      expect(
+        avaliacoes.enviadas.single.participants,
+        const <ParticipantRating>[
+          ParticipantRating(uid: 'u_outra', draft: RatingDraft(stars: 5)),
+        ],
+      );
+    });
+
+    testWidgets('nota abaixo de 3 sem motivo trava o envio', (tester) async {
+      await irAteParticipantes(tester, _Avaliacoes());
+
+      await _estrelas(tester, 1, pessoa: _participante);
+      expect(find.text(AppStrings.ratingReasonRequired), findsOneWidget);
+      expect(_ativo(tester, AppStrings.ratingSubmit), isFalse);
+
+      await tester.enterText(
+        find.descendant(
+          of: _card(_participante),
+          matching: find.byType(TextField),
+        ),
+        'Não apareceu',
+      );
+      await tester.pump();
+      expect(_ativo(tester, AppStrings.ratingSubmit), isTrue);
+    });
+
+    testWidgets('pular o card com nota baixa sem motivo destrava o envio',
+        (tester) async {
+      await irAteParticipantes(tester, _Avaliacoes());
+      await _estrelas(tester, 2, pessoa: _participante);
+      expect(_ativo(tester, AppStrings.ratingSubmit), isFalse);
+
+      await tester.tap(find.descendant(
+        of: _card(_participante),
+        matching: find.text(AppStrings.ratingSkip),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(_ativo(tester, AppStrings.ratingSubmit), isTrue);
+    });
   });
 
   testWidgets('fechar com algo preenchido pede confirmação', (tester) async {
@@ -247,34 +400,38 @@ void main() {
     expect(find.text('abrir avaliação'), findsOneWidget);
   });
 
-  testWidgets('quem já avaliou recebe o aviso e o fluxo fecha', (tester) async {
-    await _abrir(
-      tester,
-      quem: _participante,
-      evento: _encerrado(comLocal: false),
-      avaliacoes: _Avaliacoes(erro: const RatingAlreadySubmittedException()),
-    );
-    await _estrelas(tester, 5);
-    await tester.tap(_botao(AppStrings.ratingSubmit));
-    await tester.pumpAndSettle();
+  group('erros do envio', () {
+    /// Evento só com o criador e o participante, sem local: dois passos.
+    Future<void> enviar(WidgetTester tester, Object erro) async {
+      await _abrir(
+        tester,
+        quem: _participante,
+        evento: _encerrado(
+          comLocal: false,
+          participantes: const <UserSummary>[_dono, _participante],
+        ),
+        avaliacoes: _Avaliacoes(erro: erro),
+      );
+      await _estrelas(tester, 5);
+      await _continuar(tester);
+      await tester.tap(_botao(AppStrings.ratingSubmit));
+      await tester.pumpAndSettle();
+    }
 
-    expect(find.text(AppStrings.ratingErrorAlreadyRated), findsOneWidget);
-    expect(find.text('abrir avaliação'), findsOneWidget);
-  });
+    testWidgets('quem já avaliou recebe o aviso e o fluxo fecha',
+        (tester) async {
+      await enviar(tester, const RatingAlreadySubmittedException());
 
-  testWidgets('sem conexão, o erro aparece e dá para tentar de novo',
-      (tester) async {
-    await _abrir(
-      tester,
-      quem: _participante,
-      evento: _encerrado(comLocal: false),
-      avaliacoes: _Avaliacoes(erro: const RatingOfflineException()),
-    );
-    await _estrelas(tester, 5);
-    await tester.tap(_botao(AppStrings.ratingSubmit));
-    await tester.pumpAndSettle();
+      expect(find.text(AppStrings.ratingErrorAlreadyRated), findsOneWidget);
+      expect(find.text('abrir avaliação'), findsOneWidget);
+    });
 
-    expect(find.text(AppStrings.ratingErrorOffline), findsOneWidget);
-    expect(_ativo(tester, AppStrings.ratingSubmit), isTrue);
+    testWidgets('sem conexão, o erro aparece e dá para tentar de novo',
+        (tester) async {
+      await enviar(tester, const RatingOfflineException());
+
+      expect(find.text(AppStrings.ratingErrorOffline), findsOneWidget);
+      expect(_ativo(tester, AppStrings.ratingSubmit), isTrue);
+    });
   });
 }

@@ -165,6 +165,12 @@ abstract final class AppStrings {
   static String ratingStep(int index, int total) => 'Passo $index de $total';
   static const String ratingEventQuestion = 'Como foi o evento?';
   static const String ratingPlaceQuestion = 'E o local?';
+  static const String ratingParticipantsQuestion = 'Quem jogou com você';
+  static const String ratingOptional = 'Opcional';
+  static const String ratingSkip = 'Pular';
+  static const String ratingSkipAll = 'Pular todas';
+  static const String ratingSkipped = 'Pulado';
+  static const String ratingUndo = 'Desfazer';
   static const List<String> ratingStarLabels = <String>[
     'Péssimo',
     'Ruim',

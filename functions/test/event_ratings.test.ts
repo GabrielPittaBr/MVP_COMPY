@@ -157,6 +157,50 @@ test('o criador avalia só o local (D14)', async () => {
   assert.deepEqual(gateway.eventos.get(EVENTO)?.ratedBy, [CRIADOR]);
 });
 
+test('o criador avalia o local e quem jogou', async () => {
+  const { gateway, enviar } = cenario();
+
+  assert.deepEqual(
+    await enviar(CRIADOR, {
+      eventId: EVENTO,
+      place: { stars: 4 },
+      participants: [
+        { uid: PARTICIPANTE, stars: 5 },
+        { uid: OUTRO, stars: 2, comment: 'Saiu no meio do jogo.' },
+      ],
+    }),
+    { ratedTargets: 3 },
+  );
+  assert.equal(gateway.ratings.get(`${EVENTO}_${CRIADOR}_user_${OUTRO}`)?.comment, 'Saiu no meio do jogo.');
+  assert.deepEqual(gateway.resumos.get(`user_${PARTICIPANTE}`), { count: 1, sum: 5, starCounts: { '5': 1 } });
+  assert.deepEqual(gateway.resumos.get(`user_${OUTRO}`), { count: 1, sum: 2, starCounts: { '2': 1 } });
+});
+
+test('o participante pode não avaliar ninguém (passo opcional)', async () => {
+  const { gateway, enviar } = cenario();
+
+  assert.deepEqual(await enviar(PARTICIPANTE, doParticipante({ participants: [] })), { ratedTargets: 2 });
+  assert.equal([...gateway.resumos.keys()].some((id) => id.startsWith('user_')), false);
+});
+
+test('avaliações de pessoas diferentes formam a média do Usuário', async () => {
+  const { gateway, enviar } = cenario();
+  await enviar(PARTICIPANTE, doParticipante({ participants: [{ uid: OUTRO, stars: 5 }] }));
+  await enviar(CRIADOR, { eventId: EVENTO, place: { stars: 4 }, participants: [{ uid: OUTRO, stars: 4 }] });
+
+  assert.deepEqual(gateway.resumos.get(`user_${OUTRO}`), { count: 2, sum: 9, starCounts: { '5': 1, '4': 1 } });
+});
+
+test('participante de evento legado (só com participants) também é avaliável', async () => {
+  // O gateway real deriva os ids de `participants` quando falta `participantIds`.
+  const { enviar } = cenario(evento({ participantIds: [CRIADOR, PARTICIPANTE, OUTRO] }));
+
+  assert.deepEqual(
+    await enviar(PARTICIPANTE, doParticipante({ participants: [{ uid: OUTRO, stars: 3 }] })),
+    { ratedTargets: 3 },
+  );
+});
+
 test('evento legado sem local: o participante avalia só o evento', async () => {
   const { enviar } = cenario(evento({ placeId: null }));
 
@@ -212,6 +256,12 @@ test('matriz de validação contra o evento', async (t) => {
   await t.test('evento com local e sem nota do local → invalid-argument', async () => {
     await falhaCom(
       cenario().enviar(PARTICIPANTE, { eventId: EVENTO, event: { stars: 4 }, participants: [] }),
+      'invalid-argument',
+    );
+  });
+  await t.test('nota baixa de participante sem motivo → invalid-argument', async () => {
+    await falhaCom(
+      cenario().enviar(PARTICIPANTE, doParticipante({ participants: [{ uid: OUTRO, stars: 1 }] })),
       'invalid-argument',
     );
   });

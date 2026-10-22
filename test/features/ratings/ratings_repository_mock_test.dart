@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mvp_compy/core/constants/app_strings.dart';
 import 'package:mvp_compy/features/events/data/datasources/in_memory_events_store.dart';
+import 'package:mvp_compy/features/ratings/data/datasources/in_memory_ratings_store.dart';
 import 'package:mvp_compy/features/ratings/data/repositories/ratings_repository_impl.dart';
 import 'package:mvp_compy/features/ratings/domain/entities/event_rating_submission.dart';
 import 'package:mvp_compy/features/ratings/domain/entities/rating_draft.dart';
@@ -17,11 +18,19 @@ void main() {
       eventId: 'evt_006',
       raterId: 'u_joao',
       event: RatingDraft(stars: 5),
+      participants: <ParticipantRating>[
+        ParticipantRating(uid: 'u_carlao', draft: RatingDraft(stars: 4)),
+      ],
     );
 
     test('registra a avaliação e marca o ratedBy do evento', () async {
       await repo.submit(doJoao);
 
+      expect(InMemoryRatingsStore.instance.submissions.last, doJoao);
+      expect(
+        InMemoryRatingsStore.instance.submissions.last.participants.single.uid,
+        'u_carlao',
+      );
       expect(
         InMemoryEventsStore.instance.getById('evt_006')!.ratedBy,
         contains('u_joao'),
