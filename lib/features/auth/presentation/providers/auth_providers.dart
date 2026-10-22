@@ -53,12 +53,13 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     );
   }
 
-  /// Cadastro manual.
+  /// Cadastro manual, com a foto de perfil opcional.
   Future<void> signUpWithEmail({
     required String name,
     required String username,
     required String email,
     required String password,
+    Uint8List? photo,
   }) async {
     state = const AsyncLoading<AuthUser?>();
     state = await AsyncValue.guard<AuthUser?>(
@@ -67,6 +68,7 @@ class AuthController extends AsyncNotifier<AuthUser?> {
         username: username,
         email: email,
         password: password,
+        photo: photo,
       ),
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../entities/auth_user.dart';
 
 /// Interface do repositório de autenticação.
@@ -15,11 +17,15 @@ abstract interface class AuthRepository {
   });
 
   /// Cadastro manual: cria conta no FirebaseAuth + perfil no Firestore.
+  ///
+  /// [photo] é a foto de perfil já recortada, em JPEG; `null` deixa a
+  /// inicial do nome. Se o envio dela falhar, o cadastro segue sem foto.
   Future<AuthUser> signUpWithEmail({
     required String name,
     required String username,
     required String email,
     required String password,
+    Uint8List? photo,
   });
 
   /// Login / cadastro via Google.

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,6 +52,7 @@ class _FakeAuthRepository implements AuthRepository {
     required String username,
     required String email,
     required String password,
+    Uint8List? photo,
   }) =>
       throw UnimplementedError();
 
