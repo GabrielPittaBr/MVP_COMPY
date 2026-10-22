@@ -16,10 +16,15 @@ class GreetingHeader extends StatelessWidget {
     required this.userName,
     required this.onAvatarTap,
     required this.onSettingsTap,
+    this.avatarUrl,
     super.key,
   });
 
   final String userName;
+
+  /// Foto do perfil (`users/{uid}.avatarUrl`). Enquanto o perfil carrega,
+  /// fica a inicial de [userName].
+  final String? avatarUrl;
 
   /// Atalho para a aba Perfil.
   final VoidCallback onAvatarTap;
@@ -48,7 +53,11 @@ class GreetingHeader extends StatelessWidget {
                     radius: 18,
                     backgroundColor: AppColors.surfaceMuted,
                     backgroundImage: CachedNetworkImageProvider(
-                      AppAssets.avatar(userName),
+                      // Vazio também cai na inicial: `CachedNetworkImageProvider('')`
+                      // estoura, e perfis antigos podem não ter o campo.
+                      avatarUrl == null || avatarUrl!.isEmpty
+                          ? AppAssets.avatar(userName)
+                          : avatarUrl!,
                     ),
                   ),
                 ),

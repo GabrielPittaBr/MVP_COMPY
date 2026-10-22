@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../features/events/domain/entities/events_filter.dart';
 import '../../../../features/events/presentation/providers/events_providers.dart';
 import '../../../../features/events/presentation/widgets/events_filter_sheet.dart';
+import '../../../../features/profile/presentation/providers/profile_providers.dart';
 import '../../../../shared/widgets/event_card.dart';
 import '../providers/home_providers.dart';
 import '../widgets/category_circle.dart';
@@ -23,6 +24,7 @@ class HomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userName = ref.watch(greetingNameProvider);
+    final avatarUrl = ref.watch(currentUserSummaryProvider).valueOrNull?.avatarUrl;
     final categories = ref.watch(categoriesProvider);
     final eventsAsync = ref.watch(nearbyEventsProvider);
 
@@ -35,6 +37,7 @@ class HomePage extends ConsumerWidget {
             children: <Widget>[
               GreetingHeader(
                 userName: userName,
+                avatarUrl: avatarUrl,
                 // `go`, e não `push`: o avatar troca de aba. Mesmo caminho do
                 // carrossel de categorias logo abaixo, que leva a Eventos.
                 onAvatarTap: () => context.go(AppRoutes.profile),
