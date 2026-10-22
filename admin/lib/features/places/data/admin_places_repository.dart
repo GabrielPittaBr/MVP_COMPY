@@ -263,7 +263,7 @@ class FirebaseAdminPlacesRepository implements AdminPlacesRepository {
 
   @override
   Future<String> createPlace(AdminPlaceDraft draft) async {
-    final fields = draft.toFirestoreFields();
+    final fields = draft.toFirestoreFields(requireAccessType: true);
     final reference = _firestore.collection('places').doc();
     await _firestore.runTransaction<void>((transaction) async {
       final existing = await transaction.get(reference);
@@ -309,10 +309,14 @@ class FirebaseAdminPlacesRepository implements AdminPlacesRepository {
           AdminPlaceOperationErrorCode.conflict,
         );
       }
-      transaction.update(reference, <String, Object?>{
+      final updateFields = <String, Object?>{
         ...fields,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
+      if (draft.accessType != 'private') {
+        updateFields['contactPhone'] = FieldValue.delete();
+      }
+      transaction.update(reference, updateFields);
     });
   }
 

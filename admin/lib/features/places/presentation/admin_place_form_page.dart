@@ -117,6 +117,8 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
       'latitude',
       'longitude',
       'imageUrl',
+      'accessType',
+      'contactPhone',
     ])
       key: key == 'name' ? _nameFocus : FocusNode(),
   };
@@ -130,10 +132,12 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
   final _postalCode = TextEditingController();
   final _latitude = TextEditingController();
   final _longitude = TextEditingController();
-  final _imageUrl = TextEditingController();
+  final _contactPhone = TextEditingController();
 
   late String _stateCode;
   late List<String> _sports;
+  late List<_PlaceImageInput> _images;
+  String? _accessType;
   String? _primarySport;
   double? _latitudeValue;
   double? _longitudeValue;
@@ -152,6 +156,8 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
     super.initState();
     _stateCode = 'RS';
     _sports = <String>[];
+    _images = <_PlaceImageInput>[_PlaceImageInput()];
+    _accessType = 'public';
     final place = widget.place;
     if (place != null) {
       _latestRemotePlace = place;
@@ -206,7 +212,14 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
     _longitude.text = draft.longitude == null
         ? ''
         : _formatCoordinate(draft.longitude!);
-    _imageUrl.text = draft.imageUrl;
+    for (final image in _images) {
+      image.dispose();
+    }
+    _images = draft.effectiveImages
+        .map((image) => _PlaceImageInput(url: image.url, source: image.source))
+        .toList();
+    _accessType = draft.accessType;
+    _contactPhone.text = formatAdminBrazilianPhone(draft.contactPhone);
   }
 
   @override
@@ -226,9 +239,12 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
       _postalCode,
       _latitude,
       _longitude,
-      _imageUrl,
+      _contactPhone,
     ]) {
       controller.dispose();
+    }
+    for (final image in _images) {
+      image.dispose();
     }
     super.dispose();
   }
@@ -247,14 +263,51 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
     primarySport: _primarySport,
     latitude: _latitudeValue,
     longitude: _longitudeValue,
-    imageUrl: _imageUrl.text,
+    imageUrl: _images.isEmpty ? '' : _images.first.url.text,
+    images: List<AdminPlaceImage>.unmodifiable(
+      _images.map(
+        (image) =>
+            AdminPlaceImage(url: image.url.text, source: image.source.text),
+      ),
+    ),
+    accessType: _accessType,
+    contactPhone: _contactPhone.text,
   );
+
+  void _addImage() {
+    if (_images.length >= 8) return;
+    setState(() {
+      _images.add(_PlaceImageInput());
+      _dirty = true;
+    });
+  }
+
+  void _removeImage(int index) {
+    if (_images.length <= 1) return;
+    setState(() {
+      _images.removeAt(index).dispose();
+      _dirty = true;
+    });
+  }
+
+  void _moveImage(int index, int offset) {
+    final destination = index + offset;
+    if (destination < 0 || destination >= _images.length) return;
+    setState(() {
+      final image = _images.removeAt(index);
+      _images.insert(destination, image);
+      _dirty = true;
+    });
+  }
 
   void _markDirty() {
     setState(() => _dirty = true);
   }
 
-  String? _draftError(String key) => _submitted ? _draft.validate()[key] : null;
+  Map<String, String> get _validationErrors =>
+      _draft.validate(requireAccessType: _isCreating);
+
+  String? _draftError(String key) => _submitted ? _validationErrors[key] : null;
 
   Future<void> _submit() async {
     setState(() {
@@ -263,7 +316,7 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
       _lastOperationError = null;
     });
     final validForm = _formKey.currentState?.validate() ?? false;
-    final errors = _draft.validate();
+    final errors = _validationErrors;
     if (!validForm || errors.isNotEmpty) {
       _focusFirstError(errors);
       return;
@@ -299,7 +352,10 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
 
   void _focusFirstError(Map<String, String> errors) {
     final firstInvalidField = errors.isEmpty ? null : errors.keys.first;
-    (_fieldFocusNodes[firstInvalidField] ?? _nameFocus).requestFocus();
+    final focusKey = firstInvalidField == 'images'
+        ? 'imageUrl'
+        : firstInvalidField;
+    (_fieldFocusNodes[focusKey] ?? _nameFocus).requestFocus();
   }
 
   String _messageForError(Object error) {
@@ -487,8 +543,7 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
                     const _CachedPlaceBanner(),
                   if (remoteChanged)
                     _FormMessage(
-                      message:
-                          'Outra alteração foi recebida do servidor. Seus campos foram preservados; recarregue para usar a versão atual.',
+                      message: 'Outra alteração foi recebida do servidor. Seus campos foram preservados; recarregue para usar a versão atual.',
                       actionLabel: 'Recarregar dados',
                       onAction: _reloadLatest,
                     ),
@@ -698,9 +753,62 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
                           ],
                         ),
                         _FormSection(
+                          title: 'Acesso',
+                          children: <Widget>[
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: SizedBox(
+                                width: 330,
+                                child: DropdownButtonFormField<String>(
+                                  key: const ValueKey<String>(
+                                    'place-accessType',
+                                  ),
+                                  initialValue: _accessType,
+                                  focusNode: _fieldFocusNodes['accessType'],
+                                  decoration: InputDecoration(
+                                    labelText: 'Tipo de local',
+                                    hintText: 'Selecione',
+                                    helperText: _accessType == null
+                                        ? 'Este local ainda não tem tipo informado.'
+                                        : null,
+                                    errorText: _draftError('accessType'),
+                                  ),
+                                  items: const <DropdownMenuItem<String>>[
+                                    DropdownMenuItem<String>(
+                                      value: 'public',
+                                      child: Text('Público'),
+                                    ),
+                                    DropdownMenuItem<String>(
+                                      value: 'private',
+                                      child: Text('Privado'),
+                                    ),
+                                  ],
+                                  onChanged: _submitting
+                                      ? null
+                                      : (value) => setState(() {
+                                          _accessType = value;
+                                          _dirty = true;
+                                        }),
+                                ),
+                              ),
+                            ),
+                            if (_accessType == 'private')
+                              _textField(
+                                controller: _contactPhone,
+                                label: 'Telefone para contato',
+                                keyName: 'contactPhone',
+                                keyboardType: TextInputType.phone,
+                                maxLength: 15,
+                                inputFormatters: <TextInputFormatter>[
+                                  AdminBrazilianPhoneInputFormatter(),
+                                ],
+                                onChanged: (_) => _markDirty(),
+                              ),
+                          ],
+                        ),
+                        _FormSection(
                           title: 'Localização',
-                          description:
-                              'Toque no mapa para posicionar o marcador ou edite latitude e longitude.',
+                          description: 'Toque no mapa para posicionar o marcador ou edite latitude e longitude.',
                           children: <Widget>[
                             _buildMapPicker(draft),
                             const SizedBox(height: 16),
@@ -729,27 +837,33 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
                             if (draft.isFarFromTaquara) ...<Widget>[
                               const SizedBox(height: 12),
                               const _FormMessage(
-                                message:
-                                    'Este ponto está a mais de 50 km de Taquara. Confira se as coordenadas estão corretas; o aviso não impede o cadastro.',
+                                message: 'Este ponto está a mais de 50 km de Taquara. Confira se as coordenadas estão corretas; o aviso não impede o cadastro.',
                                 isWarning: true,
                               ),
                             ],
                           ],
                         ),
                         _FormSection(
-                          title: 'Imagem',
+                          title: 'Imagens',
+                          description: 'A primeira imagem será usada como capa. Você pode adicionar até 8 fotos.',
                           children: <Widget>[
-                            _textField(
-                              controller: _imageUrl,
-                              label: 'URL HTTPS da imagem',
-                              keyName: 'imageUrl',
-                              maxLength: 2048,
-                              keyboardType: TextInputType.url,
-                              onChanged: (_) => _markDirty(),
-                            ),
+                            for (var index = 0; index < _images.length; index++)
+                              _imageEditor(index),
+                            if (_draftError('images') case final message?)
+                              _InlineFieldError(message: message),
                             Align(
                               alignment: Alignment.centerLeft,
-                              child: _ImagePreview(url: _imageUrl.text),
+                              child: OutlinedButton.icon(
+                                onPressed: _submitting || _images.length >= 8
+                                    ? null
+                                    : _addImage,
+                                icon: const Icon(
+                                  Icons.add_photo_alternate_outlined,
+                                ),
+                                label: Text(
+                                  'Adicionar imagem (${_images.length}/8)',
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -829,6 +943,77 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _imageEditor(int index) {
+    final image = _images[index];
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Chip(
+                avatar: Icon(
+                  index == 0 ? Icons.photo : Icons.photo_outlined,
+                  size: 16,
+                ),
+                label: Text(index == 0 ? 'Capa' : 'Imagem ${index + 1}'),
+                visualDensity: VisualDensity.compact,
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Mover para cima',
+                onPressed: _submitting || index == 0
+                    ? null
+                    : () => _moveImage(index, -1),
+                icon: const Icon(Icons.arrow_upward),
+              ),
+              IconButton(
+                tooltip: 'Mover para baixo',
+                onPressed: _submitting || index == _images.length - 1
+                    ? null
+                    : () => _moveImage(index, 1),
+                icon: const Icon(Icons.arrow_downward),
+              ),
+              IconButton(
+                tooltip: 'Remover imagem',
+                onPressed: _submitting || _images.length == 1
+                    ? null
+                    : () => _removeImage(index),
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
+          ),
+          _textField(
+            controller: image.url,
+            label: 'URL HTTPS da imagem',
+            keyName: index == 0 ? 'imageUrl' : 'imageUrl-$index',
+            maxLength: 2048,
+            keyboardType: TextInputType.url,
+            onChanged: (_) => _markDirty(),
+          ),
+          _textField(
+            controller: image.source,
+            label: 'Fonte da imagem (opcional)',
+            keyName: 'imageSource-$index',
+            maxLength: 200,
+            onChanged: (_) => _markDirty(),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _ImagePreview(url: image.url.text),
           ),
         ],
       ),
@@ -1046,6 +1231,54 @@ class _AdminPlaceMapPickerState extends State<AdminPlaceMapPicker> {
       ],
     ),
   );
+}
+
+class _PlaceImageInput {
+  _PlaceImageInput({String url = '', String? source})
+    : url = TextEditingController(text: url),
+      source = TextEditingController(text: source ?? '');
+
+  final TextEditingController url;
+  final TextEditingController source;
+
+  void dispose() {
+    url.dispose();
+    source.dispose();
+  }
+}
+
+class AdminBrazilianPhoneInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final limitedDigits = digits.length > 11 ? digits.substring(0, 11) : digits;
+    final beforeCursor = newValue.text
+        .substring(
+          0,
+          newValue.selection.extentOffset.clamp(0, newValue.text.length),
+        )
+        .replaceAll(RegExp(r'\D'), '')
+        .length
+        .clamp(0, limitedDigits.length);
+    final formatted = formatAdminBrazilianPhone(limitedDigits);
+    var cursorOffset = 0;
+    var seenDigits = 0;
+    while (cursorOffset < formatted.length && seenDigits < beforeCursor) {
+      if (RegExp(r'\d').hasMatch(formatted[cursorOffset])) seenDigits++;
+      cursorOffset++;
+    }
+    while (cursorOffset < formatted.length &&
+        !RegExp(r'\d').hasMatch(formatted[cursorOffset])) {
+      cursorOffset++;
+    }
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: cursorOffset),
+    );
+  }
 }
 
 class _ImagePreview extends StatelessWidget {

@@ -49,6 +49,10 @@ void main() {
       expect(place.sports, <Sport>[Sport.futebol, Sport.corrida]);
       expect(place.primarySport, Sport.futebol);
       expect(place.status, PlaceStatus.active);
+      expect(place.accessType, isNull);
+      expect(place.contactPhone, isNull);
+      expect(place.gallery.single.url, place.imageUrl);
+      expect(place.gallery.single.source, isNull);
       expect(place.coordinates.latitude, closeTo(-29.65, 0.00001));
       expect(
         place.createdAt!.isAtSameMomentAs(DateTime.utc(2026, 1, 1)),
@@ -58,6 +62,57 @@ void main() {
         place.updatedAt!.isAtSameMomentAs(DateTime.utc(2026, 1, 2)),
         isTrue,
       );
+    });
+
+    test('reads a private place with its phone and ordered photo credits', () {
+      final data = placeDocument()
+        ..['accessType'] = 'private'
+        ..['contactPhone'] = '51999999999'
+        ..['images'] = <Map<String, String>>[
+          <String, String>{
+            'url': 'https://example.com/cover.jpg',
+            'source': 'Foto: Divulgação',
+          },
+          <String, String>{
+            'url': 'https://example.com/court.jpg',
+            'source': 'Imagem via Google',
+          },
+        ]
+        ..['imageUrl'] = 'https://example.com/cover.jpg';
+
+      final place = SportPlace.tryFromFirestore('private-place', data);
+
+      expect(place, isNotNull);
+      expect(place!.accessType, PlaceAccessType.private);
+      expect(place.contactPhone, '51999999999');
+      expect(place.gallery.map((image) => image.url), <String>[
+        'https://example.com/cover.jpg',
+        'https://example.com/court.jpg',
+      ]);
+      expect(place.gallery.map((image) => image.source), <String?>[
+        'Foto: Divulgação',
+        'Imagem via Google',
+      ]);
+    });
+
+    test(
+        'rejects a private place without a valid DDD phone or a broken gallery',
+        () {
+      final privateWithoutPhone = placeDocument()..['accessType'] = 'private';
+      final invalidPhone = placeDocument()
+        ..['accessType'] = 'private'
+        ..['contactPhone'] = '123';
+      final mismatchedCover = placeDocument()
+        ..['images'] = <Map<String, String>>[
+          <String, String>{'url': 'https://example.com/other.jpg'},
+        ];
+
+      expect(
+        SportPlace.tryFromFirestore('private', privateWithoutPhone),
+        isNull,
+      );
+      expect(SportPlace.tryFromFirestore('phone', invalidPhone), isNull);
+      expect(SportPlace.tryFromFirestore('gallery', mismatchedCover), isNull);
     });
 
     test('normaliza campos opcionais vazios sem fabricar endereço', () {
