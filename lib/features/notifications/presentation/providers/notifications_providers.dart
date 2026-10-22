@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_flags.dart';
 import '../../../../core/providers/clock_providers.dart';
+import '../../../../core/services/firebase_service.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/notifications_remote_datasource.dart';
 import '../../data/repositories/notifications_repository_impl.dart';
@@ -10,9 +10,11 @@ import '../../domain/entities/app_notification.dart';
 import '../../domain/repositories/notifications_repository.dart';
 import '../../domain/usecases/notifications_usecases.dart';
 
+/// Firebase só quando ele de fato subiu (`firebaseEnabled`); sem ele a
+/// central cai no mock, como manda o AGENTS.md.
 final notificationsRemoteDataSourceProvider =
     Provider<NotificationsRemoteDataSource?>(
-  (ref) => kUseFirebaseRepos
+  (ref) => firebaseEnabled
       ? NotificationsRemoteDataSource(FirebaseFirestore.instance)
       : null,
 );

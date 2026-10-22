@@ -15,6 +15,8 @@ import 'package:mvp_compy/shared/models/event.dart';
 import 'package:mvp_compy/shared/models/skill_level.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
+import 'package:mvp_compy/features/ratings/domain/entities/rating_summary.dart';
+import 'package:mvp_compy/features/ratings/presentation/providers/ratings_providers.dart';
 
 /// Relógio fixo: o evento de teste começa uma hora depois dele.
 final _agora = DateTime(2026, 10, 21, 18);
@@ -78,13 +80,20 @@ Future<void> _abrir(
   WidgetTester tester, {
   required Stream<Event?> evento,
   required UserSummary quem,
+  RatingSummary nota = RatingSummary.empty,
 }) async {
+  // Tela alta: a lista do detalhe só constrói o que aparece.
+  await tester.binding.setSurfaceSize(const Size(800, 1600));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(ProviderScope(
     overrides: <Override>[
       clockProvider.overrideWithValue(() => _agora),
       nowProvider.overrideWith((ref) => Stream<DateTime>.value(_agora)),
       currentUserSummaryProvider.overrideWith((ref) async => quem),
       eventsRepositoryProvider.overrideWithValue(_EventoAoVivo(evento)),
+      ratingSummaryProvider.overrideWith(
+        (ref, target) => Stream<RatingSummary>.value(nota),
+      ),
     ],
     child: const MaterialApp(home: EventDetailPage(eventId: 'evt_detalhe')),
   ));
@@ -195,6 +204,30 @@ void main() {
 
       expect(_botao(AppStrings.eventRateAsCreator), findsOneWidget);
       expect(_botao(AppStrings.eventRate), findsNothing);
+    });
+
+    testWidgets('mostra a "Nota do evento" quando ele já tem notas',
+        (tester) async {
+      await _abrir(
+        tester,
+        evento: Stream.value(encerrado),
+        quem: _visitante,
+        nota: RatingSummary.fromAggregate(
+          count: 8,
+          sum: 37,
+          starCounts: const <int, int>{5: 5, 4: 2, 3: 1},
+        ),
+      );
+
+      expect(find.text(AppStrings.eventRatingAverage), findsOneWidget);
+      expect(find.text('4,6'), findsOneWidget);
+      expect(find.text('· 8 avaliações'), findsOneWidget);
+    });
+
+    testWidgets('sem notas, nada de "Nota do evento"', (tester) async {
+      await _abrir(tester, evento: Stream.value(encerrado), quem: _visitante);
+
+      expect(find.text(AppStrings.eventRatingAverage), findsNothing);
     });
 
     testWidgets('quem já avaliou vê "Você já avaliou"', (tester) async {

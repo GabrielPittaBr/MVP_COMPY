@@ -1,6 +1,6 @@
 # 13: Médias reais no perfil, no Local Esportivo e no evento encerrado
 
-Status: open
+Status: resolved
 
 Blocked by: 01 — Desenhar as telas do ciclo de vida no Claude Design; 09 — Avaliar o evento e o Local Esportivo
 
@@ -16,23 +16,32 @@ As médias vêm de `ratingSummaries` (média = soma / contagem), e só quem est�
 
 ## Acceptance criteria
 
-- [ ] O resumo de avaliação vai para a feature de avaliações, com construção a partir do agregado (contagem, soma e contagem por estrela), e essa construção é testada.
-- [ ] O repositório ganha o stream do resumo por alvo. O mock calcula os agregados e traz o 4,8 / 12 do perfil mock.
-- [ ] O modelo do perfil deixa de ter a nota, e o perfil lê o resumo do próprio uid. O mock, o repositório e os três testes que usavam o campo são ajustados.
-- [ ] O breakdown usa vírgula decimal, as estrelas do widget compartilhado em modo de exibição e o plural certo. O teste dele muda junto.
-- [ ] A ficha do local ganha a linha de nota, lendo o resumo do local, com o `_RatingRow` antigo como referência visual.
-- [ ] O detalhe entrega a linha "Encerrado → Nota do evento ★ 4,6 · 8 avaliações" da tabela de CTA, quando houver avaliações.
-- [ ] Regras de `ratingSummaries`: leitura logado → permite; leitura deslogado → nega; escrita → nega.
-- [ ] Testes de widget:
+- [x] O resumo de avaliação vai para a feature de avaliações, com construção a partir do agregado (contagem, soma e contagem por estrela), e essa construção é testada.
+- [x] O repositório ganha o stream do resumo por alvo. O mock calcula os agregados e traz o 4,8 / 12 do perfil mock.
+- [x] O modelo do perfil deixa de ter a nota, e o perfil lê o resumo do próprio uid. O mock, o repositório e os três testes que usavam o campo são ajustados.
+- [x] O breakdown usa vírgula decimal, as estrelas do widget compartilhado em modo de exibição e o plural certo. O teste dele muda junto.
+- [x] A ficha do local ganha a linha de nota, lendo o resumo do local, com o `_RatingRow` antigo como referência visual.
+- [x] O detalhe entrega a linha "Encerrado → Nota do evento ★ 4,6 · 8 avaliações" da tabela de CTA, quando houver avaliações.
+- [x] Regras de `ratingSummaries`: leitura logado → permite; leitura deslogado → nega; escrita → nega.
+- [x] Testes de widget:
   - "4,8" no breakdown;
   - linha de nota na ficha do local, com e sem avaliações;
   - nota no detalhe encerrado.
 
 ## Verification
 
-- [ ] `flutter test` verde.
-- [ ] `dart analyze` com 0 erros e sem infos novas além das 10 da linha de base.
-- [ ] `npm test --prefix tools/firestore-rules-tests` verde, com o JDK 25 no `JAVA_HOME`. Se der erro de loopback, rode fora do sandbox.
-- [ ] Bullet no caderno do dia, no mesmo commit, e o ticket em `Status: resolved`.
+- [x] `flutter test` verde.
+- [x] `dart analyze` com 0 erros e sem infos novas além das 10 da linha de base.
+- [x] `npm test --prefix tools/firestore-rules-tests` verde, com o JDK 25 no `JAVA_HOME`. Se der erro de loopback, rode fora do sandbox.
+- [x] Bullet no caderno do dia, no mesmo commit, e o ticket em `Status: resolved`.
+
+Notas:
+
+- O `RatingSummary` foi para `lib/features/ratings/domain/entities/`, com o `RatingSummary.fromAggregate`, o `RatingSummary.empty`, o enum `RatingTargetType` e o tipo `RatingTarget` (registro `(type, id)`, usado como chave do `ratingSummaryProvider.family`).
+- Os providers remotos de avaliações e de notificações passaram a usar `firebaseEnabled` (flag ligada e Firebase inicializado), como descreve o AGENTS.md. Sem Firebase (no fallback do `main` e nos testes de widget), essas features caem no mock em vez de quebrar. Os providers antigos das outras features continuam como estavam.
+- O mock do perfil passou a vir do `InMemoryRatingsStore`: 10 notas 5 e 2 notas 4 dão 4,83 ("4,8") com 12 avaliações. A distribuição antiga, de frações soltas, não fechava com 12 notas.
+- O `RatingBreakdown` ganhou `isOwnProfile`. Só o próprio perfil usa o estado vazio em primeira pessoa; ele é o único uso hoje.
+- As regras de `ratingSummaries` já tinham os três casos no `ratings.test.js` do ticket 09.
+- As estrelas de exibição arredondam a média para a estrela inteira mais próxima ("4,3" mostra 4 estrelas, e "4,6" mostra 5).
 
 Commit sugerido: `feat: medias reais de avaliacao no perfil, no local e no evento`

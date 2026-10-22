@@ -6,6 +6,8 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../ratings/domain/entities/rating_summary.dart';
+import '../../../ratings/presentation/providers/ratings_providers.dart';
 import '../providers/profile_providers.dart';
 import '../widgets/badges_row.dart';
 import '../widgets/favorite_sports_chips.dart';
@@ -73,7 +75,15 @@ class ProfilePage extends ConsumerWidget {
 
               const _SectionTitle(AppStrings.profileRatings),
               const SizedBox(height: 12),
-              RatingBreakdown(summary: profile.rating),
+              RatingBreakdown(
+                summary: ref
+                        .watch(ratingSummaryProvider((
+                          type: RatingTargetType.user,
+                          id: profile.summary.id,
+                        )))
+                        .valueOrNull ??
+                    RatingSummary.empty,
+              ),
               const SizedBox(height: 24),
 
               const _SectionTitle(AppStrings.profileGallery),

@@ -9,13 +9,17 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/duration_format.dart';
+import '../../../../core/utils/rating_format.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_status.dart';
 import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../../shared/widgets/event_status_chip.dart';
 import '../../../../shared/widgets/primary_button.dart';
+import '../../../../shared/widgets/star_rating.dart';
 import '../../../../shared/widgets/user_avatar.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
+import '../../../ratings/domain/entities/rating_summary.dart';
+import '../../../ratings/presentation/providers/ratings_providers.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../providers/events_providers.dart';
 import '../widgets/participants_avatars.dart';
@@ -131,6 +135,12 @@ class _Body extends ConsumerWidget {
                 icon: Icons.schedule,
                 label: '${AppStrings.eventDuration}: '
                     '${DurationFormat.short(event.durationMinutes)}',
+              ),
+              EventStatusBuilder(
+                event: event,
+                builder: (context, status) => status == EventStatus.ended
+                    ? _EventRatingCard(eventId: event.id)
+                    : const SizedBox.shrink(),
               ),
               const SizedBox(height: 20),
 
@@ -366,6 +376,62 @@ class _ActionBar extends ConsumerWidget {
         SnackBar(content: Text('${AppStrings.eventJoinError}: $e')),
       );
     }
+  }
+}
+
+/// "Nota do evento ★ 4,6 · 8 avaliações", no detalhe do evento encerrado
+/// que já recebeu notas (tarefa 14). Sem nota nenhuma, não ocupa espaço.
+class _EventRatingCard extends ConsumerWidget {
+  const _EventRatingCard({required this.eventId});
+  final String eventId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = ref
+        .watch(ratingSummaryProvider((type: RatingTargetType.event, id: eventId)))
+        .valueOrNull;
+    if (summary == null || !summary.hasRatings) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.outline),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              AppStrings.eventRatingAverage,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: <Widget>[
+                StarRating(value: summary.average.round(), size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  RatingFormat.average(summary.average),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '· ${AppStrings.ratingsCount(summary.count)}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.onSurfaceMuted,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

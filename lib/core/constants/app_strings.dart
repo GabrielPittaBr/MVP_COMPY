@@ -200,6 +200,12 @@ abstract final class AppStrings {
   static const String timeYesterday = 'ontem';
   static String timeDaysAgo(int days) => 'há $days dias';
 
+  // Médias de avaliação (tarefa 14)
+  static String ratingsCount(int count) =>
+      count == 1 ? '1 avaliação' : '$count avaliações';
+  static const String ratingsNone = 'Sem avaliações ainda';
+  static const String eventRatingAverage = 'Nota do evento';
+
   // Avaliação do evento (tarefa 14)
   static const String ratingTitle = 'Avaliar evento';
   static String ratingStep(int index, int total) => 'Passo $index de $total';

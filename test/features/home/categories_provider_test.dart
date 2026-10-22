@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mvp_compy/features/home/data/repositories/home_repository_impl.dart';
 import 'package:mvp_compy/features/home/domain/entities/sport_category.dart';
 import 'package:mvp_compy/features/home/presentation/providers/home_providers.dart';
-import 'package:mvp_compy/features/profile/domain/entities/rating_summary.dart';
 import 'package:mvp_compy/features/profile/domain/entities/user_profile.dart';
 import 'package:mvp_compy/features/profile/presentation/providers/profile_providers.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
@@ -21,7 +20,6 @@ void main() {
         favoriteSports: sports,
         badges: const [],
         friends: const [],
-        rating: const RatingSummary(average: 0, count: 0, breakdown: {}),
         gallery: const [],
       );
 

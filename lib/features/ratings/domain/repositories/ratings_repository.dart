@@ -1,4 +1,5 @@
 import '../entities/event_rating_submission.dart';
+import '../entities/rating_summary.dart';
 
 abstract interface class RatingsRepository {
   /// Envia as notas de um evento encerrado. No Firestore, quem grava é a
@@ -7,6 +8,10 @@ abstract interface class RatingsRepository {
   ///
   /// Lança as exceções abaixo, já traduzidas para o domínio.
   Future<void> submit(EventRatingSubmission submission);
+
+  /// Média e distribuição de um alvo, em tempo real. Alvo sem nota nenhuma
+  /// emite [RatingSummary.empty].
+  Stream<RatingSummary> watchSummary(RatingTarget target);
 }
 
 /// Quem chamou já avaliou este evento.

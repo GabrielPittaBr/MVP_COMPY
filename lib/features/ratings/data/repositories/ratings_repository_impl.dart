@@ -2,6 +2,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 
 import '../../../../core/constants/app_flags.dart';
 import '../../domain/entities/event_rating_submission.dart';
+import '../../domain/entities/rating_summary.dart';
 import '../../domain/repositories/ratings_repository.dart';
 import '../datasources/in_memory_ratings_store.dart';
 import '../datasources/ratings_remote_datasource.dart';
@@ -31,5 +32,13 @@ class RatingsRepositoryImpl implements RatingsRepository {
         _ => RatingSubmitException(error),
       };
     }
+  }
+
+  @override
+  Stream<RatingSummary> watchSummary(RatingTarget target) {
+    if (!kUseFirebaseRepos || _remote == null) {
+      return InMemoryRatingsStore.instance.watchSummary(target);
+    }
+    return _remote.watchSummary(target);
   }
 }

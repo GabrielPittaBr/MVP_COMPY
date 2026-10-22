@@ -6,6 +6,7 @@ import 'package:mvp_compy/features/ratings/data/datasources/in_memory_ratings_st
 import 'package:mvp_compy/features/ratings/data/repositories/ratings_repository_impl.dart';
 import 'package:mvp_compy/features/ratings/domain/entities/event_rating_submission.dart';
 import 'package:mvp_compy/features/ratings/domain/entities/rating_draft.dart';
+import 'package:mvp_compy/features/ratings/domain/entities/rating_summary.dart';
 import 'package:mvp_compy/features/ratings/domain/repositories/ratings_repository.dart';
 import 'package:mvp_compy/shared/widgets/star_rating.dart';
 
@@ -35,6 +36,19 @@ void main() {
         InMemoryEventsStore.instance.getById('evt_006')!.ratedBy,
         contains('u_joao'),
       );
+    });
+
+    test('a avaliação entra nas médias do evento e de quem foi avaliado',
+        () async {
+      final evento = await repo
+          .watchSummary((type: RatingTargetType.event, id: 'evt_006')).first;
+      final carlao = await repo
+          .watchSummary((type: RatingTargetType.user, id: 'u_carlao')).first;
+
+      expect(evento.count, 1);
+      expect(evento.average, 5);
+      expect(carlao.count, 1);
+      expect(carlao.average, 4);
     });
 
     test('a segunda avaliação do mesmo evento é recusada', () {

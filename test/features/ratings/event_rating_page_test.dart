@@ -10,6 +10,7 @@ import 'package:mvp_compy/features/events/presentation/providers/events_provider
 import 'package:mvp_compy/features/profile/presentation/providers/profile_providers.dart';
 import 'package:mvp_compy/features/ratings/domain/entities/event_rating_submission.dart';
 import 'package:mvp_compy/features/ratings/domain/entities/rating_draft.dart';
+import 'package:mvp_compy/features/ratings/domain/entities/rating_summary.dart';
 import 'package:mvp_compy/features/ratings/domain/repositories/ratings_repository.dart';
 import 'package:mvp_compy/features/ratings/presentation/pages/event_rating_page.dart';
 import 'package:mvp_compy/features/ratings/presentation/providers/ratings_providers.dart';
@@ -101,6 +102,10 @@ class _Avaliacoes implements RatingsRepository {
     if (erro != null) throw erro!;
     enviadas.add(submission);
   }
+
+  @override
+  Stream<RatingSummary> watchSummary(RatingTarget target) =>
+      Stream<RatingSummary>.value(RatingSummary.empty);
 }
 
 Future<void> _abrir(

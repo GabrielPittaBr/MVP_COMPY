@@ -4,7 +4,6 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/badge.dart';
-import '../../domain/entities/rating_summary.dart';
 import '../../domain/entities/user_profile.dart';
 
 abstract final class MockProfile {
@@ -54,11 +53,6 @@ abstract final class MockProfile {
               avatarUrl: AppAssets.avatar('A${i + 1}'),
             ),
         ],
-        rating: const RatingSummary(
-          average: 4.8,
-          count: 12,
-          breakdown: <int, double>{5: 0.70, 4: 0.20, 3: 0.05, 2: 0.03, 1: 0.01},
-        ),
         gallery: const <String>[
           AppAssets.galleryTeamPhoto,
           AppAssets.galleryTeamPhoto,
