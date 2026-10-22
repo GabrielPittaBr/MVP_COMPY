@@ -63,8 +63,8 @@ abstract interface class AuthRepository {
   /// digita senha nenhuma.
   bool signedInWithPassword();
 
-  /// Apaga a conta: `users/{uid}`, o contato privado, a reserva do username e
-  /// o registro no Firebase Auth.
+  /// Apaga a conta: as fotos de perfil no Storage, `users/{uid}`, o contato
+  /// privado, a reserva do username e o registro no Firebase Auth.
   ///
   /// Reautentica antes de apagar qualquer coisa — o Firebase exige login
   /// recente. [password] é obrigatória quando [signedInWithPassword] devolve

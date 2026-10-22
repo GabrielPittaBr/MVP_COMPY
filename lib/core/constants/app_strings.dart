@@ -131,7 +131,8 @@ abstract final class AppStrings {
   static const String profileAccountSection = 'Conta';
   static const String profileDeleteAccount = 'Excluir minha conta';
   static const String profileDeleteAccountHint =
-      'Apaga seu perfil, libera seu @username e encerra seu acesso ao COMPY.';
+      'Apaga seu perfil e sua foto, libera seu @username e encerra seu acesso '
+      'ao COMPY.';
   static const String profileDeleteAccountTitle = 'Excluir conta?';
   static const String profileDeleteAccountBody =
       'Esta ação não pode ser desfeita. Eventos que você criou e mensagens já '

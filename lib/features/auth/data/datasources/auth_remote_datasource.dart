@@ -294,7 +294,8 @@ class AuthRemoteDataSource {
     return providers.contains(EmailAuthProvider.PROVIDER_ID);
   }
 
-  /// Apaga a conta e os documentos que [_writeUserProfile] criou.
+  /// Apaga a conta, as fotos de perfil e os documentos que
+  /// [_writeUserProfile] criou.
   ///
   /// **A ordem é o contrato:**
   ///
@@ -302,14 +303,16 @@ class AuthRemoteDataSource {
   ///    só no fim deixaria o perfil apagado com a conta ainda viva — o pior
   ///    estado possível, porque o guard do router mandaria o usuário para
   ///    `/username` como se fosse gente nova.
-  /// 2. **Firestore.** Todas as regras exigem `signedIn()`: depois que a
+  /// 2. **Storage.** As fotos também só saem com o dono logado.
+  /// 3. **Firestore.** Todas as regras exigem `signedIn()`: depois que a
   ///    conta some não há mais como apagar `users/{uid}`.
-  /// 3. **Auth.**
+  /// 4. **Auth.**
   ///
   /// Fora do escopo de propósito: eventos criados e mensagens de chat
-  /// continuam existindo, com nome e avatar congelados. As regras tornam
-  /// `creator` e `members` imutáveis e não existe "sair do evento" — limpar
-  /// isso é outra tarefa, com outras regras.
+  /// continuam existindo, com o nome congelado. As regras tornam `creator` e
+  /// `members` imutáveis e não existe "sair do evento" — limpar isso é outra
+  /// tarefa, com outras regras. A foto copiada neles deixa de carregar,
+  /// porque o arquivo foi apagado; o avatar fica só com a cor de fundo.
   Future<void> deleteAccount({String? password}) async {
     final User? user = _auth.currentUser;
     if (user == null) {
@@ -320,6 +323,7 @@ class AuthRemoteDataSource {
     }
 
     await _reauthenticate(user, password);
+    await _deleteUserPhotos(user.uid);
     await _deleteUserDocuments(user.uid);
     await user.delete();
     if (!kIsWeb) await _googleSignIn.signOut();
@@ -356,6 +360,17 @@ class AuthRemoteDataSource {
     await user.reauthenticateWithCredential(
       EmailAuthProvider.credential(email: email, password: password),
     );
+  }
+
+  /// Apaga as fotos de perfil do Storage. Melhor esforço: uma falha aqui
+  /// (rede, bucket fora do ar) não pode impedir quem pediu para sair de
+  /// sair. O pior caso é sobrar foto órfã no bucket.
+  Future<void> _deleteUserPhotos(String uid) async {
+    try {
+      await _avatarStorage.deleteAll(uid);
+    } catch (error) {
+      debugPrint('[Auth] fotos de users/$uid não foram apagadas: $error');
+    }
   }
 
   /// O inverso exato de [_writeUserProfile], no mesmo batch atômico.
