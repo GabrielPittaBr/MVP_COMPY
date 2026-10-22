@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -58,14 +60,31 @@ final _evento = Event(
 );
 
 class _Repositorio implements EventsRepository {
+  _Repositorio({Stream<Event?>? evento, this.erroAoEncerrar})
+      : evento = evento ?? Stream<Event?>.value(_evento);
+
+  final Stream<Event?> evento;
+  final Object? erroAoEncerrar;
+  final List<String> encerrados = <String>[];
+
   @override
-  Stream<Event?> watchById(String id) => Stream<Event?>.value(_evento);
+  Stream<Event?> watchById(String id) => evento;
+
+  @override
+  Future<void> endEvent(String eventId) async {
+    if (erroAoEncerrar != null) throw erroAoEncerrar!;
+    encerrados.add(eventId);
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Future<void> _abrir(WidgetTester tester, UserSummary quem) async {
+Future<void> _abrir(
+  WidgetTester tester,
+  UserSummary quem, {
+  _Repositorio? repositorio,
+}) async {
   // Tela alta o bastante para a lista inteira: o ListView só constrói o que
   // aparece.
   await tester.binding.setSurfaceSize(const Size(420, 1400));
@@ -92,7 +111,7 @@ Future<void> _abrir(WidgetTester tester, UserSummary quem) async {
       clockProvider.overrideWithValue(() => _agora),
       nowProvider.overrideWith((ref) => Stream<DateTime>.value(_agora)),
       currentUserSummaryProvider.overrideWith((ref) async => quem),
-      eventsRepositoryProvider.overrideWithValue(_Repositorio()),
+      eventsRepositoryProvider.overrideWithValue(repositorio ?? _Repositorio()),
     ],
     child: MaterialApp.router(routerConfig: router),
   ));
@@ -132,5 +151,108 @@ void main() {
 
     expect(find.text('detalhe do evento'), findsOneWidget);
     expect(find.text(AppStrings.eventLiveTitle), findsNothing);
+  });
+
+  group('encerrar (ticket 08)', () {
+    testWidgets('o criador vê "Encerrar evento"', (tester) async {
+      await _abrir(tester, _dono);
+      expect(find.text(AppStrings.eventEnd), findsOneWidget);
+    });
+
+    testWidgets('o participante não vê "Encerrar evento"', (tester) async {
+      await _abrir(tester, _participante);
+      expect(find.text(AppStrings.eventEnd), findsNothing);
+    });
+
+    testWidgets('pede confirmação, e cancelar não encerra', (tester) async {
+      final repositorio = _Repositorio();
+      await _abrir(tester, _dono, repositorio: repositorio);
+
+      await tester.tap(find.text(AppStrings.eventEnd));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.eventEndConfirmTitle), findsOneWidget);
+      expect(find.text(AppStrings.eventEndConfirmBody), findsOneWidget);
+
+      await tester.tap(find.text(AppStrings.commonCancel));
+      await tester.pumpAndSettle();
+      expect(repositorio.encerrados, isEmpty);
+      expect(find.text(AppStrings.eventLiveTitle), findsOneWidget);
+    });
+
+    testWidgets('confirmar encerra e leva ao detalhe', (tester) async {
+      final repositorio = _Repositorio();
+      await _abrir(tester, _dono, repositorio: repositorio);
+
+      await tester.tap(find.text(AppStrings.eventEnd));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(AppStrings.eventEndConfirm));
+      await tester.pumpAndSettle();
+
+      expect(repositorio.encerrados, <String>['evt_ao_vivo']);
+      expect(find.text('detalhe do evento'), findsOneWidget);
+    });
+
+    testWidgets('evento que já tinha sido encerrado mostra a mensagem certa',
+        (tester) async {
+      await _abrir(
+        tester,
+        _dono,
+        repositorio: _Repositorio(
+          erroAoEncerrar: const EventAlreadyEndedException(),
+        ),
+      );
+
+      await tester.tap(find.text(AppStrings.eventEnd));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(AppStrings.eventEndConfirm));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppStrings.eventAlreadyEndedError), findsOneWidget);
+    });
+
+    testWidgets('o participante vê a faixa quando o organizador encerra',
+        (tester) async {
+      final documento = StreamController<Event?>();
+      addTearDown(documento.close);
+      documento.add(_evento);
+      await _abrir(
+        tester,
+        _participante,
+        repositorio: _Repositorio(evento: documento.stream),
+      );
+      expect(find.text(AppStrings.eventEndedByOrganizer), findsNothing);
+
+      documento.add(_evento.copyWith(endedAt: _agora));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppStrings.eventEndedByOrganizer), findsOneWidget);
+      expect(find.text(AppStrings.eventStatusEnded), findsOneWidget);
+    });
+
+    // Começou há 20 min e durava 15: passou 5 min do previsto.
+    final atrasado = _evento.copyWith(durationMinutes: 15);
+
+    testWidgets('em atraso, o criador é chamado a encerrar', (tester) async {
+      await _abrir(
+        tester,
+        _dono,
+        repositorio: _Repositorio(evento: Stream<Event?>.value(atrasado)),
+      );
+      expect(find.text(AppStrings.eventLiveOverdueCreator), findsOneWidget);
+    });
+
+    testWidgets('em atraso, o participante sabe que falta o organizador',
+        (tester) async {
+      await _abrir(
+        tester,
+        _participante,
+        repositorio: _Repositorio(evento: Stream<Event?>.value(atrasado)),
+      );
+      expect(find.text(AppStrings.eventLiveOverdueParticipant), findsOneWidget);
+      expect(
+        find.text(AppStrings.eventLiveOverdueBy('5min')),
+        findsOneWidget,
+      );
+    });
   });
 }

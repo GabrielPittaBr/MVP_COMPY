@@ -139,6 +139,20 @@ abstract final class AppStrings {
   static const String eventLiveYou = 'Você';
   static String eventLiveMessage(String name) => 'Mandar mensagem para $name';
   static const String eventLiveTalkToOrganizer = 'Falar com o organizador';
+  static const String eventLiveOverdueCreator =
+      'O horário previsto acabou. Encerre o evento para liberar as avaliações.';
+  static const String eventLiveOverdueParticipant =
+      'O horário previsto acabou. O organizador ainda vai encerrar o evento.';
+  static const String eventEnd = 'Encerrar evento';
+  static const String eventEndConfirmTitle = 'Encerrar o evento agora?';
+  static const String eventEndConfirmBody =
+      'Os participantes vão receber o convite para avaliar. '
+      'Não dá para desfazer.';
+  static const String eventEndConfirm = 'Encerrar';
+  static const String eventEndedByOrganizer = 'O organizador encerrou o evento.';
+  static const String eventEndError =
+      'Não foi possível encerrar o evento. Tente de novo.';
+  static const String eventAlreadyEndedError = 'Este evento já foi encerrado.';
   static String eventParticipantsShort(int count) =>
       count == 1 ? '1 participante' : '$count participantes';
 

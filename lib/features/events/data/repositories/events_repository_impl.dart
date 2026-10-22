@@ -226,6 +226,21 @@ class EventsRepositoryImpl implements EventsRepository {
   }
 
   @override
+  Future<void> endEvent(String eventId) async {
+    if (!kUseFirebaseRepos || _remote == null) {
+      final store = InMemoryEventsStore.instance;
+      final current = store.getById(eventId);
+      if (current == null) {
+        throw StateError('Evento $eventId não encontrado');
+      }
+      if (current.endedAt != null) throw const EventAlreadyEndedException();
+      store.end(eventId, at: _clock());
+      return;
+    }
+    await _remote.end(eventId);
+  }
+
+  @override
   Future<Event> createEvent(
     Event draft, {
     required SportPlace selectedPlace,

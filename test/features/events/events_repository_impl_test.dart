@@ -3,6 +3,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:mvp_compy/features/events/data/datasources/in_memory_events_store.dart';
 import 'package:mvp_compy/features/events/data/repositories/events_repository_impl.dart';
 import 'package:mvp_compy/features/events/domain/entities/events_filter.dart';
+import 'package:mvp_compy/features/events/domain/repositories/events_repository.dart';
 import 'package:mvp_compy/shared/models/event.dart';
 import 'package:mvp_compy/shared/models/skill_level.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
@@ -337,7 +338,39 @@ void main() {
       expect(doJoao, isNot(contains('evt_006')));
     });
   });
+
+  group('EventsRepositoryImpl.endEvent (mock)', () {
+    test('encerra com o horário do relógio e endedAutomatically = false',
+        () async {
+      InMemoryEventsStore.instance.add(_evento(
+        id: 'evt_encerrar',
+        criador: 'u_dono_encerrar',
+        dateTime: _agora.subtract(const Duration(minutes: 30)),
+      ));
+
+      await repo.endEvent('evt_encerrar');
+
+      final encerrado = await repo.getById('evt_encerrar');
+      expect(encerrado!.endedAt, _agora);
+      expect(encerrado.endedAutomatically, isFalse);
+    });
+
+    test('encerrar de novo lança EventAlreadyEndedException', () async {
+      InMemoryEventsStore.instance.add(_evento(
+        id: 'evt_encerrar_2x',
+        criador: 'u_dono_encerrar',
+        dateTime: _agora.subtract(const Duration(minutes: 30)),
+      ));
+      await repo.endEvent('evt_encerrar_2x');
+
+      expect(
+        () => repo.endEvent('evt_encerrar_2x'),
+        throwsA(isA<EventAlreadyEndedException>()),
+      );
+    });
+  });
 }
+
 
 UserSummary _usuario(String id) =>
     UserSummary(id: id, name: id, handle: '@$id', avatarUrl: '');

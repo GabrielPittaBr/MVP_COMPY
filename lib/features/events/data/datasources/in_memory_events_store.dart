@@ -105,6 +105,24 @@ class InMemoryEventsStore {
     return updated;
   }
 
+  /// Encerra [eventId] em [at] — no mock, faz o papel do criador e da
+  /// Function. Lança [StateError] se o evento já estava encerrado; o
+  /// repositório traduz para a exceção de domínio.
+  Event end(String eventId, {required DateTime at, bool automatic = false}) {
+    final index = _events.indexWhere((e) => e.id == eventId);
+    if (index == -1) {
+      throw StateError('Evento $eventId não encontrado');
+    }
+    final current = _events[index];
+    if (current.endedAt != null) {
+      throw StateError('Evento $eventId já encerrado');
+    }
+    final ended = current.copyWith(endedAt: at, endedAutomatically: automatic);
+    _events[index] = ended;
+    _controller.add(List<Event>.unmodifiable(_events));
+    return ended;
+  }
+
   /// Grava [draft] como o Firestore faria: rascunho sem id (o formulário
   /// manda `id: ''`) ganha um id gerado, senão a rota de detalhe do evento
   /// recém-criado não teria o que abrir.

@@ -13,8 +13,6 @@ rules_version = '2';
 //   - `delete` é negado por padrão. A única exceção é a exclusão de conta:
 //     o dono apaga o próprio `users/{uid}`, o `private/contact` e a reserva
 //     em `usernames/{username}`. Nenhuma outra coleção apaga nada.
-//   - Campos ainda não implementados (`endedAt`) estão marcados com TODO e a
-//     tarefa correspondente.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -243,6 +241,20 @@ service cloud.firestore {
         return request.time < plannedEnd() + duration.value(1, 'h');
       }
 
+      // Encerramento manual: só o criador, uma única vez, depois do início e
+      // dentro da folga, gravando o horário do servidor e
+      // `endedAutomatically = false`. O `true` é exclusivo da Function, e o
+      // `ratedBy` da callable da avaliação.
+      function isManualEnd() {
+        return isCreator()
+            && !isEnded()
+            && changed().hasOnly(['endedAt', 'endedAutomatically'])
+            && request.resource.data.endedAt == request.time
+            && request.resource.data.endedAutomatically == false
+            && request.time >= resource.data.dateTime
+            && withinTolerance();
+      }
+
       // Entrar só enquanto o evento está agendado ou acontecendo: depois do
       // fim, ninguém entra só para poder avaliar.
       function isJoin() {
@@ -278,10 +290,15 @@ service cloud.firestore {
                     && spotsCoherent()
                     && newPlaceSnapshotMatchesCurrentPlace()
                     && !request.resource.data.keys().hasAny(lifecycleFields());
+      // O criador edita o evento aberto, sem tocar no ciclo de vida; depois de
+      // encerrado, o evento fica congelado para ele.
       allow update: if (isCreator()
+                       && !isEnded()
                        && ownerUnchanged()
                        && spotsCoherent()
-                       && historicalEventFieldsUnchanged())
+                       && historicalEventFieldsUnchanged()
+                       && !changed().hasAny(lifecycleFields()))
+                    || isManualEnd()
                     || isJoin();
       allow delete: if false;
     }

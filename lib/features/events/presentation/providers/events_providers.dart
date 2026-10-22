@@ -12,6 +12,7 @@ import '../../data/repositories/events_repository_impl.dart';
 import '../../domain/entities/events_filter.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../../domain/usecases/create_event.dart';
+import '../../domain/usecases/end_event.dart';
 import '../../domain/usecases/join_event.dart';
 import '../../domain/usecases/watch_event_detail.dart';
 import '../../domain/usecases/watch_joined_active_events.dart';
@@ -37,6 +38,10 @@ final joinEventProvider = Provider<JoinEvent>(
 
 final watchJoinedActiveEventsProvider = Provider<WatchJoinedActiveEvents>(
   (ref) => WatchJoinedActiveEvents(ref.watch(eventsRepositoryProvider)),
+);
+
+final endEventProvider = Provider<EndEvent>(
+  (ref) => EndEvent(ref.watch(eventsRepositoryProvider)),
 );
 
 final createEventProvider = Provider<CreateEvent>(

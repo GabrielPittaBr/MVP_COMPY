@@ -47,6 +47,14 @@ abstract interface class EventsRepository {
   /// Lança [EventFullException] se o evento estiver lotado (RN-05).
   Future<Event> joinEvent(String eventId, UserSummary user);
 
+  /// Encerramento manual pelo criador (tarefa 14): grava o fim real com o
+  /// horário do servidor e `endedAutomatically = false`.
+  ///
+  /// Lança [EventAlreadyEndedException] se o evento já estava encerrado —
+  /// inclusive quando a regra recusa por ter passado da folga de 1h, caso
+  /// em que a Function encerra por ele.
+  Future<void> endEvent(String eventId);
+
   /// Cria um novo evento com os dados informados.
   Future<Event> createEvent(
     Event draft, {
@@ -76,6 +84,13 @@ class EventCreationOfflineException implements Exception {
   const EventCreationOfflineException();
   @override
   String toString() => 'Reconecte-se para criar o evento.';
+}
+
+/// O evento já estava encerrado quando o criador tentou encerrar.
+class EventAlreadyEndedException implements Exception {
+  const EventAlreadyEndedException();
+  @override
+  String toString() => 'Este evento já foi encerrado.';
 }
 
 /// Exceção lançada ao tentar entrar em um evento sem vagas (RN-05).

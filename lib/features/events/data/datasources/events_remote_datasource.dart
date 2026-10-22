@@ -201,6 +201,36 @@ class EventsRemoteDataSource {
     });
   }
 
+  /// Encerramento manual pelo criador (tarefa 14). A transação relê o
+  /// evento para dar a mensagem certa quando ele já foi encerrado; a regra
+  /// `isManualEnd()` confere o resto (criador, uma vez só, depois do início,
+  /// dentro da folga e com o horário do servidor).
+  Future<void> end(String eventId) async {
+    final docRef = _firestore.collection('events').doc(eventId);
+    try {
+      await _firestore.runTransaction<void>((tx) async {
+        final snapshot = await tx.get(docRef);
+        final data = snapshot.data();
+        if (data == null) {
+          throw StateError('Evento $eventId não encontrado');
+        }
+        if (data['endedAt'] != null) throw const EventAlreadyEndedException();
+        tx.update(docRef, <String, Object?>{
+          'endedAt': FieldValue.serverTimestamp(),
+          'endedAutomatically': false,
+        });
+      });
+    } on FirebaseException catch (error) {
+      // A regra só recusa o criador se o evento já acabou: encerrado por
+      // outra via ou fora da folga de 1h (a Function encerra). Para quem
+      // está na tela, nos dois casos o evento já foi encerrado.
+      if (error.code == 'permission-denied') {
+        throw const EventAlreadyEndedException();
+      }
+      rethrow;
+    }
+  }
+
   Future<Event> create(
     Event draft, {
     required SportPlace selectedPlace,

@@ -12,9 +12,11 @@ import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_status.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/event_status_chip.dart';
+import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/user_avatar.dart';
 import '../../../chat/presentation/providers/chat_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
+import '../../domain/repositories/events_repository.dart';
 import '../providers/events_providers.dart';
 import '../widgets/live_progress.dart';
 
@@ -24,6 +26,9 @@ import '../widgets/live_progress.dart';
 /// chega antes do início, vai para o detalhe. Cada pessoa da lista tem um
 /// atalho para a conversa 1:1 (D16), menos você mesmo — o chat não abre
 /// conversa consigo mesmo (`Conversation.idBetween` com `a == b`).
+///
+/// Só o criador vê "Encerrar evento". Se o evento encerrar com a tela
+/// aberta, o participante vê a faixa de encerrado pelo stream.
 class LiveEventPage extends ConsumerStatefulWidget {
   const LiveEventPage({required this.eventId, super.key});
 
@@ -36,6 +41,50 @@ class LiveEventPage extends ConsumerStatefulWidget {
 class _LiveEventPageState extends ConsumerState<LiveEventPage> {
   bool _opening = false;
   bool _leaving = false;
+  bool _ending = false;
+
+  Future<void> _confirmAndEnd(Event event) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(AppStrings.eventEndConfirmTitle),
+        content: const Text(AppStrings.eventEndConfirmBody),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text(AppStrings.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text(AppStrings.eventEndConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _ending = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(endEventProvider).call(event.id);
+      if (!mounted) return;
+      // O evento sai das listas e o detalhe já mostra o encerrado; a
+      // avaliação entra no lugar desta navegação no ticket 09.
+      invalidateEventLists(ref);
+      context.go(AppRoutes.eventDetailPath(event.id));
+    } on EventAlreadyEndedException {
+      messenger.showSnackBar(
+        const SnackBar(content: Text(AppStrings.eventAlreadyEndedError)),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text(AppStrings.eventEndError)),
+      );
+    } finally {
+      if (mounted) setState(() => _ending = false);
+    }
+  }
 
   /// Mesmo fluxo da "Nova conversa" do chat, com a trava contra toque
   /// repetido: o id determinístico evita a conversa duplicada, mas não a
@@ -98,6 +147,8 @@ class _LiveEventPageState extends ConsumerState<LiveEventPage> {
           status: status,
           opening: _opening,
           onMessage: _openConversation,
+          ending: _ending,
+          onEnd: () => _confirmAndEnd(event),
         );
       },
     );
@@ -111,6 +162,8 @@ class _LiveScaffold extends StatelessWidget {
     required this.status,
     required this.opening,
     required this.onMessage,
+    required this.ending,
+    required this.onEnd,
   });
 
   final Event event;
@@ -118,10 +171,13 @@ class _LiveScaffold extends StatelessWidget {
   final EventStatus status;
   final bool opening;
   final ValueChanged<UserSummary> onMessage;
+  final bool ending;
+  final VoidCallback onEnd;
 
   @override
   Widget build(BuildContext context) {
     final isCreator = event.creator.id == me.id;
+    final ended = status == EventStatus.ended;
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.eventLiveTitle),
@@ -135,6 +191,10 @@ class _LiveScaffold extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         children: <Widget>[
+          if (ended && !isCreator) ...<Widget>[
+            const _EndedBanner(),
+            const SizedBox(height: 16),
+          ],
           Align(
             alignment: Alignment.centerLeft,
             child: EventStatusChip(
@@ -156,7 +216,7 @@ class _LiveScaffold extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _Schedule(event: event),
+          _Schedule(event: event, isCreator: isCreator, ended: ended),
           const SizedBox(height: 16),
           _PlaceCard(event: event),
           if (!isCreator) ...<Widget>[
@@ -197,6 +257,25 @@ class _LiveScaffold extends StatelessWidget {
             ),
         ],
       ),
+      bottomNavigationBar: isCreator && !ended
+          ? DecoratedBox(
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                border: Border(top: BorderSide(color: AppColors.outlineSoft)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                  child: PrimaryButton(
+                    label: AppStrings.eventEnd,
+                    icon: Icons.stop_circle_outlined,
+                    onPressed: ending ? null : onEnd,
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 
@@ -207,11 +286,21 @@ class _LiveScaffold extends StatelessWidget {
       ];
 }
 
-/// Horário, barra de tempo decorrido e "Faltam X" / "Passou X do previsto".
-/// Lê o "agora" sozinho, para só ele se redesenhar a cada 30s.
+/// Horário, barra de tempo decorrido e "Faltam X" / "Passou X do previsto",
+/// mais o aviso de atraso para cada papel. Lê o "agora" sozinho, para só ele
+/// se redesenhar a cada 30s.
 class _Schedule extends ConsumerWidget {
-  const _Schedule({required this.event});
+  const _Schedule({
+    required this.event,
+    required this.isCreator,
+    required this.ended,
+  });
+
   final Event event;
+  final bool isCreator;
+
+  /// Encerrado: a barra e o horário ficam, o "Faltam" e o aviso saem.
+  final bool ended;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -240,27 +329,99 @@ class _Schedule extends ConsumerWidget {
             color: progress.overdue ? AppColors.warning : AppColors.primary,
           ),
         ),
-        const SizedBox(height: 6),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Text(
-            progress.overdue
-                ? AppStrings.eventLiveOverdueBy(
-                    DurationFormat.short(progress.minutesOver),
-                  )
-                : AppStrings.eventLiveRemaining(
-                    DurationFormat.short(progress.minutesLeft),
-                  ),
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: progress.overdue
-                  ? AppColors.warningText
-                  : AppColors.onSurface,
+        if (!ended) ...<Widget>[
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              progress.overdue
+                  ? AppStrings.eventLiveOverdueBy(
+                      DurationFormat.short(progress.minutesOver),
+                    )
+                  : AppStrings.eventLiveRemaining(
+                      DurationFormat.short(progress.minutesLeft),
+                    ),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: progress.overdue
+                    ? AppColors.warningText
+                    : AppColors.onSurface,
+              ),
             ),
           ),
-        ),
+          if (progress.overdue) ...<Widget>[
+            const SizedBox(height: 14),
+            _OverdueNotice(
+              text: isCreator
+                  ? AppStrings.eventLiveOverdueCreator
+                  : AppStrings.eventLiveOverdueParticipant,
+            ),
+          ],
+        ],
       ],
+    );
+  }
+}
+
+/// Aviso de que o horário previsto acabou, com a borda de atenção.
+class _OverdueNotice extends StatelessWidget {
+  const _OverdueNotice({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.warning),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Icon(Icons.schedule, color: AppColors.warningText, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(text,
+                  style: const TextStyle(fontSize: 14, height: 1.45)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Faixa do participante quando o organizador encerra com a tela aberta.
+class _EndedBanner extends StatelessWidget {
+  const _EndedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Row(
+          children: <Widget>[
+            Icon(Icons.flag_outlined, color: AppColors.primary, size: 22),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                AppStrings.eventEndedByOrganizer,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

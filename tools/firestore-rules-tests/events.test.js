@@ -22,6 +22,7 @@ import {
   doc,
   GeoPoint,
   getDoc,
+  serverTimestamp,
   setDoc,
   updateDoc,
 } from 'firebase/firestore';
@@ -458,6 +459,81 @@ describe('events — editar e apagar', () => {
       updateDoc(doc(db, 'events', EVENTO), {
         'placeSnapshot.name': 'Outro nome',
       }),
+    );
+  });
+});
+
+// Tarefa 14 — encerramento manual pelo criador.
+describe('events — encerrar', () => {
+  /** Espelha `EventsRemoteDataSource.end()`: horário do servidor. */
+  const encerrar = (db, extra = {}) =>
+    updateDoc(doc(db, 'events', EVENTO), {
+      endedAt: serverTimestamp(),
+      endedAutomatically: false,
+      ...extra,
+    });
+
+  it('o criador encerra o evento em andamento', async () => {
+    await semear(eventoNovo(CRIADOR, { inicio: daquiA(-30) }));
+    await assertSucceeds(encerrar(as(CRIADOR)));
+  });
+
+  it('o criador encerra na folga depois do fim previsto', async () => {
+    await semear(eventoNovo(CRIADOR, { inicio: daquiA(-90), duracaoMin: 60 }));
+    await assertSucceeds(encerrar(as(CRIADOR)));
+  });
+
+  it('quem não é o criador não encerra', async () => {
+    await semear({
+      ...eventoNovo(CRIADOR, { inicio: daquiA(-30) }),
+      participants: [resumo(CRIADOR), resumo(VISITANTE)],
+      participantIds: [CRIADOR, VISITANTE],
+    });
+    await assertFails(encerrar(as(VISITANTE)));
+  });
+
+  it('o criador não encerra antes do início', async () => {
+    await semear(eventoNovo(CRIADOR, { inicio: daquiA(60) }));
+    await assertFails(encerrar(as(CRIADOR)));
+  });
+
+  it('o criador não encerra depois do fim previsto + 1h', async () => {
+    // A essa altura quem encerra é a Function.
+    await semear(eventoNovo(CRIADOR, { inicio: daquiA(-130), duracaoMin: 60 }));
+    await assertFails(encerrar(as(CRIADOR)));
+  });
+
+  it('não dá para encerrar duas vezes', async () => {
+    await semear(eventoNovo(CRIADOR, { inicio: daquiA(-30) }));
+    await assertSucceeds(encerrar(as(CRIADOR)));
+    await assertFails(encerrar(as(CRIADOR)));
+  });
+
+  it('o horário tem que ser o do servidor', async () => {
+    await semear(eventoNovo(CRIADOR, { inicio: daquiA(-30) }));
+    await assertFails(encerrar(as(CRIADOR), { endedAt: new Date() }));
+  });
+
+  it('o criador não põe endedAutomatically = true', async () => {
+    await semear(eventoNovo(CRIADOR, { inicio: daquiA(-30) }));
+    await assertFails(encerrar(as(CRIADOR), { endedAutomatically: true }));
+  });
+
+  it('o criador não mexe em ratedBy', async () => {
+    await semear(eventoNovo(CRIADOR, { inicio: daquiA(-30) }));
+    await assertFails(
+      updateDoc(doc(as(CRIADOR), 'events', EVENTO), { ratedBy: [CRIADOR] }),
+    );
+  });
+
+  it('o criador não edita o evento depois de encerrado', async () => {
+    await semear({
+      ...eventoNovo(CRIADOR, { inicio: daquiA(-30) }),
+      endedAt: daquiA(-5),
+      endedAutomatically: false,
+    });
+    await assertFails(
+      updateDoc(doc(as(CRIADOR), 'events', EVENTO), { description: 'Levar colete' }),
     );
   });
 });
