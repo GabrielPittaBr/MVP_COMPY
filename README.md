@@ -39,12 +39,12 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 
 | | Tela | Recursos |
 |:--:|---|---|
-| 🏠 | **Início** | Saudação com o nome de quem entrou, categorias por modalidade, prévia do mapa e os **eventos próximos** — busca real por raio de 10 km a partir da sua localização. Campo de busca por nome do evento ou modalidade. |
-| 🗺️ | **Mapa** | Locais esportivos da cidade em um mapa OpenStreetMap, com ficha do local (modalidades aceitas e atalho para criar um evento ali). |
-| 📅 | **Eventos** | Lista em três seções — *Criados por mim*, *Participando* e *Todos os eventos* — com filtros de modalidade, nível de habilidade e data. O detalhe traz local, horário, duração, vagas restantes e a lista de participantes. |
+| 🏠 | **Início** | Saudação com o nome de quem entrou, categorias por modalidade, prévia do mapa e os **eventos próximos** — busca real por raio de 10 km a partir da sua localização. Campo de busca por nome do evento ou modalidade. O sino ao lado da engrenagem abre a **central de notificações**, que avisa quando um evento termina e convida a avaliar. |
+| 🗺️ | **Mapa** | Locais esportivos da cidade em um mapa OpenStreetMap, com ficha do local (modalidades aceitas, média das avaliações e atalho para criar um evento ali). |
+| 📅 | **Eventos** | Lista em três seções — *Criados por mim*, *Participando* e *Todos os eventos* — com filtros de modalidade, nível de habilidade e data. O detalhe traz local, horário, duração, vagas restantes e a lista de participantes. Durante o evento, o selo *Acontecendo agora* e o card ao vivo levam à tela do evento em andamento, com mensagem direta para cada participante; o organizador encerra o evento, e um evento esquecido encerra sozinho 1h depois do fim previsto. Depois do fim, os participantes avaliam o evento, o local e quem jogou. |
 | ➕ | **Criar** | Título, modalidade, local, data, horário, duração, nível de habilidade, número de participantes e descrição. |
 | 💬 | **Chat** | Conversas em tempo real entre os participantes, direto sobre os streams do Firestore, com envio do local do evento como cartão na conversa. |
-| 👤 | **Perfil** | Avatar, esportes favoritos, insígnias, amigos, avaliações e galeria; troca de nome de usuário e exclusão da conta. |
+| 👤 | **Perfil** | Avatar, esportes favoritos, insígnias, amigos, média das avaliações recebidas e galeria; troca de nome de usuário e exclusão da conta. |
 
 **Entrada no app:** cadastro e login por e-mail/senha ou **conta Google**, escolha de um nome de usuário único e onboarding de esportes favoritos — tudo protegido por um guard de rotas que leva cada pessoa exatamente ao degrau que falta.
 
@@ -75,6 +75,7 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 | Navegação | **GoRouter 14.2** | `StatefulShellRoute.indexedStack` com as 5 abas e o guard de autenticação |
 | Autenticação | **Firebase Auth** + **google_sign_in** | E-mail/senha e conta Google |
 | Banco | **Cloud Firestore** (`compy-tcc`, `southamerica-east1`) | Perfis, eventos, conversas e mensagens, em tempo real |
+| Backend | **Cloud Functions** (TypeScript, Node 22) | Encerramento automático, notificações de fim de evento e gravação das avaliações e médias |
 | Proteção | **Firebase App Check** + `firestore.rules` | Regras por papel: dono do perfil, criador do evento, membro da conversa |
 | Mapa | **flutter_map 7** + **OpenStreetMap** | Mapa e pins sem nenhuma chave de API |
 | Localização | **geolocator** | Raio real dos eventos próximos |
@@ -142,7 +143,7 @@ flutter run
 ## Testes e qualidade
 
 ```bash
-flutter test     # 208 testes de unidade e de widget
+flutter test     # 343 testes de unidade e de widget
 dart analyze     # analisador estático — sem erros (só sugestões de estilo)
 ```
 
@@ -150,7 +151,14 @@ As regras do Firestore têm suíte própria, em Node, porque não há como test�
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 132 casos
+npm test --prefix tools/firestore-rules-tests      # 167 casos
+```
+
+As Cloud Functions também têm lint e testes próprios:
+
+```bash
+npm run lint --prefix functions
+npm test --prefix functions                        # 81 testes
 ```
 
 ---
@@ -165,7 +173,7 @@ npm test --prefix tools/firestore-rules-tests      # 132 casos
 | `firestore.rules` · `firestore.indexes.json` | Regras de segurança e índices do Firestore |
 | `tools/firestore-rules-tests/` | Suíte Node que exercita as regras no emulador |
 | `admin/` | Painel administrativo (Flutter Web) para locais esportivos e contas — ver [`docs/admin/painel-administrativo.md`](docs/admin/painel-administrativo.md) |
-| `functions/` | Cloud Functions do painel (TypeScript) |
+| `functions/` | Cloud Functions (TypeScript): as do painel e as do ciclo de vida do evento (encerramento automático, notificações e avaliações) |
 | `tools/firebase-admin/` | Scripts locais com Admin SDK (bootstrap do administrador, migrações) |
 | `docs/` | Roadmap, checklist de publicação, decisões de produto e notas de depuração |
 
@@ -185,8 +193,6 @@ main  ←  develop  ←  feature/… · fix/… · refactor/… · chore/… · 
 
 ## Próximos passos
 
-- Avaliação pós-evento de participantes, evento e local — as regras do Firestore já preveem a coleção
-- Encerramento do evento e o card de "evento em andamento"
 - Upload de foto de perfil
 - Ampliação do catálogo de locais esportivos da cidade
 - Telas de configurações e de insígnias, hoje em construção

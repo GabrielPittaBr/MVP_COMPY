@@ -185,6 +185,9 @@ sequência expand–contract nem os critérios do ticket 18.
   `index.html`.
 - As três Callable Functions administrativas usam `enforceAppCheck: true`.
   App Check complementa Auth, custom claim e Firestore Rules.
+- A callable `submitEventRatings`, do app mobile (tarefa 14), usa
+  `enforceAppCheck: false`; veja a seção "Functions do ciclo de vida do
+  evento" abaixo.
 - Não habilite enforcement global do Firestore nem replay protection beta como
   parte deste MVP.
 - Service accounts, chave secreta reCAPTCHA, token App Check de debug e arquivos
@@ -304,6 +307,54 @@ expand–contract da spec.
   Firebase Auth, custom claims ou validações das Rules como contingência.
 - Não apague `places/parque_do_trabalhador`, operações administrativas ou
   índices durante rollback.
+- **Functions do ciclo de vida do evento (tarefa 14):** remova só as três
+  novas, sem tocar nas do painel:
+
+  ```powershell
+  firebase functions:delete autoEndOverdueEvents onEventEnded submitEventRatings --region southamerica-east1 --project compy-tcc
+  ```
+
+  Em seguida, publique as regras anteriores à tarefa 14
+  (`git show 39bc256:firestore.rules`, a `develop` de antes do merge). Sem as Functions, ninguém consegue avaliar e os eventos esquecidos
+  ficam abertos, mas o app continua funcionando.
+
+## Functions do ciclo de vida do evento (tarefa 14)
+
+Três Functions novas entraram na codebase `administrative`, cada uma com a
+região `southamerica-east1` explícita. Elas não ganharam codebase própria
+porque renomear a codebase faria o CLI apagar e recriar as Functions do painel.
+A decisão de usar Functions está na
+[ADR 0002](../adr/0002-ciclo-de-vida-e-avaliacoes-com-cloud-functions.md).
+
+| Function | Tipo | O que faz |
+|---|---|---|
+| `autoEndOverdueEvents` | Agendada, a cada 10 min (`America/Sao_Paulo`) | Encerra os eventos que passaram 1h do fim previsto sem o Organizador encerrar (`endedAt`, `endedAutomatically = true`). |
+| `onEventEnded` | Gatilho `onDocumentUpdated('events/{eventId}')` | Na passagem de "sem `endedAt`" para "com `endedAt`", cria `users/{uid}/notifications/eventEnded_{eventId}` para cada participante. O id fixo torna a criação idempotente. |
+| `submitEventRatings` | Callable | Valida e grava, numa transação, as avaliações, as médias em `ratingSummaries`, o `ratedBy` do evento e o "Avaliado" da notificação. |
+
+**Por que `enforceAppCheck: false` na callable:** o Firestore está sem
+imposição de App Check neste MVP, a versão web do app não ativa App Check e o
+build debug do Android usa token de debug, que precisaria de registro. Com
+imposição, o teste no navegador e o debug quebrariam. A callable continua
+exigindo login e valida tudo no servidor.
+
+**Ordem do deploy:** os índices não mudaram na tarefa 14. Publique as
+Functions **antes** das regras, a partir da `develop` já com o merge e com
+todas as suítes verdes:
+
+```powershell
+firebase deploy --only functions:administrative --project compy-tcc
+firebase deploy --only firestore:rules --project compy-tcc
+firebase functions:list --project compy-tcc
+firebase functions:log --only autoEndOverdueEvents --project compy-tcc
+```
+
+- O primeiro deploy de um gatilho Firestore gen2 pode falhar enquanto a
+  permissão do Eventarc se propaga. Espere alguns minutos e repita.
+- O CLI ativa o Cloud Scheduler e o Eventarc sozinho.
+- As regras novas funcionam com o app v0.1.0 já instalado, que não grava os
+  campos novos, não avalia e não encerra eventos. O APK novo precisa ser
+  gerado e distribuído à parte.
 
 ## Revalidação do App Check e smoke público em 2026-10-09
 

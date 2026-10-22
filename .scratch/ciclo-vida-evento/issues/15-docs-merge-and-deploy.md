@@ -16,11 +16,11 @@ Spec: docs/tarefa-14-ciclo-de-vida-do-evento.md §2 (D14 a D17), §3 (conflito c
 
 ## Acceptance criteria
 
-- [ ] O roadmap mostra a tarefa 14 fechada e as decisões D14 a D17.
-- [ ] A ADR 0002 deixa explícito o conflito com o ticket 17 do admin e traz os riscos do §14.
-- [ ] O `CONTEXT.md` tem os termos novos (por exemplo, encerramento, avaliação e notificação), sem os sinônimos que o glossário evita.
-- [ ] As contagens de testes estão atualizadas nos READMEs (o da raiz e o da suíte de regras).
-- [ ] O runbook de deploy traz as Functions novas, o rollback e o motivo do `enforceAppCheck: false`.
+- [x] O roadmap mostra a tarefa 14 fechada e as decisões D14 a D17.
+- [x] A ADR 0002 deixa explícito o conflito com o ticket 17 do admin e traz os riscos do §14.
+- [x] O `CONTEXT.md` tem os termos novos (por exemplo, encerramento, avaliação e notificação), sem os sinônimos que o glossário evita.
+- [x] As contagens de testes estão atualizadas nos READMEs (o da raiz e o da suíte de regras).
+- [x] O runbook de deploy traz as Functions novas, o rollback e o motivo do `enforceAppCheck: false`.
 - [ ] Merge `--no-ff` na `develop`, com a mensagem `merge: feature/ciclo-vida-evento em develop`, e sem push.
 - [ ] Deploy só com tudo verde:
   - Functions antes das regras;
