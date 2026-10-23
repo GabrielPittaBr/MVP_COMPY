@@ -6,6 +6,7 @@ import 'core/theme/admin_court.dart';
 import 'core/theme/admin_theme.dart';
 import 'features/auth/presentation/admin_auth_feature.dart';
 import 'features/dashboard/data/admin_dashboard_repository.dart';
+import 'features/events/data/admin_events_repository.dart';
 import 'features/places/data/admin_places_repository.dart';
 import 'features/users/data/admin_users_repository.dart';
 
@@ -77,6 +78,7 @@ class CompyAdminApp extends StatefulWidget {
     required this.authGateway,
     this.initialLocation,
     this.dashboardRepository,
+    this.eventsRepository,
     this.placesRepository,
     this.usersRepository,
     super.key,
@@ -85,6 +87,7 @@ class CompyAdminApp extends StatefulWidget {
   final AdminAuthGateway authGateway;
   final String? initialLocation;
   final AdminDashboardRepository? dashboardRepository;
+  final AdminEventsRepository? eventsRepository;
   final AdminPlacesRepository? placesRepository;
   final AdminUsersRepository? usersRepository;
 
@@ -100,6 +103,7 @@ class _CompyAdminAppState extends State<CompyAdminApp> {
     authController: _authController,
     initialLocation: widget.initialLocation,
     dashboardRepository: widget.dashboardRepository,
+    eventsRepository: widget.eventsRepository,
     placesRepository: widget.placesRepository,
     usersRepository: widget.usersRepository,
   );

@@ -9,7 +9,7 @@ Usuário autorizado a operar as ferramentas internas de gestão do COMPY. Na pri
 _Evitar_: Moderador, superadministrador, operador
 
 **Painel Administrativo**:
-Interface interna usada por Administradores para gerenciar Locais Esportivos e consultar Usuários.
+Interface interna usada por Administradores para gerenciar Locais Esportivos, consultar e excluir Eventos Esportivos e consultar, suspender ou excluir Contas de Usuário.
 _Evitar_: Backoffice, painel de moderação
 
 **Usuário**:
@@ -27,6 +27,10 @@ _Evitar_: Conta, credencial
 **Suspensão Administrativa**:
 Restrição reversível aplicada a uma Conta de Usuário que impede novos acessos e futuras renovações de sessão, sem garantir o encerramento instantâneo de uma sessão já autorizada.
 _Evitar_: Banimento, exclusão, bloqueio instantâneo
+
+**Exclusão Administrativa**:
+Remoção definitiva, feita por um Administrador, de um Evento Esportivo ou de uma Conta de Usuário junto com seu Perfil. Exige motivo, fica registrada e não pode ser desfeita. Na conta, apaga o mesmo que a exclusão feita pelo próprio Usuário no app.
+_Evitar_: Banimento, desativação, suspensão
 
 **Local Esportivo**:
 Espaço físico cadastrado no COMPY onde uma ou mais modalidades esportivas podem ser praticadas.

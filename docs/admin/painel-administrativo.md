@@ -2,9 +2,10 @@
 
 O painel é um app **Flutter Web separado do app mobile**. Pessoas com papel de
 Administrador o usam para cuidar dos **Locais Esportivos** (que aparecem no mapa
-e na criação de eventos) e consultar ou suspender **Contas de Usuário**. Fica
-hospedado em <https://compy-tcc-admin.web.app>, no mesmo projeto Firebase do
-app (`compy-tcc`, região `southamerica-east1`).
+e na criação de eventos), consultar e excluir **Eventos Esportivos** e
+consultar, suspender ou excluir **Contas de Usuário**. Fica hospedado em
+<https://compy-tcc-admin.web.app>, no mesmo projeto Firebase do app
+(`compy-tcc`, região `southamerica-east1`).
 
 Este documento resume como o painel funciona. O passo a passo de Console,
 build, deploy e rollback está no runbook
@@ -16,7 +17,7 @@ glossário em [`CONTEXT.md`](../../CONTEXT.md).
 | Caminho | O que é |
 |---|---|
 | `admin/` | O painel (Flutter Web, Riverpod, GoRouter, Material 3). Tem `pubspec` próprio e não importa código do app mobile. |
-| `functions/` | Três Cloud Functions *callable* (TypeScript, 2ª geração, Node 22) para as operações de conta. |
+| `functions/` | Cloud Functions (TypeScript, 2ª geração, Node 22): as *callables* do painel (consulta, suspensão e exclusão de contas, exclusão de eventos) e as do ciclo de vida do evento. |
 | `tools/firebase-admin/` | Scripts locais com Admin SDK: bootstrap do primeiro Administrador, migração do Parque do Trabalhador e backfill de `nameLower`. Não vão para produção. |
 | `firestore.rules`, `firestore.indexes.json` | Regras e índices compartilhados com o app mobile. |
 | `tools/firestore-rules-tests/` | Testes das regras no emulador (inclui `places.test.js`). |
@@ -28,8 +29,9 @@ glossário em [`CONTEXT.md`](../../CONTEXT.md).
   logout e mostra "não autorizado".
 - O login é só e-mail e senha: não há cadastro nem Google no painel.
 - A sessão é `SESSION`: fechar o navegador exige entrar de novo.
-- Todas as rotas (`/dashboard`, `/places`, `/places/new`, `/places/:id`,
-  `/users`, `/users/:uid`) passam pelo mesmo guard. Sem sessão, vão para
+- Todas as rotas (`/dashboard`, `/events`, `/events/:id`, `/places`,
+  `/places/new`, `/places/:id`, `/users`, `/users/:uid`) passam pelo mesmo
+  guard. Sem sessão, vão para
   `/login?from=<rota>`, e depois do login voltam ao destino.
 - O primeiro Administrador é criado pelo script de bootstrap
   (`npm run bootstrap-admin --prefix tools/firebase-admin -- --uid <UID>`).
@@ -41,18 +43,39 @@ glossário em [`CONTEXT.md`](../../CONTEXT.md).
 - **Locais Esportivos:** o painel lê e escreve direto no Firestore
   (`places/{placeId}`). As Rules só deixam o Administrador criar ou editar, e
   ninguém exclui.
+- **Eventos Esportivos:** o painel lê `events/` direto do Firestore. A
+  exclusão passa **só** pela Callable `deleteEvent`
+  ([ADR-0003](../adr/0003-exclusoes-administrativas-por-callables.md)): as
+  Rules continuam negando `delete` em `events`.
 - **Contas de Usuário:** dados do Auth (e-mail, providers, último login,
-  `disabled`) e a suspensão passam **só** pelas Callables, que rodam com Admin
-  SDK. O painel não escreve em `users/`, `usernames/` nem no Auth.
+  `disabled`), a suspensão e a exclusão passam **só** pelas Callables, que
+  rodam com Admin SDK. O painel não escreve em `users/`, `usernames/` nem no
+  Auth.
 - **App Check (reCAPTCHA v3):** é exigido nas Callables. No Firestore continua
   sem imposição global por enquanto, uma decisão do MVP. Auth, claim e Rules
   continuam sendo a proteção principal.
 
 ## Funcionalidades
 
-**Dashboard.** Três contagens: perfis no Firestore ("Usuários cadastrados"),
-locais ativos e locais inativos. Atalhos para novo local, locais inativos e
-busca de usuário.
+**Dashboard.** Perfis no Firestore ("Usuários cadastrados"), locais ativos e
+inativos, e eventos agendados (que ainda não começaram) e no total. Atalhos
+para eventos, novo local, locais inativos e busca de usuário.
+
+**Eventos Esportivos.**
+- **Lista:** 20 por página, dos mais recentes aos mais antigos, com busca por
+  título (prefixo em `titleLower`, que o app grava só em minúsculas, com
+  acentos) e filtro por modalidade. Cada linha mostra data, local, organizador,
+  vagas e a fase (Agendado, Acontecendo ou Encerrado), calculada pela mesma
+  regra do app, com a folga de 1h. Encerrados aparecem aqui, embora saiam das
+  listas do app.
+- **Detalhe:** datas, local do snapshot com endereço, vagas, encerramento
+  (manual ou automático), quantas avaliações foram enviadas, descrição,
+  organizador e participantes, com atalho para cada Usuário. Documentos
+  antigos ou incompletos abrem do mesmo jeito, com "Não informado".
+- **Excluir:** exige motivo (10–500 caracteres) e uma confirmação marcando que
+  a exclusão não pode ser desfeita. Saem o evento, a Notificação de fim de
+  evento de cada participante, as avaliações do próprio evento e a média dele.
+  As avaliações do local e dos participantes ficam.
 
 **Locais Esportivos.**
 - **Lista:** 20 por página, com busca por nome (prefixo) e filtros combináveis
@@ -72,13 +95,23 @@ busca de usuário.
   chamada. Se essa chamada falhar, a página mostra "Estado indisponível", e
   não "ativa".
 - **Casos especiais:** conta sem perfil mostra "Perfil não encontrado" e ainda
-  pode ser suspensa. Perfil sem conta mostra "Conta não encontrada", sem ações.
+  pode ser suspensa ou excluída. Perfil sem conta mostra "Conta não
+  encontrada" e só oferece a exclusão desse registro órfão.
+- **Eventos organizados:** o detalhe lista os 20 eventos mais recentes que a
+  pessoa organizou, com atalho para cada um.
 - **Suspender** desabilita a conta e revoga as sessões; **reativar** volta a
   permitir login. As duas ações exigem motivo (10–500 caracteres) e
   confirmação, e não valem para o próprio Administrador nem para outro
   Administrador.
+- **Excluir** apaga o mesmo que a exclusão feita pelo próprio app: a conta do
+  Auth, o perfil com os dados privados e as notificações, as fotos e a reserva
+  do username. Eventos organizados, participações, mensagens e avaliações
+  ficam. Usa o mesmo motivo das outras ações, pede a confirmação de que não
+  pode ser desfeita e não vale para o próprio Administrador nem para outro
+  Administrador.
 - **Limite:** um token de login já emitido continua válido até expirar (cerca
-  de 1 hora). Por isso o painel não promete bloqueio instantâneo.
+  de 1 hora), na suspensão e na exclusão. Por isso o painel não promete
+  bloqueio instantâneo.
 
 ## Contratos de dados
 
@@ -116,15 +149,21 @@ gravado junto com `name`. `handle` e `createdAt` não mudam depois de criados.
 | `getAdminUserAuthDetails` | `{uid}` ou `{email}` (exato) | uid, e-mail, e-mail verificado, providers, criação, último login, `disabled` |
 | `getAdminUsersAuthStatus` | `{uids}` (1–20) | `{items: [{uid, disabled}]}`, omitindo contas inexistentes |
 | `setUserSuspension` | `{uid, action, reason, operationId}` | uid, `disabled` final, ação, `completedAt` |
+| `deleteUserAccount` | `{uid, reason, operationId}` | uid, `completedAt` |
+| `deleteEvent` | `{eventId, reason, operationId}` | eventId, `completedAt` |
 
-O `setUserSuspension` é idempotente pelo `operationId` (UUID gerado pelo
-painel). Cada operação vira um registro em `adminOperations/{operationId}`
+A suspensão e as exclusões são idempotentes pelo `operationId` (UUID gerado
+pelo painel). Cada operação vira um registro em `adminOperations/{operationId}`
 (`pending` → `succeeded`/`failed`), que nenhum cliente lê ou escreve:
 
 - repetir uma operação concluída devolve o mesmo resultado;
 - repetir uma operação que falhou devolve a mesma falha;
 - repetir uma operação ainda `pending` termina o que faltou;
 - o mesmo `operationId` com parâmetros diferentes é recusado.
+
+Nas exclusões, uma falha no meio deixa a operação `pending`: cada passo
+tolera o que já foi apagado, e a repetição termina o que faltou. A exclusão de
+conta desabilita a conta antes de tudo, e só a apaga do Auth no fim.
 
 ## Comandos
 
@@ -149,8 +188,9 @@ npm test --prefix functions
 npm test --prefix tools/firebase-admin
 
 # Deploy seletivo (detalhes e ordem no runbook)
-firebase deploy --only hosting:admin
+firebase deploy --only firestore:indexes
 firebase deploy --only functions:administrative
+firebase deploy --only hosting:admin
 ```
 
 ## Estado em 14/10/2026
@@ -179,6 +219,12 @@ código.
   (16/10/2026).
 - [ ] Conferir no ar, com sessão, a volta ao destino depois do login e o
   refresh numa rota do painel.
+- [ ] Publicar a seção de Eventos e as exclusões (23/10/2026): primeiro os
+  três índices novos de `events` (esperar `READY`), depois as Functions
+  `deleteEvent` e `deleteUserAccount` e, por fim, o Hosting. Passo a passo no
+  runbook.
+- [ ] Testar no ar as exclusões com dados de teste: um evento com
+  participantes e notificação, e uma conta criada só para isso.
 - [ ] Ticket 18:
   - testar em produção o limite do token já emitido;
   - testar o caso de perfil sem conta Auth, sem criar dado artificial;

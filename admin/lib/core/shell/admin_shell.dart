@@ -34,6 +34,12 @@ class AdminShell extends StatelessWidget {
       route: '/dashboard',
     ),
     (
+      label: 'Eventos',
+      icon: Icons.event_outlined,
+      selectedIcon: Icons.event,
+      route: '/events',
+    ),
+    (
       label: 'Locais',
       icon: Icons.place_outlined,
       selectedIcon: Icons.place,

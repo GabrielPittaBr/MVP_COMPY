@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/admin_colors.dart';
 
-enum AdminStatusTone { positive, neutral, negative }
+enum AdminStatusTone { positive, info, neutral, negative }
 
 /// Estado em cor e em palavra; a cor nunca aparece sozinha.
 class AdminStatusPill extends StatelessWidget {
@@ -18,6 +18,11 @@ class AdminStatusPill extends StatelessWidget {
         AdminColors.secondaryContainer,
         AdminColors.onSecondaryContainer,
         AdminColors.secondary,
+      ),
+      AdminStatusTone.info => (
+        AdminColors.primaryContainer,
+        AdminColors.primary,
+        AdminColors.primary,
       ),
       AdminStatusTone.neutral => (
         AdminColors.surfaceContainer,

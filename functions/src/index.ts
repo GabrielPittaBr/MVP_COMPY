@@ -12,6 +12,8 @@ setGlobalOptions({ region: administrativeFunctionsRegion });
 export { administrativeFunctionsRegion } from './config.js';
 export { getAdminUserAuthDetails, getAdminUsersAuthStatus } from './admin_auth_read.js';
 export { setUserSuspension } from './user_suspension.js';
+export { deleteUserAccount } from './user_deletion.js';
+export { deleteEvent } from './event_deletion.js';
 export { autoEndOverdueEvents } from './event_lifecycle.js';
 export { submitEventRatings } from './event_ratings.js';
 export { onEventEnded } from './event_notifications.js';
