@@ -77,7 +77,7 @@ Itens herdados do antigo `proximos-passos.md` que continuam pendentes, conferido
 | # | Tarefa | Branch sugerida | Tam. | `/to-tickets`? | 🔒 |
 |---|---|---|---|---|---|
 | A | ~~Avatar real na Home~~ ✅ feito em `feature/foto-de-perfil` | — | P | Não | |
-| B | Edição de perfil completa (nome, bio) — **foto ✅ feita** | `feature/editar-perfil-completo` | M | Não | 🔒 |
+| B | Edição de perfil completa (nome, bio) — **foto ✅ feita** | `feature/editar-perfil-completo` | M | Não | ✅ fechada |
 | C | Tela de configurações | `feature/tela-configuracoes` | M | Não | |
 | D | Push notifications (FCM) | `feature/push-notifications` | G | Sim | |
 
@@ -85,15 +85,11 @@ Itens herdados do antigo `proximos-passos.md` que continuam pendentes, conferido
 
 Feito junto com a foto de perfil (`feature/foto-de-perfil`): o `GreetingHeader` usa o `avatarUrl` do perfil e só mostra a inicial enquanto o perfil carrega.
 
-### B · Edição de perfil completa
+### B · Edição de perfil completa — ✅ fechada
 
-A `EditProfilePage` (`/profile/editar`) mostra o username desabilitado, troca e remove a **foto** (feito em `feature/foto-de-perfil`, com Storage, seletor, recorte e regras — ver [`autenticacao.md`](autenticacao.md#foto-de-perfil-avatarurl)) e permite excluir a conta. Os esportes favoritos já são editáveis pela tela própria. Faltam **nome e bio**.
+A `EditProfilePage` (`/profile/editar`) edita nome completo (até 60 caracteres) e biografia opcional (até 160), com salvamento explícito, aviso de alterações não salvas e repetição após falha. O Firestore recebe `name`, `nameLower` e `bio` por merge; em seguida o nome é sincronizado no Firebase Auth. Como esses serviços não compartilham transação, uma falha no Auth é mostrada como falha e uma nova tentativa conclui a sincronização. Perfil próprio, Home, busca e perfil público são atualizados pelos providers. O username permanece bloqueado, os esportes usam a tela própria e a foto continua no fluxo existente de seleção, recorte e Storage ([detalhes](autenticacao.md#foto-de-perfil-avatarurl)).
 
-- `ProfileRemoteDataSource` grava `favoriteSports` e `avatarUrl`. Falta gravar nome e bio.
-- `bio` já é lida pelo `ProfileRepositoryImpl`, mas nunca é escrita.
-- Nome alterado precisa ir também para o Firebase Auth (`updateDisplayName`), como na tarefa 1, senão a saudação da Home diverge. Precisa também recalcular `nameLower`, que a regra exige quando o nome muda.
-
-**🔒 Regras do Firestore — precisa decidir:** o `validProfile()` de `users` só aceita `['id', 'name', 'nameLower', 'handle', 'avatarUrl', 'createdAt', 'favoriteSports']`. Gravar `bio` hoje é **recusado**. Decidir o limite de tamanho da bio e incluí-la no `hasOnly`.
+`validProfile()` aceita apenas `bio` opcional do tipo texto e com até 160 caracteres, sem mudar o acesso privado. Nomes e fotos copiados para eventos e conversas antigos continuam como snapshots históricos; leituras diretas de perfil mostram os dados atuais. A pendência de CORS para avatar no Chrome e o comando de configuração do bucket estão em [`checklist-publicacao.md`](checklist-publicacao.md); nenhuma configuração foi aplicada ao bucket nesta tarefa.
 
 ### C · Tela de configurações
 

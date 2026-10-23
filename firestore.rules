@@ -48,7 +48,7 @@ service cloud.firestore {
       function validProfile() {
         return request.resource.data.keys().hasOnly(
                  ['id', 'name', 'nameLower', 'handle', 'avatarUrl', 'createdAt',
-                  'favoriteSports'])
+                  'favoriteSports', 'bio'])
             && request.resource.data.id == userId
             && request.resource.data.name is string
             && request.resource.data.name.size() <= 60
@@ -56,6 +56,9 @@ service cloud.firestore {
             && request.resource.data.handle is string
             && request.resource.data.handle.size() <= 21
             && validFavoriteSports()
+            && (!('bio' in request.resource.data.keys())
+                || (request.resource.data.bio is string
+                    && request.resource.data.bio.size() <= 160))
             && validOptionalAvatarUrl();
       }
 

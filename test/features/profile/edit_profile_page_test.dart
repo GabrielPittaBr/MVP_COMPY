@@ -81,11 +81,20 @@ class _FakeAuthRepository implements AuthRepository {
 
 /// Só a troca de foto tem corpo, pelo mesmo motivo do [_FakeAuthRepository].
 class _FakeProfileRepository implements ProfileRepository {
-  _FakeProfileRepository({this.errorOnAvatar});
+  _FakeProfileRepository({this.errorOnAvatar, this.errorOnDetails});
 
   final Object? errorOnAvatar;
+  final Object? errorOnDetails;
   final List<(String, String, Uint8List?)> avatarCalls =
       <(String, String, Uint8List?)>[];
+  final List<(String, String, String)> detailCalls = [];
+
+  @override
+  Future<void> updateDetails(String uid,
+      {required String name, required String bio}) async {
+    detailCalls.add((uid, name, bio));
+    if (errorOnDetails != null) throw errorOnDetails!;
+  }
 
   @override
   Future<void> updateAvatar(
@@ -159,6 +168,13 @@ void main() {
       ProviderScope(
         overrides: <Override>[
           authRepositoryProvider.overrideWith((_) => repo),
+          authStateProvider.overrideWith((_) => Stream.value(const AuthUser(
+                uid: 'u_gabriel',
+                email: 'gabriel@example.com',
+                displayName: 'Gabriel',
+                hasUsername: true,
+                hasFavoriteSports: true,
+              ))),
           currentProfileProvider.overrideWith((_) async => profile ?? perfil),
           if (profileRepository != null)
             profileRepositoryProvider.overrideWith((_) => profileRepository),
@@ -229,6 +245,8 @@ void main() {
   });
 
   Future<void> abrirDialogo(WidgetTester tester) async {
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(AppStrings.profileDeleteAccount));
     await tester.pumpAndSettle();
   }
@@ -236,17 +254,150 @@ void main() {
   group('EditProfilePage — username', () {
     testWidgets('mostra o handle atual, mas não deixa editar', (tester) async {
       await pumpPage(tester);
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.pumpAndSettle();
 
       expect(find.text('@gabriel'), findsOneWidget);
       expect(
-        tester.widget<TextField>(find.byType(TextField)).readOnly,
+        tester
+            .widget<TextField>(
+                find.widgetWithText(TextField, AppStrings.authUsernameField))
+            .readOnly,
         isTrue,
       );
     });
 
     testWidgets('explica por que o campo está apagado', (tester) async {
       await pumpPage(tester);
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.pumpAndSettle();
       expect(find.text(AppStrings.profileUsernameLocked), findsOneWidget);
+    });
+  });
+
+  group('EditProfilePage — nome e biografia', () {
+    testWidgets('carrega os dados e nao grava sem alteracao', (tester) async {
+      final repo = _FakeProfileRepository();
+      await pumpPage(tester, profileRepository: repo);
+      expect(find.text('Gabriel'), findsWidgets);
+      expect(find.text(AppStrings.profileSaveChanges), findsOneWidget);
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNull);
+      expect(repo.detailCalls, isEmpty);
+    });
+
+    testWidgets('limpa espacos do nome e grava biografia', (tester) async {
+      final repo = _FakeProfileRepository();
+      await pumpPage(tester, profileRepository: repo);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          '  Gabriel Silva  ');
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint),
+          'Volei em Taquara');
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls,
+          [('u_gabriel', 'Gabriel Silva', 'Volei em Taquara')]);
+      expect(find.text(AppStrings.profileSaveSuccess), findsOneWidget);
+    });
+
+    testWidgets('nome vazio e recusado', (tester) async {
+      final repo = _FakeProfileRepository();
+      await pumpPage(tester, profileRepository: repo);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel), '   ');
+      await tester.pump();
+      expect(find.text(AppStrings.profileNameRequired), findsOneWidget);
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pump();
+      expect(repo.detailCalls, isEmpty);
+    });
+
+    testWidgets('limita nome e bio e mostra contador', (tester) async {
+      await pumpPage(tester);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          'a' * 61);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint), 'b' * 161);
+      await tester.pump();
+      expect(
+          tester
+              .widget<TextField>(
+                  find.widgetWithText(TextField, AppStrings.profileNameLabel))
+              .controller!
+              .text
+              .length,
+          60);
+      expect(
+          tester
+              .widget<TextField>(
+                  find.widgetWithText(TextField, AppStrings.profileBioHint))
+              .controller!
+              .text
+              .length,
+          160);
+      expect(find.text('160/160'), findsOneWidget);
+    });
+
+    testWidgets('voltar com alteracoes pede para descartar', (tester) async {
+      await pumpPage(tester);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          'Outro nome');
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.profileDiscardTitle), findsOneWidget);
+      await tester.tap(find.text(AppStrings.profileContinueEditing));
+      await tester.pumpAndSettle();
+      expect(find.text('Outro nome'), findsOneWidget);
+    });
+
+    testWidgets('bio pode ser apagada, falha preserva texto para repetir',
+        (tester) async {
+      final repo = _FakeProfileRepository(errorOnDetails: StateError('rede'));
+      await pumpPage(tester,
+          profile: UserProfile(
+            summary: perfil.summary,
+            bio: 'Bio anterior',
+            favoriteSports: const [],
+            badges: const [],
+            friends: const [],
+            gallery: const [],
+          ),
+          profileRepository: repo);
+      expect(
+          tester
+              .widget<TextField>(
+                  find.widgetWithText(TextField, AppStrings.profileBioHint))
+              .controller!
+              .text,
+          'Bio anterior');
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint), '');
+      await tester.pump();
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNotNull);
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls, [('u_gabriel', 'Gabriel', '')]);
+      expect(find.text(AppStrings.profileSaveError), findsOneWidget);
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNotNull);
     });
   });
 
@@ -293,7 +444,8 @@ void main() {
       await abrirDialogo(tester);
 
       await tester.enterText(
-        find.widgetWithText(TextField, AppStrings.profileDeleteAccountPasswordHint),
+        find.widgetWithText(
+            TextField, AppStrings.profileDeleteAccountPasswordHint),
         'segredo123',
       );
       await tester.tap(find.text(AppStrings.profileDeleteAccountConfirm));
@@ -328,7 +480,8 @@ void main() {
       await abrirDialogo(tester);
 
       await tester.enterText(
-        find.widgetWithText(TextField, AppStrings.profileDeleteAccountPasswordHint),
+        find.widgetWithText(
+            TextField, AppStrings.profileDeleteAccountPasswordHint),
         'errada',
       );
       await tester.tap(find.text(AppStrings.profileDeleteAccountConfirm));

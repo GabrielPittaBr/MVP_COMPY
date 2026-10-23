@@ -68,6 +68,9 @@ final nearbyEventsProvider = StreamProvider<List<Event>>((ref) async* {
 
 /// Nome de exibição do usuário logado, vindo do AuthUser autenticado.
 final greetingNameProvider = Provider<String>((ref) {
+  final profileName =
+      ref.watch(currentProfileProvider).valueOrNull?.summary.name;
+  if (profileName != null && profileName.isNotEmpty) return profileName;
   final authUser = ref.watch(authStateProvider).valueOrNull;
   return authUser?.displayName ?? '';
 });

@@ -17,6 +17,10 @@ abstract interface class ProfileRepository {
   /// lista ter itens.
   Future<void> updateFavoriteSports(String uid, List<Sport> sports);
 
+  /// Atualiza os campos públicos e sincroniza o nome no Firebase Auth.
+  Future<void> updateDetails(String uid,
+      {required String name, required String bio});
+
   /// Troca a foto do perfil de [uid] por [jpeg] (já recortado e reduzido).
   ///
   /// `null` remove a foto: o perfil volta para a inicial de [name]. A foto
