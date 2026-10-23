@@ -81,6 +81,27 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
+  Future<void> updateDetails(String uid,
+      {required String name, required String bio}) async {
+    final cleanedName = name.trim();
+    if (cleanedName.isEmpty || cleanedName.length > 60 || bio.length > 160) {
+      throw ArgumentError('Nome ou biografia inválidos.');
+    }
+    if (!kUseFirebaseRepos || _remote == null) {
+      if (uid != MockProfile.current.summary.id) {
+        throw StateError('Perfil não pertence ao usuário atual.');
+      }
+      MockProfile.nameOverride = cleanedName;
+      MockProfile.bioOverride = bio;
+      return;
+    }
+    // Firestore e Auth não compartilham transação. Se Auth falhar, a nova
+    // tentativa repete a escrita idempotente e conclui a sincronização.
+    await _remote.updatePublicDetails(uid, cleanedName, bio);
+    await _remote.updateAuthDisplayName(uid, cleanedName);
+  }
+
+  @override
   Future<void> updateAvatar(
     String uid, {
     required String name,

@@ -47,6 +47,10 @@ class ProfilePage extends ConsumerWidget {
                 summary: profile.summary,
                 onEdit: () => context.push(AppRoutes.profileEdit),
               ),
+              if (profile.bio.trim().isNotEmpty) ...<Widget>[
+                const SizedBox(height: 16),
+                Text(profile.bio.trim()),
+              ],
               const SizedBox(height: 24),
 
               _SectionTitle(

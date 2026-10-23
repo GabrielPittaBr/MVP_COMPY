@@ -221,6 +221,57 @@ describe('nameLower e identidade de perfil (ticket 08)', () => {
   });
 });
 
+describe('edicao de nome e biografia', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users', UID), {
+        id: UID, name: 'Gabriel Pitta', nameLower: 'gabriel pitta',
+        handle: `@${USERNAME}`, avatarUrl: 'https://example.com/foto.jpg',
+        favoriteSports: ['futebol'], createdAt: PROFILE_CREATED_AT,
+      });
+      await setDoc(doc(db, 'users', UID, 'private', 'contact'), {
+        email: 'privado@example.com',
+      });
+    });
+  });
+
+  it('dono grava nome e bio e preserva os demais campos', async () => {
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), {
+      name: 'Gabriel Silva', nameLower: 'gabriel silva', bio: 'Jogo futebol.',
+    }, { merge: true }));
+    const data = (await getDoc(doc(as(UID), 'users', UID))).data();
+    if (data.name !== 'Gabriel Silva' || data.bio !== 'Jogo futebol.' ||
+        data.avatarUrl !== 'https://example.com/foto.jpg' ||
+        data.handle !== `@${USERNAME}` || data.favoriteSports[0] !== 'futebol') {
+      throw new Error('campos do perfil nao preservados');
+    }
+  });
+
+  it('permite bio vazia ou ausente para perfis legados', async () => {
+    await assertSucceeds(getDoc(doc(as('outro'), 'users', UID)));
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), { bio: '' }, { merge: true }));
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), {
+      bio: 'a'.repeat(160),
+    }, { merge: true }));
+  });
+
+  it('recusa bio longa, tipo invalido e nome longo', async () => {
+    await assertFails(setDoc(doc(as(UID), 'users', UID), { bio: 'a'.repeat(161) }, { merge: true }));
+    await assertFails(setDoc(doc(as(UID), 'users', UID), { bio: 7 }, { merge: true }));
+    await assertFails(setDoc(doc(as(UID), 'users', UID), {
+      name: 'a'.repeat(61), nameLower: 'a'.repeat(61),
+    }, { merge: true }));
+  });
+
+  it('recusa escrita por terceiros e leitura do contato privado', async () => {
+    await assertFails(setDoc(doc(as('outro'), 'users', UID), {
+      bio: 'alterada',
+    }, { merge: true }));
+    await assertFails(getDoc(doc(as('outro'), 'users', UID, 'private', 'contact')));
+  });
+});
+
 describe('esportes favoritos (tarefa 13)', () => {
   beforeEach(async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {

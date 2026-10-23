@@ -17,6 +17,7 @@ import '../../domain/repositories/profile_repository.dart';
 import '../../domain/usecases/get_profile.dart';
 import '../../domain/usecases/get_public_profile.dart';
 import '../../domain/usecases/search_users.dart';
+import '../../domain/usecases/update_profile_details.dart';
 
 final profileRemoteDataSourceProvider = Provider<ProfileRemoteDataSource?>(
   (ref) => kUseFirebaseRepos
@@ -37,6 +38,38 @@ final getProfileProvider = Provider<GetProfile>(
 
 final getPublicProfileProvider = Provider<GetPublicProfile>(
   (ref) => GetPublicProfile(ref.watch(profileRepositoryProvider)),
+);
+
+final updateProfileDetailsProvider = Provider<UpdateProfileDetails>(
+  (ref) => UpdateProfileDetails(ref.watch(profileRepositoryProvider)),
+);
+
+class ProfileDetailsController extends AsyncNotifier<void> {
+  @override
+  Future<void> build() async {}
+
+  Future<bool> save(String uid,
+      {required String name, required String bio}) async {
+    if (state.isLoading) return false;
+    state = const AsyncLoading<void>();
+    state = await AsyncValue.guard<void>(() async {
+      await ref
+          .read(updateProfileDetailsProvider)
+          .call(uid, name: name, bio: bio);
+      ref.read(authControllerProvider.notifier).reflectDisplayName(name.trim());
+    });
+    // Também na falha: a escrita no Firestore pode ter concluído antes de o
+    // Auth falhar. A tela mantém o texto para uma nova tentativa.
+    ref.invalidate(currentProfileProvider);
+    ref.invalidate(publicProfileProvider(uid));
+    ref.invalidate(userSearchProvider);
+    return !state.hasError;
+  }
+}
+
+final profileDetailsControllerProvider =
+    AsyncNotifierProvider<ProfileDetailsController, void>(
+  ProfileDetailsController.new,
 );
 
 final publicProfileProvider =

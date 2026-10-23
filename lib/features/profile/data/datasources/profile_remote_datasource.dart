@@ -1,15 +1,43 @@
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/services/avatar_storage.dart';
 import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/sport.dart';
 
 class ProfileRemoteDataSource {
-  ProfileRemoteDataSource(this._firestore, this._avatars);
+  ProfileRemoteDataSource(this._firestore, this._avatars, {FirebaseAuth? auth})
+      : _auth = auth ?? FirebaseAuth.instance;
   final FirebaseFirestore _firestore;
   final AvatarStorage _avatars;
+  final FirebaseAuth _auth;
+
+  void _requireOwner(String uid) {
+    if (uid.isEmpty || _auth.currentUser?.uid != uid) {
+      throw StateError('Usuário não autenticado para editar este perfil.');
+    }
+  }
+
+  Future<void> updatePublicDetails(String uid, String name, String bio) async {
+    _requireOwner(uid);
+    await _firestore.collection('users').doc(uid).set(
+      <String, dynamic>{
+        'name': name,
+        'nameLower': TextNormalizer.normalize(name),
+        'bio': bio,
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  Future<void> updateAuthDisplayName(String uid, String name) async {
+    _requireOwner(uid);
+    if (_auth.currentUser!.displayName != name) {
+      await _auth.currentUser!.updateDisplayName(name);
+    }
+  }
 
   Future<DocumentSnapshot<Map<String, dynamic>>> fetchById(String userId) {
     return _firestore.collection('users').doc(userId).get();

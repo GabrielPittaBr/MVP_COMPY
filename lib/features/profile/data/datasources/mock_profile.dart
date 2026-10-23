@@ -13,15 +13,17 @@ abstract final class MockProfile {
   /// papel que o [InMemoryEventsStore] cumpre para eventos: sem isso, salvar
   /// o onboarding com `kUseFirebaseRepos = false` não teria efeito nenhum.
   static List<Sport>? favoriteSportsOverride;
+  static String? nameOverride;
+  static String? bioOverride;
 
   static UserProfile get current => UserProfile(
         summary: UserSummary(
           id: 'u_joao',
-          name: 'João Souza',
+          name: nameOverride ?? 'João Souza',
           handle: '@joao.souza',
           avatarUrl: AppAssets.avatar('João', size: 200),
         ),
-        bio:
+        bio: bioOverride ??
             'Apaixonado por esportes coletivos. Busca parceiros para treinar em Taquara.',
         favoriteSports: favoriteSportsOverride ??
             const <Sport>[Sport.futebol, Sport.volei, Sport.basquete],

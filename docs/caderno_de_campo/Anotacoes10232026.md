@@ -1,0 +1,4 @@
+Taquara, 23 de Outubro de 2026
+
+- Hoje concluímos a edição do nome e da biografia no perfil. Mantivemos a foto no fluxo de seleção, recorte e Storage que já existia. O salvamento grava somente os campos necessários no Firestore, atualiza o nome no Auth e avisa quando uma das etapas falha para permitir nova tentativa. Também mostramos a biografia no perfil próprio, atualizamos a Home e os perfis públicos pelos providers e pedimos confirmação antes de descartar texto não salvo.
+- Permitimos a biografia opcional de até 160 caracteres nas regras do Firestore, sem mudar quem pode escrever ou ler dados privados. Acrescentamos testes de tela, providers, falha parcial e regras. A suíte Flutter passou; a suíte de regras não conseguiu iniciar porque o emulador do Firestore falhou ao abrir a conexão local do Java neste ambiente. Não publicamos regras nem alteramos o bucket; a configuração pendente de CORS para Chrome segue no checklist de publicação.

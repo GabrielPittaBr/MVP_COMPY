@@ -42,6 +42,15 @@ class AuthController extends AsyncNotifier<AuthUser?> {
 
   AuthRepository get _repo => ref.read(authRepositoryProvider);
 
+  /// Reflete uma edição confirmada no Auth imediatamente na saudação da Home.
+  void reflectDisplayName(String name) {
+    final current =
+        state.valueOrNull ?? ref.read(authStateProvider).valueOrNull;
+    if (current != null) {
+      state = AsyncData<AuthUser?>(current.copyWith(displayName: name));
+    }
+  }
+
   /// Login com e-mail e senha.
   Future<void> signInWithEmail({
     required String email,

@@ -265,6 +265,19 @@ abstract final class AppStrings {
   static const String profileNoFavoriteSports =
       'Nenhum esporte favorito informado.';
   static const String profileEdit = 'Editar perfil';
+  static const String profileNameLabel = 'Nome completo';
+  static const String profileNameRequired = 'Informe seu nome completo.';
+  static const String profileBioLabel = 'Biografia';
+  static const String profileBioHint = 'Conte um pouco sobre você';
+  static const String profileSaveChanges = 'Salvar alterações';
+  static const String profileSaveSuccess = 'Perfil atualizado.';
+  static const String profileSaveError =
+      'Não foi possível salvar tudo. Tente novamente.';
+  static const String profileDiscardTitle = 'Descartar alterações?';
+  static const String profileDiscardBody =
+      'As alterações no nome e na biografia ainda não foram salvas.';
+  static const String profileContinueEditing = 'Continuar editando';
+  static const String profileDiscard = 'Descartar';
   static const String profileEditFavoriteSports = 'Editar esportes favoritos';
   static const String profileFavoriteSports = 'Esportes favoritos';
   static const String profileBadges = 'Insígnias';
