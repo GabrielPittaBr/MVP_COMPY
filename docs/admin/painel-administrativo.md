@@ -219,10 +219,10 @@ código.
   (16/10/2026).
 - [ ] Conferir no ar, com sessão, a volta ao destino depois do login e o
   refresh numa rota do painel.
-- [ ] Publicar a seção de Eventos e as exclusões (23/10/2026): primeiro os
-  três índices novos de `events` (esperar `READY`), depois as Functions
-  `deleteEvent` e `deleteUserAccount` e, por fim, o Hosting. Passo a passo no
-  runbook.
+- [x] Publicar a seção de Eventos e as exclusões (23/10/2026): índices,
+  Functions `deleteEvent` e `deleteUserAccount` e Hosting. O Hosting saiu da
+  branch `feature/admin-eventos-e-exclusao`, ainda fora da `develop` (ver
+  runbook).
 - [ ] Testar no ar as exclusões com dados de teste: um evento com
   participantes e notificação, e uma conta criada só para isso.
 - [ ] Ticket 18:
