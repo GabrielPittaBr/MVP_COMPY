@@ -547,3 +547,58 @@ firebase functions:log --only autoEndOverdueEvents --project compy-tcc
 - `firebase deploy --only storage,firestore:rules`: as duas compilaram e foram publicadas. As regras do Firestore no ar agora têm as três mudanças, e as do Storage (fotos de perfil) entraram pela primeira vez, o que confirmou que o bucket `compy-tcc.firebasestorage.app` está ativo.
 - A regra nova do `avatarUrl` aceita só `http(s)`. O app v0.1.0 instalado grava a imagem de inicial do `placehold.co` (https), então continua compatível.
 - Falta o CORS do bucket, que precisa do `gcloud` (ver `docs/checklist-publicacao.md`, item 4). As Functions não mudaram nesta junção, então não foram publicadas de novo.
+
+## Eventos e exclusões no painel — 2026-10-23
+
+A branch `feature/admin-eventos-e-exclusao` trouxe a seção de Eventos do
+painel e as exclusões de evento e de conta
+([ADR-0003](../adr/0003-exclusoes-administrativas-por-callables.md)). As
+regras não mudaram.
+
+| Function | Tipo | O que faz |
+|---|---|---|
+| `deleteEvent` | Callable do painel (`enforceAppCheck: true`) | Apaga as Notificações de fim de evento dos participantes, as avaliações e a média do próprio evento e, por último, o evento. |
+| `deleteUserAccount` | Callable do painel (`enforceAppCheck: true`) | Desabilita a conta, apaga as fotos em `users/{uid}/` no Storage, a reserva em `usernames`, o perfil com as subcoleções e, por último, a conta do Auth. |
+
+**Ordem do deploy**, a partir da `develop` com o merge e as suítes verdes:
+
+```powershell
+firebase deploy --only firestore:indexes --project compy-tcc
+# esperar os três índices novos de `events` ficarem READY no console
+firebase deploy --only functions:administrative --project compy-tcc
+firebase functions:list --project compy-tcc
+# build de release como em "Build e deploy manual", depois:
+firebase deploy --only hosting:admin --project compy-tcc
+```
+
+- Sem os índices, a lista de eventos falha ao filtrar por modalidade e a seção
+  "Eventos organizados" do detalhe do Usuário mostra erro. A lista sem filtro
+  e a busca só por título funcionam com os índices automáticos.
+- `deleteUserAccount` apaga arquivos do bucket padrão
+  (`compy-tcc.firebasestorage.app`). A conta de serviço padrão das Functions
+  já tem acesso a ele; se o log mostrar `403` do Storage, confira o papel dela
+  no bucket.
+- Smoke test sugerido: um evento de teste com participante e notificação, e
+  uma conta criada só para o teste. Confira o registro em `adminOperations`
+  pelo console, e confira que o app mostra "Evento não encontrado" e que a
+  conta não entra mais.
+
+**Publicação em 2026-10-23.** O responsável publicou os índices e as Functions.
+`firebase functions:list` mostra `deleteEvent` e `deleteUserAccount` em v2,
+`southamerica-east1`, `nodejs22`, e `firebase firestore:indexes` lista os três
+índices novos de `events`. O estado `READY` não foi conferido por aqui.
+
+- **O Hosting está com a branch `feature/admin-eventos-e-exclusao`, que ainda
+  não entrou na `develop`.** Até o merge, um deploy feito a partir da
+  `develop` volta o painel sem a seção de Eventos e sem as exclusões. As
+  Functions novas continuam no ar e não atrapalham o painel antigo.
+- Build de release via `admin/tool/build_web.ps1`, com a mesma site key
+  pública reCAPTCHA v3 do bundle que estava no ar e sem token de debug no
+  ambiente: exit code 0. Antes, admin `flutter analyze` sem issues e 89/89
+  testes; Functions com lint limpo e 95/95.
+- `firebase deploy --only hosting:admin` concluído (4 dos 47 arquivos
+  mudaram). O `main.dart.js` servido confere byte a byte com o build, release
+  `7a15c093b254`. `/`, `/login`, `/dashboard`, `/events`, `/events/<id>`,
+  `/places` e `/users` respondem HTTP 200.
+- Falta o smoke test com sessão Admin: abrir a lista e o detalhe de eventos,
+  filtrar por modalidade e testar as duas exclusões com dados de teste.

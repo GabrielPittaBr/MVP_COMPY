@@ -4,6 +4,8 @@ import '../../features/auth/presentation/admin_auth_feature.dart';
 import '../../features/auth/presentation/admin_auth_screens.dart';
 import '../../features/dashboard/data/admin_dashboard_repository.dart';
 import '../../features/dashboard/presentation/admin_dashboard_page.dart';
+import '../../features/events/data/admin_events_repository.dart';
+import '../../features/events/presentation/admin_events_pages.dart';
 import '../../features/places/data/admin_places_repository.dart';
 import '../../features/places/presentation/admin_place_form_page.dart';
 import '../../features/places/presentation/admin_places_page.dart';
@@ -28,20 +30,18 @@ String? _validatedAdminDestination(String? value) {
   }
 
   final path = uri.path;
-  final isPlaceDetails =
-      path.startsWith('/places/') &&
-      path.substring('/places/'.length).isNotEmpty &&
-      !path.substring('/places/'.length).contains('/');
-  final isUserDetails =
-      path.startsWith('/users/') &&
-      path.substring('/users/'.length).isNotEmpty &&
-      !path.substring('/users/'.length).contains('/');
+  bool isDetails(String prefix) =>
+      path.startsWith(prefix) &&
+      path.substring(prefix.length).isNotEmpty &&
+      !path.substring(prefix.length).contains('/');
   final isKnownProtectedRoute = path == '/dashboard' ||
+      path == '/events' ||
+      isDetails('/events/') ||
       path == '/places' ||
       path == '/places/new' ||
-      isPlaceDetails ||
+      isDetails('/places/') ||
       path == '/users' ||
-      isUserDetails;
+      isDetails('/users/');
 
   return isKnownProtectedRoute ? uri.toString() : null;
 }
@@ -94,6 +94,7 @@ GoRouter createAdminRouter({
   required AdminAuthController authController,
   String? initialLocation,
   AdminDashboardRepository? dashboardRepository,
+  AdminEventsRepository? eventsRepository,
   AdminPlacesRepository? placesRepository,
   AdminUsersRepository? usersRepository,
 }) {
@@ -130,6 +131,25 @@ GoRouter createAdminRouter({
           controller: authController,
           location: state.uri.path,
           child: AdminDashboardPage(repository: dashboardRepository),
+        ),
+      ),
+      GoRoute(
+        path: '/events',
+        builder: (context, state) => AdminShell(
+          controller: authController,
+          location: state.uri.path,
+          child: AdminEventsPage(repository: eventsRepository),
+        ),
+      ),
+      GoRoute(
+        path: '/events/:id',
+        builder: (context, state) => AdminShell(
+          controller: authController,
+          location: state.uri.path,
+          child: AdminEventDetailsPage(
+            eventId: state.pathParameters['id']!,
+            repository: eventsRepository,
+          ),
         ),
       ),
       GoRoute(
@@ -189,6 +209,8 @@ GoRouter createAdminRouter({
             child: AdminUserDetailsPage(
               uid: uid,
               repository: usersRepository,
+              eventsRepository:
+                  eventsRepository ?? FirebaseAdminEventsRepository(),
               initialDetails: extra is AdminUserDetailsResult ? extra : null,
             ),
           );

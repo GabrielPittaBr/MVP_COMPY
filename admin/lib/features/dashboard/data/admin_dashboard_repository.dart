@@ -5,11 +5,17 @@ class AdminDashboardMetrics {
     required this.profileCount,
     required this.activePlaceCount,
     required this.inactivePlaceCount,
+    required this.eventCount,
+    required this.upcomingEventCount,
   });
 
   final int profileCount;
   final int activePlaceCount;
   final int inactivePlaceCount;
+  final int eventCount;
+
+  /// Eventos que ainda não começaram.
+  final int upcomingEventCount;
 }
 
 class AdminDashboardCountQuery {
@@ -36,6 +42,7 @@ class AdminDashboardCountQuery {
           filterField: 'status',
           filterValue: 'inactive',
         ),
+        AdminDashboardCountQuery(collection: 'events'),
       ];
 }
 
@@ -51,14 +58,27 @@ class FirebaseAdminDashboardRepository implements AdminDashboardRepository {
 
   @override
   Future<AdminDashboardMetrics> loadMetrics() async {
-    final counts = await Future.wait<int>(
-      AdminDashboardCountQuery.definitions.map(_count),
-    );
+    final counts = await Future.wait<int>(<Future<int>>[
+      ...AdminDashboardCountQuery.definitions.map(_count),
+      _countUpcomingEvents(),
+    ]);
     return AdminDashboardMetrics(
       profileCount: counts[0],
       activePlaceCount: counts[1],
       inactivePlaceCount: counts[2],
+      eventCount: counts[3],
+      upcomingEventCount: counts[4],
     );
+  }
+
+  /// Faixa no próprio `dateTime`: o índice simples do campo basta.
+  Future<int> _countUpcomingEvents() async {
+    final snapshot = await _firestore
+        .collection('events')
+        .where('dateTime', isGreaterThan: Timestamp.now())
+        .count()
+        .get();
+    return snapshot.count ?? 0;
   }
 
   Future<int> _count(AdminDashboardCountQuery definition) async {

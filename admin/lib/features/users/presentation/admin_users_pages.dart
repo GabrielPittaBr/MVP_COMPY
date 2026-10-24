@@ -1,12 +1,14 @@
-import 'dart:math';
-
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/operations/admin_operations.dart';
 import '../../../core/shell/admin_shell.dart';
 import '../../../core/theme/admin_theme.dart';
+import '../../../core/widgets/admin_deletion_dialog.dart';
 import '../../../core/widgets/admin_status_pill.dart';
+import '../../events/data/admin_events_repository.dart';
+import '../../events/presentation/admin_events_pages.dart';
 import '../data/admin_users_repository.dart';
 import 'admin_users_controller.dart';
 
@@ -211,12 +213,16 @@ class AdminUserDetailsPage extends StatefulWidget {
   const AdminUserDetailsPage({
     required this.uid,
     this.repository,
+    this.eventsRepository,
     this.initialDetails,
     super.key,
   });
 
   final String uid;
   final AdminUsersRepository? repository;
+
+  /// Fonte da seção "Eventos organizados"; sem ela, a seção não aparece.
+  final AdminEventsRepository? eventsRepository;
   final AdminUserDetailsResult? initialDetails;
 
   @override
@@ -270,6 +276,7 @@ class _AdminUserDetailsPageState extends State<AdminUserDetailsPage> {
             return _AdminUserDetailsContent(
               result: snapshot.data!,
               repository: _repository,
+              eventsRepository: widget.eventsRepository,
             );
           },
         ),
@@ -282,10 +289,12 @@ class _AdminUserDetailsContent extends StatefulWidget {
   const _AdminUserDetailsContent({
     required this.result,
     required this.repository,
+    required this.eventsRepository,
   });
 
   final AdminUserDetailsResult result;
   final AdminUsersRepository repository;
+  final AdminEventsRepository? eventsRepository;
 
   @override
   State<_AdminUserDetailsContent> createState() =>
@@ -302,10 +311,102 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
   String? _pendingSignature;
   String? _pendingOperationId;
 
+  /// A operação em andamento é a exclusão, e não a suspensão.
+  bool _deleting = false;
+
+  /// Preenchido quando a conta deixa de existir: excluída aqui ou antes.
+  String? _goneMessage;
+
   @override
   void dispose() {
     _reasonController.dispose();
     super.dispose();
+  }
+
+  Future<void> _requestDeletion() async {
+    if (_actionsBlocked || _submitting) return;
+    final reason = normalizeAdminReason(_reasonController.text);
+    if (!isValidAdminReason(reason)) {
+      setState(() {
+        _showReasonError = true;
+        _actionError = null;
+      });
+      return;
+    }
+    setState(() {
+      _showReasonError = false;
+      _actionError = null;
+    });
+    final profile = _result.profile;
+    final confirmed = await confirmAdminDeletion(
+      context,
+      title: 'Excluir conta?',
+      details: <String>[
+        if (profile != null)
+          'Usuário: ${profile.name.isEmpty ? 'Sem nome' : profile.name} '
+              '(${profile.handle.isEmpty ? 'sem handle' : profile.handle})',
+        'UID: ${_result.uid}',
+        'Motivo: $reason',
+      ],
+      consequences: _accountDeletionConsequences,
+      confirmLabel: 'Excluir conta',
+    );
+    if (!mounted || !confirmed) return;
+    await _executeDeletion(reason);
+  }
+
+  Future<void> _executeDeletion(String reason) async {
+    final signature = '${_result.uid}\u0000delete\u0000$reason';
+    final operationId = _pendingSignature == signature
+        ? _pendingOperationId!
+        : newAdminOperationId();
+    setState(() {
+      _submitting = true;
+      _deleting = true;
+      _actionError = null;
+      _pendingSignature = signature;
+      _pendingOperationId = operationId;
+    });
+    try {
+      final response = await widget.repository.deleteUserAccount(
+        uid: _result.uid,
+        reason: reason,
+        operationId: operationId,
+      );
+      if (response.uid != _result.uid) {
+        throw const FormatException(
+          'A resposta da exclusão não corresponde à conta.',
+        );
+      }
+      if (!mounted) return;
+      setState(() => _goneMessage = 'Conta excluída.');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Conta excluída.')));
+    } on Object catch (error) {
+      if (!mounted) return;
+      final code = error is FirebaseFunctionsException ? error.code : null;
+      setState(() {
+        if (code == 'not-found') {
+          _goneMessage = 'A conta e o perfil já não existem.';
+        }
+        _actionError = _safeDeletionError(error);
+        if (isTerminalAdminOperationFailure(error)) {
+          _pendingSignature = null;
+          _pendingOperationId = null;
+        }
+        if (code == 'permission-denied' || code == 'failed-precondition') {
+          _actionsBlocked = true;
+        }
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _deleting = false;
+        });
+      }
+    }
   }
 
   Future<void> _requestAction(AdminUserSuspensionAction action) async {
@@ -380,7 +481,7 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
     final signature = '${_result.uid}\u0000${action.name}\u0000$reason';
     final operationId = _pendingSignature == signature
         ? _pendingOperationId!
-        : _newUuidV4();
+        : newAdminOperationId();
     setState(() {
       _submitting = true;
       _actionError = null;
@@ -437,11 +538,7 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
         );
       }
     } on Object catch (error) {
-      final operationStatus =
-          error is FirebaseFunctionsException && error.details is Map
-          ? (error.details as Map)['operationStatus']
-          : null;
-      final terminal = _isTerminalFailure(error) || operationStatus == 'failed';
+      final terminal = isTerminalAdminOperationFailure(error);
       final code = error is FirebaseFunctionsException ? error.code : null;
       setState(() {
         _actionError = _safeActionError(error);
@@ -487,11 +584,17 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
 
   @override
   Widget build(BuildContext context) {
+    final goneMessage = _goneMessage;
+    if (goneMessage != null) return _UserGone(message: goneMessage);
+
     final result = _result;
     final profile = result.profile;
     final auth = result.auth;
     final textTheme = Theme.of(context).textTheme;
     final colors = Theme.of(context).colorScheme;
+    final eventsRepository = widget.eventsRepository;
+    // Perfil sem conta no Auth é registro órfão: só a exclusão faz sentido.
+    final canDelete = auth != null || (profile != null && result.authNotFound);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -579,25 +682,31 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          _buildSuspensionActions(context, auth),
         ] else if (profile == null &&
             !result.authUnavailable &&
             !result.profileUnavailable) ...<Widget>[
           const _StatusBanner('Usuário não encontrado'),
           _DetailLine(label: 'UID', value: result.uid),
         ],
+        if (eventsRepository != null &&
+            (profile != null || auth != null)) ...<Widget>[
+          const SizedBox(height: 16),
+          _OrganizedEventsCard(uid: result.uid, repository: eventsRepository),
+        ],
+        if (canDelete) ...<Widget>[
+          const SizedBox(height: 16),
+          _buildAccountActions(context, auth),
+        ],
       ],
     );
   }
 
-  Widget _buildSuspensionActions(
+  /// Um motivo para todas as ações: suspender ou reativar (quando há conta
+  /// no Auth) e excluir definitivamente.
+  Widget _buildAccountActions(
     BuildContext context,
-    AdminUserAuthDetails auth,
+    AdminUserAuthDetails? auth,
   ) {
-    final action = auth.disabled
-        ? AdminUserSuspensionAction.reactivate
-        : AdminUserSuspensionAction.suspend;
     final reason = normalizeAdminSuspensionReason(_reasonController.text);
     final reasonError = !_showReasonError
         ? null
@@ -605,24 +714,19 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
         ? 'Informe um motivo com 10 a 500 caracteres após normalização.'
         : null;
     final colors = Theme.of(context).colorScheme;
-    final suspending = action == AdminUserSuspensionAction.suspend;
+    final textTheme = Theme.of(context).textTheme;
+    final muted = TextStyle(color: colors.onSurfaceVariant);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              'Ações administrativas da conta',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('Ações administrativas da conta', style: textTheme.titleLarge),
             const SizedBox(height: 8),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 680),
-              child: Text(
-                'Suspender impede novos logins e revoga refresh tokens. Um ID token já emitido pode continuar válido até expirar; isto não é um bloqueio instantâneo.',
-                style: TextStyle(color: colors.onSurfaceVariant),
-              ),
+            Text(
+              'Toda ação exige um motivo, registrado junto com a operação.',
+              style: muted,
             ),
             const SizedBox(height: 20),
             Semantics(
@@ -669,74 +773,241 @@ class _AdminUserDetailsContentState extends State<_AdminUserDetailsContent> {
                 'A ação está indisponível para esta conta. Recarregue os detalhes antes de tentar novamente.',
               ),
             ],
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: <Widget>[
-                FilledButton.icon(
-                  style: suspending
-                      ? FilledButton.styleFrom(
-                          backgroundColor: colors.error,
-                          foregroundColor: colors.onError,
-                        )
-                      : null,
-                  onPressed: _submitting || _actionsBlocked
-                      ? null
-                      : () => _requestAction(action),
-                  icon: _submitting
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          action == AdminUserSuspensionAction.suspend
-                              ? Icons.person_off_outlined
-                              : Icons.person_outline,
-                        ),
-                  label: Text(
-                    action == AdminUserSuspensionAction.suspend
-                        ? 'Suspender conta'
-                        : 'Reativar conta',
-                  ),
+            if (_submitting) ...<Widget>[
+              const SizedBox(height: 8),
+              Semantics(
+                label: 'Alteração da conta em andamento',
+                liveRegion: true,
+                child: const Text('Aguardando confirmação do servidor…'),
+              ),
+            ],
+            if (auth != null) ...<Widget>[
+              const SizedBox(height: 16),
+              Text('Suspensão', style: textTheme.titleMedium),
+              const SizedBox(height: 4),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: Text(
+                  'Suspender impede novos logins e revoga refresh tokens. Um ID token já emitido pode continuar válido até expirar; isto não é um bloqueio instantâneo.',
+                  style: muted,
                 ),
-                if (_submitting)
-                  Semantics(
-                    label: 'Alteração da conta em andamento',
-                    liveRegion: true,
-                    child: const Text('Aguardando confirmação do servidor…'),
-                  ),
-              ],
+              ),
+              const SizedBox(height: 12),
+              _buildSuspensionButton(colors, auth),
+              const SizedBox(height: 24),
+              const Divider(),
+            ],
+            const SizedBox(height: 20),
+            Text('Exclusão definitiva', style: textTheme.titleMedium),
+            const SizedBox(height: 4),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680),
+              child: Text(_accountDeletionConsequences, style: muted),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colors.error,
+                side: BorderSide(color: colors.error),
+              ),
+              onPressed: _submitting || _actionsBlocked
+                  ? null
+                  : _requestDeletion,
+              icon: _deleting
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.delete_forever_outlined),
+              label: const Text('Excluir conta'),
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildSuspensionButton(ColorScheme colors, AdminUserAuthDetails auth) {
+    final action = auth.disabled
+        ? AdminUserSuspensionAction.reactivate
+        : AdminUserSuspensionAction.suspend;
+    final suspending = action == AdminUserSuspensionAction.suspend;
+    return FilledButton.icon(
+      style: suspending
+          ? FilledButton.styleFrom(
+              backgroundColor: colors.error,
+              foregroundColor: colors.onError,
+            )
+          : null,
+      onPressed: _submitting || _actionsBlocked
+          ? null
+          : () => _requestAction(action),
+      icon: _submitting && !_deleting
+          ? const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(suspending ? Icons.person_off_outlined : Icons.person_outline),
+      label: Text(suspending ? 'Suspender conta' : 'Reativar conta'),
+    );
+  }
 }
 
-String _newUuidV4() {
-  final random = Random.secure();
-  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  final hex = bytes
-      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
-      .join();
-  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
-      '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+const String _accountDeletionConsequences =
+    'Apaga de vez a conta de acesso, o perfil com os dados privados, as '
+    'fotos, a reserva do username e as notificações; a pessoa não consegue '
+    'mais entrar. Eventos organizados, participações, mensagens e avaliações '
+    'continuam, como na exclusão feita pelo próprio app. A exclusão não pode '
+    'ser desfeita.';
+
+String _safeDeletionError(Object error) {
+  if (error is FirebaseFunctionsException) {
+    return switch (error.code) {
+      'not-found' => 'A conta e o perfil já não existem.',
+      'permission-denied' => 'Esta conta não pode ser excluída pelo painel.',
+      'failed-precondition' => 'Você não pode excluir a sua própria conta administrativa.',
+      'invalid-argument' => 'Revise o motivo e tente novamente.',
+      'already-exists' => 'Houve um conflito na identificação da operação. Revise os dados e tente novamente.',
+      _ => 'Não foi possível confirmar a exclusão. Tentar novamente repetirá a mesma solicitação com segurança.',
+    };
+  }
+  return 'Não foi possível confirmar a exclusão. Seus dados foram preservados; tente novamente.';
 }
 
-bool _isTerminalFailure(Object error) {
-  if (error is! FirebaseFunctionsException) return false;
-  return const <String>{
-    'invalid-argument',
-    'not-found',
-    'permission-denied',
-    'failed-precondition',
-    'already-exists',
-  }.contains(error.code);
+/// Fim da página de uma conta que não existe mais, excluída aqui ou antes.
+class _UserGone extends StatelessWidget {
+  const _UserGone({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        child: Column(
+          children: <Widget>[
+            Icon(
+              Icons.person_off_outlined,
+              size: 36,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () => context.go('/users'),
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Voltar para Usuários'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Os eventos mais recentes que a pessoa organizou, com atalho para cada um
+/// — útil para revisar ou excluir antes de excluir a conta, que os mantém.
+class _OrganizedEventsCard extends StatefulWidget {
+  const _OrganizedEventsCard({required this.uid, required this.repository});
+
+  final String uid;
+  final AdminEventsRepository repository;
+
+  @override
+  State<_OrganizedEventsCard> createState() => _OrganizedEventsCardState();
+}
+
+class _OrganizedEventsCardState extends State<_OrganizedEventsCard> {
+  late Future<List<AdminEventRecord>> _events = _load();
+
+  Future<List<AdminEventRecord>> _load() =>
+      widget.repository.loadOrganizedBy(widget.uid);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+            child: Text(
+              'Eventos organizados',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
+          FutureBuilder<List<AdminEventRecord>>(
+            future: _events,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  child: Wrap(
+                    spacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: <Widget>[
+                      const Text(
+                        'Não foi possível carregar os eventos organizados.',
+                      ),
+                      TextButton(
+                        onPressed: () => setState(() => _events = _load()),
+                        child: const Text('Tentar novamente'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              if (!snapshot.hasData) {
+                return const Padding(
+                  padding: EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: LinearProgressIndicator(),
+                );
+              }
+              final events = snapshot.data!;
+              if (events.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Text('Nenhum evento organizado.'),
+                );
+              }
+              final now = DateTime.now();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  for (final event in events) ...<Widget>[
+                    const Divider(),
+                    AdminEventTile(
+                      event: event,
+                      now: now,
+                      showOrganizer: false,
+                      onTap: () => context.go(
+                        '/events/${Uri.encodeComponent(event.id)}',
+                      ),
+                    ),
+                  ],
+                  if (events.length >= AdminEventsQueryPlan.pageSize) ...<Widget>[
+                    const Divider(),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(24, 12, 24, 16),
+                      child: Text('Mostrando os 20 mais recentes.'),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 String _safeActionError(Object error) {

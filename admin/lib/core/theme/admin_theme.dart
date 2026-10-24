@@ -14,7 +14,7 @@ abstract final class AdminTheme {
     const colorScheme = ColorScheme.light(
       primary: AdminColors.primary,
       onPrimary: Colors.white,
-      primaryContainer: Color(0xFFDCE4F7),
+      primaryContainer: AdminColors.primaryContainer,
       onPrimaryContainer: AdminColors.primary,
       secondary: AdminColors.secondary,
       onSecondary: Colors.white,
