@@ -15,6 +15,7 @@ import 'package:mvp_compy/shared/models/event.dart';
 import 'package:mvp_compy/shared/models/skill_level.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
+import 'package:mvp_compy/shared/widgets/event_skill_level_chip.dart';
 
 final _agora = DateTime(2026, 10, 21, 19, 30);
 
@@ -126,6 +127,22 @@ Finder _mensagemPara(UserSummary pessoa) =>
     find.byTooltip(AppStrings.eventLiveMessage(pessoa.name));
 
 void main() {
+  testWidgets('evento em andamento mostra o nível salvo', (tester) async {
+    final advanced = Event.fromMap('evt_ao_vivo',
+        _evento.toMap()..['skillLevel'] = SkillLevel.avancado.name);
+    await _abrir(tester, _participante,
+        repositorio: _Repositorio(evento: Stream<Event?>.value(advanced)));
+    expect(
+        find.text('${AppStrings.eventSkillLevel}: '
+            '${SkillLevel.avancado.label}'),
+        findsOneWidget);
+    expect(
+        tester
+            .widget<EventSkillLevelChip>(find.byType(EventSkillLevelChip))
+            .level,
+        SkillLevel.avancado);
+  });
+
   testWidgets(
       'o participante vê todos, com mensagem para os outros e não '
       'para si', (tester) async {

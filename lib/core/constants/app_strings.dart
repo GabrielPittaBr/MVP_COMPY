@@ -97,6 +97,7 @@ abstract final class AppStrings {
   static const String eventDurationCustomInvalid =
       'Informe uma duração entre 15 e 720 minutos.';
   static const String eventSkillLevel = 'Nível de habilidade';
+  static const String eventAllSkillLevels = 'Todos os níveis';
   static const String eventParticipants = 'Participantes';
   static const String eventParticipantsNumber = 'Número de participantes';
   static const String eventDescription = 'Descrição';

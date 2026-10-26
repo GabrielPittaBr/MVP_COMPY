@@ -14,6 +14,7 @@ import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_status.dart';
 import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../../shared/widgets/event_status_chip.dart';
+import '../../../../shared/widgets/event_skill_level_chip.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/star_rating.dart';
 import '../../../../shared/widgets/user_avatar.dart';
@@ -123,6 +124,11 @@ class _Body extends ConsumerWidget {
                 icon: event.sport.icon,
                 iconColor: event.sport.color,
                 label: event.sport.label,
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: EventSkillLevelChip(level: event.skillLevel),
               ),
               const SizedBox(height: 8),
               _IconRow(

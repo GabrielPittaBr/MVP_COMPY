@@ -15,6 +15,7 @@ import 'package:mvp_compy/shared/models/event.dart';
 import 'package:mvp_compy/shared/models/skill_level.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
+import 'package:mvp_compy/shared/widgets/event_skill_level_chip.dart';
 import 'package:mvp_compy/features/ratings/domain/entities/rating_summary.dart';
 import 'package:mvp_compy/features/ratings/presentation/providers/ratings_providers.dart';
 
@@ -45,6 +46,7 @@ Event _evento({
   DateTime? endedAt,
   bool endedAutomatically = false,
   int remainingSpots = 8,
+  SkillLevel skillLevel = SkillLevel.todos,
 }) =>
     Event(
       id: 'evt_detalhe',
@@ -54,7 +56,7 @@ Event _evento({
       coordinates: const LatLng(-29.65, -50.78),
       dateTime: _agora.add(inicioEm),
       durationMinutes: 60,
-      skillLevel: SkillLevel.todos,
+      skillLevel: skillLevel,
       totalSpots: 10,
       remainingSpots: remainingSpots,
       bannerUrl: '',
@@ -105,6 +107,34 @@ Finder _botao(String label) => find.widgetWithText(FilledButton, label);
 void main() {
   // O detalhe escreve o dia da semana em pt_BR, como o main.dart prepara.
   setUpAll(() => initializeDateFormatting('pt_BR'));
+
+  testWidgets('detalhe explicita Todos os níveis', (tester) async {
+    await _abrir(tester, evento: Stream.value(_evento()), quem: _visitante);
+    expect(
+        find.text('${AppStrings.eventSkillLevel}: '
+            '${AppStrings.eventAllSkillLevels}'),
+        findsOneWidget);
+    expect(
+        tester
+            .widget<EventSkillLevelChip>(find.byType(EventSkillLevelChip))
+            .level,
+        SkillLevel.todos);
+  });
+
+  testWidgets('detalhe mostra o nível intermediário do evento', (tester) async {
+    await _abrir(tester,
+        evento: Stream.value(_evento(skillLevel: SkillLevel.intermediario)),
+        quem: _visitante);
+    expect(
+        find.text('${AppStrings.eventSkillLevel}: '
+            '${SkillLevel.intermediario.label}'),
+        findsOneWidget);
+    expect(
+        tester
+            .widget<EventSkillLevelChip>(find.byType(EventSkillLevelChip))
+            .level,
+        SkillLevel.intermediario);
+  });
 
   group('agendado', () {
     testWidgets('quem não participa vê "Participar"', (tester) async {

@@ -186,6 +186,11 @@ class _MapsPageState extends ConsumerState<MapsPage> {
             options: MapOptions(
               initialCenter: AppGeo.taquaraCenter,
               initialZoom: AppGeo.defaultZoom,
+              minZoom: AppGeo.explorationMinZoom,
+              maxZoom: AppGeo.explorationMaxZoom,
+              cameraConstraint: CameraConstraint.containCenter(
+                bounds: AppGeo.explorationBounds,
+              ),
               onTap: (_, __) =>
                   ref.read(selectedPlaceProvider.notifier).state = null,
             ),

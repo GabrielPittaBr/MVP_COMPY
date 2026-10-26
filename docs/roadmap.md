@@ -60,6 +60,8 @@
 
 **Do antigo `proximos-passos.md`, também já feitos:** entrar em evento com o uid real, criar evento com o criador real, busca de eventos com debounce, eventos próximos por geolocalização, paginação das listas de eventos e conversas, nova conversa de chat e revisão das regras do Firestore. O débito técnico listado lá (`AuthService` legado, Home usando mock) também foi resolvido.
 
+**Ajustes de exploração e eventos (25/10/2026):** o mapa principal mantém Taquara como centro inicial e restringe o centro navegável a aproximadamente 30 km em cada direção (`AppGeo`), com zoom de 11,5 a 19. Os pins, filtros e o foco ao selecionar um local continuam no mesmo fluxo. O nível de habilidade já armazenado no evento agora aparece nos cards, no detalhe e na tela do evento em andamento; `Todos` é exibido como “Todos os níveis”.
+
 ---
 
 ## Funcionalidade concluída — perfis públicos de outros usuários

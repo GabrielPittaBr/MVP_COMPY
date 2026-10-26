@@ -12,6 +12,7 @@ import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_status.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/event_status_chip.dart';
+import '../../../../shared/widgets/event_skill_level_chip.dart';
 import '../../../../shared/widgets/pill_tag.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/user_avatar.dart';
@@ -219,6 +220,11 @@ class _LiveScaffold extends StatelessWidget {
               const SizedBox(width: 8),
               Text(event.sport.label, style: const TextStyle(fontSize: 14)),
             ],
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: EventSkillLevelChip(level: event.skillLevel),
           ),
           const SizedBox(height: 14),
           _Schedule(event: event, isCreator: isCreator, ended: ended),

@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:mvp_compy/core/constants/app_geo.dart';
 import 'package:mvp_compy/core/constants/app_strings.dart';
 import 'package:mvp_compy/features/maps/domain/repositories/places_repository.dart';
 import 'package:mvp_compy/features/maps/domain/usecases/filter_map_places.dart';
 import 'package:mvp_compy/features/maps/presentation/pages/maps_page.dart';
 import 'package:mvp_compy/features/maps/presentation/providers/maps_providers.dart';
 import 'package:mvp_compy/features/maps/presentation/widgets/place_details_sheet.dart';
+import 'package:mvp_compy/shared/widgets/custom_sport_marker.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/sport_place.dart';
 import 'package:mvp_compy/features/ratings/domain/entities/rating_summary.dart';
@@ -62,6 +65,97 @@ SportPlace _place({
     )!;
 
 void main() {
+  test('limites ficam a aproximadamente 30 km de Taquara', () {
+    const distance = Distance();
+    const center = AppGeo.taquaraCenter;
+    final bounds = AppGeo.explorationBounds;
+    final northKm = distance.as(
+        LengthUnit.Kilometer, center, LatLng(bounds.north, center.longitude));
+    final eastKm = distance.as(
+        LengthUnit.Kilometer, center, LatLng(center.latitude, bounds.east));
+    expect(northKm, inInclusiveRange(29, 31));
+    expect(eastKm, inInclusiveRange(29, 31));
+  });
+
+  void ignoreTileImageErrors() {
+    final previous = FlutterError.onError;
+    FlutterError.onError = (details) {
+      if (details.library == 'image resource service') return;
+      previous?.call(details);
+    };
+    addTearDown(() => FlutterError.onError = previous);
+  }
+
+  testWidgets('mapa limita centro e zoom à região de Taquara', (tester) async {
+    ignoreTileImageErrors();
+    await tester.pumpWidget(ProviderScope(
+      overrides: <Override>[
+        placesProvider.overrideWith((ref) => Stream<PlacesStreamResult>.value(
+              const PlacesStreamResult(places: [], isFromCache: false),
+            )),
+      ],
+      child: const MaterialApp(home: MapsPage()),
+    ));
+    await tester.pump();
+
+    final options = tester.widget<FlutterMap>(find.byType(FlutterMap)).options;
+    expect(options.initialCenter, AppGeo.taquaraCenter);
+    expect(options.minZoom, AppGeo.explorationMinZoom);
+    expect(options.maxZoom, AppGeo.explorationMaxZoom);
+    expect(
+        AppGeo.explorationBounds
+            .contains(const LatLng(-29.656276729317323, -50.787726691670045)),
+        isTrue);
+
+    final controller = MapController.of(tester.element(find.byType(TileLayer)));
+    controller.move(const LatLng(0, 0), 2);
+    expect(controller.camera.center.latitude,
+        closeTo(AppGeo.explorationBounds.north, 0.00001));
+    expect(controller.camera.center.longitude,
+        closeTo(AppGeo.explorationBounds.east, 0.00001));
+    expect(controller.camera.zoom, AppGeo.explorationMinZoom);
+
+    controller.move(const LatLng(-60, -100), 22);
+    expect(controller.camera.center.latitude,
+        closeTo(AppGeo.explorationBounds.south, 0.00001));
+    expect(controller.camera.center.longitude,
+        closeTo(AppGeo.explorationBounds.west, 0.00001));
+    expect(controller.camera.zoom, AppGeo.explorationMaxZoom);
+    controller.move(AppGeo.taquaraCenter, AppGeo.defaultZoom);
+    expect(controller.camera.center, AppGeo.taquaraCenter);
+  });
+
+  testWidgets('selecionar pin mantém o foco no local e os filtros',
+      (tester) async {
+    final place = _place(
+      id: 'parque',
+      name: 'Parque do Trabalhador',
+      nameLower: 'parque do trabalhador',
+      sports: <String>['futebol'],
+      primarySport: 'futebol',
+    );
+    await tester.pumpWidget(ProviderScope(
+      overrides: <Override>[
+        placesProvider.overrideWith((ref) => Stream<PlacesStreamResult>.value(
+              PlacesStreamResult(places: [place], isFromCache: false),
+            )),
+      ],
+      child: const MaterialApp(home: MapsPage()),
+    ));
+    await tester.pump();
+    final container =
+        ProviderScope.containerOf(tester.element(find.byType(MapsPage)));
+    container.read(mapsSportFilterProvider.notifier).state = Sport.futebol;
+    await tester.pump();
+    final controller = MapController.of(tester.element(find.byType(TileLayer)));
+    await tester.tap(find.byType(CustomSportMarker));
+    await tester.pump();
+    expect(controller.camera.center, place.coordinates);
+    expect(controller.camera.zoom, AppGeo.focusZoom);
+    expect(find.byType(PlaceDetailsSheet), findsOneWidget);
+    expect(container.read(mapsSportFilterProvider), Sport.futebol);
+  });
+
   group('filterMapPlaces', () {
     final parque = _place(
       id: 'parque',
@@ -199,8 +293,7 @@ void main() {
         placesProvider.overrideWith((ref) {
           subscriptions++;
           return Stream<PlacesStreamResult>.value(
-            const PlacesStreamResult(
-                places: <SportPlace>[], isFromCache: true),
+            const PlacesStreamResult(places: <SportPlace>[], isFromCache: true),
           );
         }),
       ],
