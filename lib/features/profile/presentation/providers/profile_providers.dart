@@ -49,15 +49,27 @@ class ProfileDetailsController extends AsyncNotifier<void> {
   Future<void> build() async {}
 
   Future<bool> save(String uid,
-      {required String name, required String bio}) async {
+      {required String name,
+      required String bio,
+      required bool nameChanged}) async {
     if (state.isLoading) return false;
     state = const AsyncLoading<void>();
     state = await AsyncValue.guard<void>(() async {
       await ref
           .read(updateProfileDetailsProvider)
-          .call(uid, name: name, bio: bio);
-      ref.read(authControllerProvider.notifier).reflectDisplayName(name.trim());
+          .call(uid, name: name, bio: bio, nameChanged: nameChanged);
     });
+    if (!state.hasError && nameChanged) {
+      try {
+        ref
+            .read(authControllerProvider.notifier)
+            .reflectDisplayName(name.trim());
+      } catch (error) {
+        // A gravação e a sincronização já concluíram. A leitura do perfil
+        // invalidada abaixo continua sendo a fonte do nome exibido.
+        debugPrint('[ProfileDetails] falha ao refletir nome: $error');
+      }
+    }
     // Também na falha: a escrita no Firestore pode ter concluído antes de o
     // Auth falhar. A tela mantém o texto para uma nova tentativa.
     ref.invalidate(currentProfileProvider);

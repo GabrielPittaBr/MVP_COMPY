@@ -87,9 +87,11 @@ Feito junto com a foto de perfil (`feature/foto-de-perfil`): o `GreetingHeader` 
 
 ### B · Edição de perfil completa — ✅ fechada
 
-A `EditProfilePage` (`/profile/editar`) edita nome completo (até 60 caracteres) e biografia opcional (até 160), com salvamento explícito, aviso de alterações não salvas e repetição após falha. O Firestore recebe `name`, `nameLower` e `bio` por merge; em seguida o nome é sincronizado no Firebase Auth. Como esses serviços não compartilham transação, uma falha no Auth é mostrada como falha e uma nova tentativa conclui a sincronização. Perfil próprio, Home, busca e perfil público são atualizados pelos providers. O username permanece bloqueado, os esportes usam a tela própria e a foto continua no fluxo existente de seleção, recorte e Storage ([detalhes](autenticacao.md#foto-de-perfil-avatarurl)).
+A `EditProfilePage` (`/profile/editar`) edita nome completo (até 60 caracteres) e biografia opcional (até 160), com salvamento explícito, aviso de alterações não salvas e repetição após falha. O Firestore recebe `name`, `nameLower` e `bio` por merge; a sincronização do nome com o Firebase Auth ocorre somente quando o nome foi alterado. Como esses serviços não compartilham transação, uma falha no Auth após a escrita é informada como salvamento parcial e a tela permite repetir a sincronização. Perfil próprio, Home, busca e perfil público são atualizados pelos providers. O username permanece bloqueado, os esportes usam a tela própria e a foto continua no fluxo existente de seleção, recorte e Storage ([detalhes](autenticacao.md#foto-de-perfil-avatarurl)).
 
 `validProfile()` aceita apenas `bio` opcional do tipo texto e com até 160 caracteres, sem mudar o acesso privado. Nomes e fotos copiados para eventos e conversas antigos continuam como snapshots históricos; leituras diretas de perfil mostram os dados atuais. A pendência de CORS para avatar no Chrome e o comando de configuração do bucket estão em [`checklist-publicacao.md`](checklist-publicacao.md); nenhuma configuração foi aplicada ao bucket nesta tarefa.
+
+**Pendência de publicação:** a regra que aceita `bio` foi adicionada nesta branch em 23/10, após o último deploy de Rules registrado em 22/10. Se a release remota ainda tiver o contrato anterior, a gravação de biografia em `users/{uid}` receberá `PERMISSION_DENIED`. Conferir o ruleset ativo e publicar `firestore.rules` somente após autorização e validação no emulador; nenhuma regra foi publicada pela correção de 25/10.
 
 ### C · Tela de configurações
 
