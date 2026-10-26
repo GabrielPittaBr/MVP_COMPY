@@ -150,7 +150,9 @@ void main() {
 
     expect(find.text(AppStrings.eventLiveTitle), findsOneWidget);
     expect(find.text(AppStrings.eventLiveTalkToOrganizer), findsOneWidget);
-    expect(find.text(AppStrings.eventLiveOrganizer), findsOneWidget);
+    await tester.tap(find.byKey(const Key('participants-see-all')));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.eventLiveOrganizer), findsNWidgets(2));
     expect(find.text(AppStrings.eventLiveYou), findsOneWidget);
     expect(_mensagemPara(_dono), findsOneWidget);
     expect(_mensagemPara(_outro), findsOneWidget);
@@ -163,6 +165,8 @@ void main() {
     await _abrir(tester, _dono);
 
     expect(find.text(AppStrings.eventLiveTalkToOrganizer), findsNothing);
+    await tester.tap(find.byKey(const Key('participants-see-all')));
+    await tester.pumpAndSettle();
     expect(_mensagemPara(_dono), findsNothing);
     expect(_mensagemPara(_participante), findsOneWidget);
   });

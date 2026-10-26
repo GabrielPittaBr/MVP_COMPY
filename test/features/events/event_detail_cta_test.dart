@@ -16,6 +16,7 @@ import 'package:mvp_compy/shared/models/skill_level.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
 import 'package:mvp_compy/shared/widgets/event_skill_level_chip.dart';
+import 'package:mvp_compy/shared/widgets/user_avatar.dart';
 import 'package:mvp_compy/features/ratings/domain/entities/rating_summary.dart';
 import 'package:mvp_compy/features/ratings/presentation/providers/ratings_providers.dart';
 
@@ -83,6 +84,7 @@ Future<void> _abrir(
   required Stream<Event?> evento,
   required UserSummary quem,
   RatingSummary nota = RatingSummary.empty,
+  Stream<UserSummary?>? organizerProfile,
 }) async {
   // Tela alta: a lista do detalhe só constrói o que aparece.
   await tester.binding.setSurfaceSize(const Size(800, 1600));
@@ -92,6 +94,12 @@ Future<void> _abrir(
       clockProvider.overrideWithValue(() => _agora),
       nowProvider.overrideWith((ref) => Stream<DateTime>.value(_agora)),
       currentUserSummaryProvider.overrideWith((ref) async => quem),
+      if (organizerProfile != null)
+        publicUserSummaryProvider.overrideWith(
+          (ref, uid) => uid == _dono.id
+              ? organizerProfile
+              : Stream<UserSummary?>.value(null),
+        ),
       eventsRepositoryProvider.overrideWithValue(_EventoAoVivo(evento)),
       ratingSummaryProvider.overrideWith(
         (ref, target) => Stream<RatingSummary>.value(nota),
@@ -134,6 +142,37 @@ void main() {
             .widget<EventSkillLevelChip>(find.byType(EventSkillLevelChip))
             .level,
         SkillLevel.intermediario);
+  });
+
+  testWidgets('organizador reflete foto e nome atuais sem abrir seu perfil',
+      (tester) async {
+    final profiles = StreamController<UserSummary?>.broadcast();
+    addTearDown(profiles.close);
+    await _abrir(
+      tester,
+      evento: Stream.value(_evento()),
+      quem: _visitante,
+      organizerProfile: profiles.stream,
+    );
+    const updated = UserSummary(
+      id: 'u_dono',
+      name: 'Ana Atualizada',
+      handle: '@anasouza',
+      avatarUrl: 'https://example.com/ana-nova.jpg',
+    );
+    profiles.add(updated);
+    await tester.pump();
+    await tester.pump();
+    final creator = find.byKey(const Key('event-creator-profile'));
+    expect(find.descendant(of: creator, matching: find.text(updated.name)),
+        findsOneWidget);
+    expect(
+      tester
+          .widget<UserAvatar>(
+              find.descendant(of: creator, matching: find.byType(UserAvatar)))
+          .user,
+      updated,
+    );
   });
 
   group('agendado', () {

@@ -17,6 +17,10 @@ abstract interface class ProfileRepository {
   /// Lê somente os campos públicos de `users/{uid}`. Ausência não é mock.
   Future<UserProfile?> getPublicProfile(String uid);
 
+  /// Acompanha apenas a identidade pública para apresentação em eventos.
+  /// `null` indica que o perfil deixou de existir.
+  Stream<UserSummary?> watchPublicSummary(String uid);
+
   /// Registra a escolha de esportes favoritos de [uid].
   ///
   /// Lista vazia é escolha válida — é o que o "pular" do onboarding grava. O
@@ -30,8 +34,9 @@ abstract interface class ProfileRepository {
 
   /// Troca a foto do perfil de [uid] por [jpeg] (já recortado e reduzido).
   ///
-  /// `null` remove a foto: o perfil volta para a inicial de [name]. A foto
-  /// anterior continua valendo nos eventos e conversas que já a copiaram.
+  /// `null` remove a foto: o perfil volta para a inicial de [name].
+  /// Eventos e conversas preservam o snapshot; a apresentação do evento
+  /// pode acompanhar o perfil atual separadamente.
   Future<void> updateAvatar(String uid, {required String name, Uint8List? jpeg});
 
   /// Usuários cujo handle começa por [handlePrefix] (digitado sem o `@`).

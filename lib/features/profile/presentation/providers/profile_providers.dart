@@ -89,6 +89,13 @@ final publicProfileProvider =
   (ref, uid) => ref.watch(getPublicProfileProvider).call(uid),
 );
 
+/// Um listener por UID visível, compartilhado entre o organizador, a prévia
+/// e as linhas construídas da lista. autoDispose libera a assinatura ao sair.
+final publicUserSummaryProvider =
+    StreamProvider.autoDispose.family<UserSummary?, String>(
+  (ref, uid) => ref.watch(profileRepositoryProvider).watchPublicSummary(uid),
+);
+
 final searchUsersProvider = Provider<SearchUsers>(
   (ref) => SearchUsers(ref.watch(profileRepositoryProvider)),
 );

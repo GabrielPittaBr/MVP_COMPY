@@ -14,6 +14,14 @@ class ProfileRepositoryImpl implements ProfileRepository {
   ProfileRepositoryImpl(this._remote);
   final ProfileRemoteDataSource? _remote;
 
+  static bool _validPublicUid(String uid) =>
+      uid.isNotEmpty &&
+      uid.trim() == uid &&
+      uid != '.' &&
+      uid != '..' &&
+      !uid.contains('/') &&
+      !uid.contains('\u0000');
+
   @override
   Future<UserProfile> getCurrentProfile(String uid) async {
     if (!kUseFirebaseRepos || _remote == null) return MockProfile.current;
@@ -41,12 +49,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<UserProfile?> getPublicProfile(String uid) async {
-    if (uid.isEmpty ||
-        uid.trim() != uid ||
-        uid == '.' ||
-        uid == '..' ||
-        uid.contains('/') ||
-        uid.contains('\u0000')) {
+    if (!_validPublicUid(uid)) {
       return null;
     }
     if (!kUseFirebaseRepos || _remote == null) {
@@ -69,6 +72,24 @@ class ProfileRepositoryImpl implements ProfileRepository {
       friends: const [],
       gallery: const [],
     );
+  }
+
+  @override
+  Stream<UserSummary?> watchPublicSummary(String uid) {
+    if (!_validPublicUid(uid)) return Stream<UserSummary?>.value(null);
+    if (!kUseFirebaseRepos || _remote == null) {
+      return Stream<UserSummary?>.value(MockProfile.publicById(uid)?.summary);
+    }
+    return _remote.watchById(uid).map((doc) {
+      final data = doc.data();
+      if (data == null) return null;
+      return UserSummary(
+        id: doc.id,
+        name: (data['name'] as String?) ?? '',
+        handle: (data['handle'] as String?) ?? '',
+        avatarUrl: (data['avatarUrl'] as String?) ?? '',
+      );
+    });
   }
 
   @override

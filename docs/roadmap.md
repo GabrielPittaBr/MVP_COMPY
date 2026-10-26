@@ -62,6 +62,8 @@
 
 **Ajustes de exploração e eventos (25/10/2026):** o mapa principal mantém Taquara como centro inicial e restringe o centro navegável a aproximadamente 30 km em cada direção (`AppGeo`), com zoom de 11,5 a 19. Os pins, filtros e o foco ao selecionar um local continuam no mesmo fluxo. O nível de habilidade já armazenado no evento agora aparece nos cards, no detalhe e na tela do evento em andamento; `Todos` é exibido como “Todos os níveis”.
 
+**Participantes dos eventos (26/10/2026):** detalhes e evento em andamento mostram uma prévia compacta com Organizador e quantidade, seguida de uma lista vertical em “Ver todos”. A apresentação acompanha os campos públicos de `users/{uid}` para as pessoas visíveis, sem regravar os snapshots do evento. Um provider por UID compartilha a assinatura entre a prévia, o Organizador e a lista; os listeners são liberados ao sair, e listagens/Home não os criam. Perfil ausente usa os dados textuais do snapshot com avatar genérico; falha de rede preserva a tela. Os atalhos de mensagem do evento em andamento ficam na lista completa.
+
 ---
 
 ## Funcionalidade concluída — perfis públicos de outros usuários
@@ -91,7 +93,7 @@ Feito junto com a foto de perfil (`feature/foto-de-perfil`): o `GreetingHeader` 
 
 A `EditProfilePage` (`/profile/editar`) edita nome completo (até 60 caracteres) e biografia opcional (até 160), com salvamento explícito, aviso de alterações não salvas e repetição após falha. O Firestore recebe `name`, `nameLower` e `bio` por merge; a sincronização do nome com o Firebase Auth ocorre somente quando o nome foi alterado. Como esses serviços não compartilham transação, uma falha no Auth após a escrita é informada como salvamento parcial e a tela permite repetir a sincronização. Perfil próprio, Home, busca e perfil público são atualizados pelos providers. O username permanece bloqueado, os esportes usam a tela própria e a foto continua no fluxo existente de seleção, recorte e Storage ([detalhes](autenticacao.md#foto-de-perfil-avatarurl)).
 
-`validProfile()` aceita apenas `bio` opcional do tipo texto e com até 160 caracteres, sem mudar o acesso privado. Nomes e fotos copiados para eventos e conversas antigos continuam como snapshots históricos; leituras diretas de perfil mostram os dados atuais. A pendência de CORS para avatar no Chrome e o comando de configuração do bucket estão em [`checklist-publicacao.md`](checklist-publicacao.md); nenhuma configuração foi aplicada ao bucket nesta tarefa.
+`validProfile()` aceita apenas `bio` opcional do tipo texto e com até 160 caracteres, sem mudar o acesso privado. Nomes e fotos copiados para eventos e conversas antigos continuam como snapshots históricos; a apresentação dos participantes nos detalhes do evento consulta os perfis atuais quando visíveis. A pendência de CORS para avatar no Chrome e o comando de configuração do bucket estão em [`checklist-publicacao.md`](checklist-publicacao.md); nenhuma configuração foi aplicada ao bucket nesta tarefa.
 
 **Pendência de publicação:** a regra que aceita `bio` foi adicionada nesta branch em 23/10, após o último deploy de Rules registrado em 22/10. Se a release remota ainda tiver o contrato anterior, a gravação de biografia em `users/{uid}` receberá `PERMISSION_DENIED`. Conferir o ruleset ativo e publicar `firestore.rules` somente após autorização e validação no emulador; nenhuma regra foi publicada pela correção de 25/10.
 

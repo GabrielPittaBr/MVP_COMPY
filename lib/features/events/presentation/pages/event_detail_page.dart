@@ -12,6 +12,7 @@ import '../../../../core/utils/duration_format.dart';
 import '../../../../core/utils/rating_format.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_status.dart';
+import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../../shared/widgets/event_status_chip.dart';
 import '../../../../shared/widgets/event_skill_level_chip.dart';
@@ -170,13 +171,10 @@ class _Body extends ConsumerWidget {
                 const SizedBox(height: 24),
               ],
 
-              Text(
-                AppStrings.eventParticipantsCount(event.participants.length),
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ParticipantsAvatars(
+                participants: event.participants,
+                organizer: event.creator,
               ),
-              const SizedBox(height: 12),
-              ParticipantsAvatars(participants: event.participants),
               const SizedBox(height: 24),
 
               const Text(
@@ -499,12 +497,21 @@ class _IconRow extends StatelessWidget {
   }
 }
 
-class _CreatorTile extends StatelessWidget {
+class _CreatorTile extends ConsumerWidget {
   const _CreatorTile({required this.event});
   final Event event;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(publicUserSummaryProvider(event.creator.id));
+    final creator = current.hasValue && current.valueOrNull == null
+        ? UserSummary(
+            id: event.creator.id,
+            name: event.creator.name,
+            handle: event.creator.handle,
+            avatarUrl: '',
+          )
+        : current.valueOrNull ?? event.creator;
     return InkWell(
       key: const Key('event-creator-profile'),
       onTap: () => context.push(AppRoutes.publicProfileFor(event.creator.id)),
@@ -517,18 +524,18 @@ class _CreatorTile extends StatelessWidget {
         ),
         child: Row(
           children: <Widget>[
-            UserAvatar(user: event.creator, radius: 18),
+            UserAvatar(user: creator, radius: 18),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    event.creator.name,
+                    creator.name,
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   Text(
-                    event.creator.handle,
+                    creator.handle,
                     style: const TextStyle(
                       color: AppColors.onSurfaceMuted,
                       fontSize: 12,

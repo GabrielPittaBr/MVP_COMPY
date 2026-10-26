@@ -115,6 +115,8 @@ abstract final class AppStrings {
   static const String eventSeeMore = 'Ver mais';
   static const String eventVacanciesLabel = 'vagas restantes';
   static String eventParticipantsCount(int count) => 'Participantes ($count)';
+  static const String eventSeeAllParticipants = 'Ver todos';
+  static const String eventCloseParticipants = 'Fechar participantes';
   static const String eventJoined = 'Você entrou no evento!';
   static const String eventNotFound = 'Evento não encontrado.';
   static const String eventJoinError = 'Erro ao entrar no evento';
