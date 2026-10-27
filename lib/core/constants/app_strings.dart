@@ -10,6 +10,7 @@ abstract final class AppStrings {
   // Comum
   static const String commonCancel = 'Cancelar';
   static const String commonConfirm = 'Confirmar';
+  static const String commonRetry = 'Tentar novamente';
 
   // Bottom nav
   static const String navHome = 'Início';
@@ -336,7 +337,19 @@ abstract final class AppStrings {
       'Não foi possível salvar a foto. Tente novamente.';
 
   // Chat
-  static const String chatTitle = 'Chat';
+  static const String chatTitle = 'Conversas';
+  static const String chatEmptyTitle = 'Suas conversas começam aqui';
+  static const String chatEmptyHint =
+      'Converse com outras pessoas para combinar atividades esportivas.';
+  static const String chatStartConversation = 'Iniciar conversa';
+  static const String chatNoMessages = 'Envie a primeira mensagem';
+  static const String chatLoadErrorTitle =
+      'Não foi possível carregar as conversas';
+  static const String chatLoadErrorHint =
+      'Confira sua conexão e tente novamente.';
+  static const String chatLoadMoreError =
+      'Não foi possível carregar mais conversas.';
+  static String chatUnreadCount(int count) => count > 99 ? '99+' : '$count';
   static const String chatFindMore = 'Encontre mais companheiros...';
   static const String chatHint = 'Digite uma mensagem...';
   static const String chatToday = 'Hoje';

@@ -48,6 +48,8 @@
 
 **9 · Chat** — Mensagens reais com o remetente certo, sala robusta e agrupada por data, conversa nova por handle, contador de não-lidas real, compartilhar local no chat, e regras de `conversations` restritas a membros, com suíte de testes no emulador.
 
+**Apresentação da lista de conversas (26/10/2026):** a aba Chat ganhou um estado vazio com ilustração feita no Flutter e ação para iniciar conversa, sem preencher a lista com dados fictícios. As linhas mostram nome, prévia, avatar, horário local para mensagens de hoje, “Ontem” ou data curta, além de destaque discreto para não lidas. A paginação, atualização da primeira página, pull to refresh e rotas existentes permanecem; uma falha na próxima página mantém as conversas carregadas e oferece nova tentativa no rodapé. A sala de mensagens não mudou.
+
 **10 · Filtro por esporte** — As categorias da Home levam à aba Eventos já filtrada, com a consulta feita no Firestore (não no cliente).
 
 **11 · Ver mais / filtros** — "Ver mais" no carrossel e um seletor de filtros dos eventos, acessível pela Home e pela aba Eventos.
