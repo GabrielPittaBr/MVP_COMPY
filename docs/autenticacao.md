@@ -40,6 +40,7 @@ users/{uid}
   id:              String  (= uid)
   name:            String
   nameLower:       String  (nome normalizado, para a busca do painel admin)
+  bio:             String  (opcional, até 160 caracteres; vazio permitido)
   handle:          String  (= "@username")
   avatarUrl:       String  (ver "Foto de perfil" abaixo)
   createdAt:       Timestamp
@@ -258,3 +259,19 @@ O `-J-Duser.language=en` contorna o keytool do Temurin 25, que quebra com locale
 Quase sempre as regras locais não foram publicadas: o Console continua com as antigas. Rodar `firebase deploy --only firestore:rules` e confirmar com a suíte de `tools/firestore-rules-tests/`.
 
 Caso específico já resolvido: a checagem de username disponível roda **antes** do login, por isso `usernames` tem leitura pública. Se essa regra voltar a exigir `signedIn()`, o cadastro por e-mail quebra no primeiro passo.
+
+### Salvar nome ou biografia falha
+
+Em 28/10/2026 confirmamos, por leitura da release ativa, que as regras de
+22/10 ainda não permitiam `bio`. O payload do editor sempre inclui esse
+campo, mesmo vazio. Reproduzimos `permission-denied` no emulador com esse
+contrato; o mesmo payload passou com as regras locais. A publicação continua
+pendente e não deve ser confundida com a conclusão do código. Evidências,
+validação e verificação do APK estão em
+[`correcao-salvamento-perfil.md`](correcao-salvamento-perfil.md).
+
+O diagnóstico do app identifica `ProfileDetails.auth-resolution`, `identity`,
+`firestore` ou `auth`, com plugin, código de `FirebaseException` e stack trace.
+Não registra nome, biografia, UID, e-mail, token ou mensagem bruta da exceção.
+A interface mantém mensagens em português e distingue a falha parcial:
+Firestore já gravado, sincronização de nome no Auth ainda pendente.

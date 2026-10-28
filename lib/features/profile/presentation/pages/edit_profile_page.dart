@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_flags.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/firebase_errors.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/avatar_picker.dart';
 import '../../../../shared/widgets/rounded_text_field.dart';
@@ -33,12 +34,26 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final TextEditingController _bioCtrl = TextEditingController();
   String _originalName = '';
   String _originalBio = '';
+  String? _profileUid;
   bool _allowPop = false;
   bool _requestingSave = false;
+  bool _authSyncPending = false;
+
+  bool get _needsAuthSync {
+    if (_authSyncPending) return true;
+    final user = ref.read(authControllerProvider).valueOrNull ??
+        ref.read(authStateProvider).valueOrNull;
+    return _prefilled &&
+        kUseFirebaseRepos &&
+        user?.uid == _profileUid &&
+        user!.displayName.trim() != _originalName;
+  }
 
   bool get _dirty =>
       _prefilled &&
-      (_nameCtrl.text.trim() != _originalName || _bioCtrl.text != _originalBio);
+      (_needsAuthSync ||
+          _nameCtrl.text.trim() != _originalName ||
+          _bioCtrl.text != _originalBio);
 
   bool get _valid =>
       _nameCtrl.text.trim().isNotEmpty &&
@@ -46,9 +61,13 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       _bioCtrl.text.length <= 160;
 
   void _fill(UserProfile profile) {
+    _profileUid = profile.summary.id;
     _usernameCtrl.text = profile.summary.handle;
     _nameCtrl.text = _originalName = profile.summary.name.trim();
     _bioCtrl.text = _originalBio = profile.bio;
+    _authSyncPending =
+        ref.read(profileDetailsControllerProvider.notifier).pendingAuthUid ==
+            profile.summary.id;
     _prefilled = true;
   }
 
@@ -92,6 +111,9 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    // A sessão pode chegar depois do perfil em cache. Reavalia a divergência
+    // de nome sem sobrescrever o formulário ao receber essa emissão.
+    ref.watch(authStateProvider);
     // Sucesso não precisa de tratamento: o controller fecha com `null`, o
     // guard do router vê que não há mais usuário e leva para /login sozinho.
     ref.listen<AsyncValue<Object?>>(authControllerProvider,
@@ -228,22 +250,27 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     }
     final name = _nameCtrl.text.trim();
     final bio = _bioCtrl.text;
-    final nameChanged = name != _originalName;
+    final nameChanged = _needsAuthSync || name != _originalName;
     setState(() => _requestingSave = true);
     String? uid = ref.read(authControllerProvider).valueOrNull?.uid ??
         ref.read(authStateProvider).valueOrNull?.uid;
     if (uid == null && kUseFirebaseRepos) {
       try {
         uid = (await ref.read(authStateProvider.future))?.uid;
-      } catch (_) {
-        // A mensagem de falha abaixo permite tentar de novo.
+      } catch (error, stack) {
+        FirebaseErrors.logFailure(
+            'ProfileDetails.auth-resolution', error, stack);
       }
     }
     if (!kUseFirebaseRepos) {
       uid ??= ref.read(currentProfileProvider).valueOrNull?.summary.id;
     }
     if (!mounted) return;
-    if (uid == null || uid.isEmpty) {
+    if (uid == null || uid.isEmpty || uid != _profileUid) {
+      FirebaseErrors.logFailure(
+          'ProfileDetails.auth-resolution',
+          StateError('Sessão não corresponde ao perfil carregado'),
+          StackTrace.current);
       setState(() => _requestingSave = false);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text(AppStrings.profileSaveError),
@@ -256,15 +283,16 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         .save(uid, name: name, bio: bio, nameChanged: nameChanged);
     if (!mounted) return;
     setState(() => _requestingSave = false);
-    if (saved) {
-      setState(() {
-        _nameCtrl.text = _originalName = name;
-        _originalBio = bio;
-      });
-    }
     final partiallySaved = !saved &&
         ref.read(profileDetailsControllerProvider).error
             is ProfileAuthSyncException;
+    if (saved || partiallySaved) {
+      setState(() {
+        _nameCtrl.text = _originalName = name;
+        _originalBio = bio;
+        _authSyncPending = partiallySaved;
+      });
+    }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(saved
           ? AppStrings.profileSaveSuccess

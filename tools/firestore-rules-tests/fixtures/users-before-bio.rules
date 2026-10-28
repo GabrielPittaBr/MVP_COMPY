@@ -1,0 +1,109 @@
+// Recorte literal de users do ruleset 9dfdcfde-729e-4e79-a012-8eaab57086a9.
+// Lido em 28/10/2026; publicado em 22/10/2026. Somente para regressao.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    match /users/{userId} {
+      function validProfile() {
+        return request.resource.data.keys().hasOnly(
+                 ['id', 'name', 'nameLower', 'handle', 'avatarUrl', 'createdAt',
+                  'favoriteSports'])
+            && request.resource.data.id == userId
+            && request.resource.data.name is string
+            && request.resource.data.name.size() <= 60
+            && validOptionalNameLower()
+            && request.resource.data.handle is string
+            && request.resource.data.handle.size() <= 21
+            && validFavoriteSports()
+            && validOptionalAvatarUrl();
+      }
+
+      // Foto de perfil: URL do Storage, do Google ou o placeholder com a
+      // inicial — sempre um endereço web. `https?` porque o emulador do
+      // Storage serve em http (`http://localhost:9199/...`).
+      function validOptionalAvatarUrl() {
+        return !('avatarUrl' in request.resource.data.keys())
+            || (request.resource.data.avatarUrl is string
+                && request.resource.data.avatarUrl.size() <= 2048
+                && request.resource.data.avatarUrl.matches('^https?://.+'));
+      }
+
+      function hasValidNameLower() {
+        return 'nameLower' in request.resource.data.keys()
+            && request.resource.data.nameLower is string
+            && request.resource.data.nameLower.size() > 0
+            && request.resource.data.nameLower.size() <= 60;
+      }
+
+      function validOptionalNameLower() {
+        return !('nameLower' in request.resource.data.keys())
+            || hasValidNameLower();
+      }
+
+      function preservesProfileIdentity() {
+        return request.resource.data.handle == resource.data.handle
+            && request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      function validNameLowerTransition() {
+        return (!('nameLower' in resource.data.keys())
+                || 'nameLower' in request.resource.data.keys())
+            && (request.resource.data.name == resource.data.name
+                || hasValidNameLower());
+      }
+
+      // Tarefa 13: no máximo 8 esportes (tamanho do enum `Sport`), lista de
+      // strings — evita que `Sport.values.firstWhere` estoure na leitura.
+      function validFavoriteSports() {
+        return !('favoriteSports' in request.resource.data.keys())
+            || (request.resource.data.favoriteSports is list
+                && request.resource.data.favoriteSports.size() <= 8);
+      }
+
+      allow read: if signedIn();
+      allow create: if signedIn()
+                    && request.auth.uid == userId
+                    && validProfile()
+                    && hasValidNameLower();
+      allow update: if signedIn()
+                    && request.auth.uid == userId
+                    && validProfile()
+                    && preservesProfileIdentity()
+                    && validNameLowerTransition();
+      // Exclusão de conta: o dono apaga o próprio perfil. Sem isto, o
+      // documento sobrevive à conta e vira registro órfão de gente que
+      // pediu para sair.
+      allow delete: if signedIn() && request.auth.uid == userId;
+
+      // ── users/{uid}/private ──────────────────────────────────────
+      // Tarefa 13 (RN-06). Dados de contato — hoje só o e-mail. Subcoleção
+      // porque as regras do documento pai não alcançam os filhos: é o que
+      // permite o perfil continuar público e o contato não.
+      //
+      // Só o dono lê e escreve. Nenhuma tela do app lê este documento; ele
+      // existe para o e-mail ter onde ficar sem virar dado público.
+      match /private/{docId} {
+        allow read, create, update, delete: if signedIn()
+                                            && request.auth.uid == userId;
+      }
+
+      // ── users/{uid}/notifications ────────────────────────────────
+      // Tarefa 14. Central de notificações in-app. Quem cria é o gatilho
+      // `onEventEnded`, e quem marca "Avaliado" é a callable da avaliação,
+      // as duas pelo Admin SDK. O dono só lê e marca como lida, uma vez, com
+      // o horário do servidor. Na exclusão de conta, ele apaga as suas.
+      match /notifications/{notificationId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        allow update: if signedIn()
+                      && request.auth.uid == userId
+                      && resource.data.get('readAt', null) == null
+                      && changed().hasOnly(['readAt'])
+                      && request.resource.data.readAt == request.time;
+        allow delete: if signedIn() && request.auth.uid == userId;
+        allow create: if false;
+      }
+    }
+
+  }
+}

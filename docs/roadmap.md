@@ -97,7 +97,7 @@ A `EditProfilePage` (`/profile/editar`) edita nome completo (até 60 caracteres)
 
 `validProfile()` aceita apenas `bio` opcional do tipo texto e com até 160 caracteres, sem mudar o acesso privado. Nomes e fotos copiados para eventos e conversas antigos continuam como snapshots históricos; a apresentação dos participantes nos detalhes do evento consulta os perfis atuais quando visíveis. A pendência de CORS para avatar no Chrome e o comando de configuração do bucket estão em [`checklist-publicacao.md`](checklist-publicacao.md); nenhuma configuração foi aplicada ao bucket nesta tarefa.
 
-**Pendência de publicação:** a regra que aceita `bio` foi adicionada nesta branch em 23/10, após o último deploy de Rules registrado em 22/10. Se a release remota ainda tiver o contrato anterior, a gravação de biografia em `users/{uid}` receberá `PERMISSION_DENIED`. Conferir o ruleset ativo e publicar `firestore.rules` somente após autorização e validação no emulador; nenhuma regra foi publicada pela correção de 25/10.
+**Pendência de publicação confirmada em 28/10:** a release ativa ainda usa o ruleset de 22/10, sem `bio` na lista de campos permitidos. Reproduzimos `permission-denied` com esse contrato no emulador e validamos as regras locais com biografia preenchida e vazia, inclusive para perfis legados e novos. A correção preserva a tentativa após falha parcial, inclusive ao reabrir o editor na mesma sessão, e registra etapa e código técnico sem dados pessoais. Publicar as regras locais continua sendo um passo manual autorizado; nenhum deploy foi feito. Ver [evidências e validação](correcao-salvamento-perfil.md).
 
 ### C · Tela de configurações
 

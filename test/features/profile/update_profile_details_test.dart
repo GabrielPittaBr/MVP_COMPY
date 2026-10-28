@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mvp_compy/features/auth/domain/entities/auth_user.dart';
 import 'package:mvp_compy/features/auth/presentation/providers/auth_providers.dart';
@@ -35,6 +36,8 @@ class _Remote implements ProfileRemoteDataSource {
 class _Profiles implements ProfileRepository {
   String name = 'Ana';
   String bio = '';
+  Object? error;
+  bool? lastNameChanged;
 
   UserProfile get profile => UserProfile(
         summary: UserSummary(
@@ -62,6 +65,8 @@ class _Profiles implements ProfileRepository {
       required bool nameChanged}) async {
     this.name = name;
     this.bio = bio;
+    lastNameChanged = nameChanged;
+    if (error != null) throw error!;
   }
 
   @override
@@ -69,6 +74,50 @@ class _Profiles implements ProfileRepository {
 }
 
 void main() {
+  test(
+      'controller preserva causa parcial, atualiza leituras e repete sincronizacao pendente',
+      () async {
+    final cause = FirebaseAuthException(code: 'network-request-failed');
+    final profiles = _Profiles()..error = ProfileAuthSyncException(cause);
+    final container = ProviderContainer(overrides: [
+      profileRepositoryProvider.overrideWith((_) => profiles),
+      authStateProvider.overrideWith((_) => Stream.value(const AuthUser(
+            uid: 'uid',
+            email: '',
+            displayName: 'Ana',
+            hasUsername: true,
+            hasFavoriteSports: true,
+          ))),
+    ]);
+    addTearDown(container.dispose);
+    await container.read(authStateProvider.future);
+    await container.read(currentProfileProvider.future);
+    await container.read(publicProfileProvider('uid').future);
+    await container.read(profileDetailsControllerProvider.future);
+    final controller =
+        container.read(profileDetailsControllerProvider.notifier);
+    expect(
+        await controller.save('uid',
+            name: 'Ana Silva', bio: 'Bio', nameChanged: true),
+        isFalse);
+    final error = container.read(profileDetailsControllerProvider).error
+        as ProfileAuthSyncException;
+    expect(error.cause, same(cause));
+    expect(controller.pendingAuthUid, 'uid');
+    expect((await container.read(currentProfileProvider.future)).summary.name,
+        'Ana Silva');
+    expect((await container.read(publicProfileProvider('uid').future))!.bio,
+        'Bio');
+    profiles.error = null;
+    // Uma página reaberta já leu o nome novo do Firestore.
+    expect(
+        await controller.save('uid',
+            name: 'Ana Silva', bio: 'Bio', nameChanged: false),
+        isTrue);
+    expect(profiles.lastNameChanged, isTrue);
+    expect(controller.pendingAuthUid, isNull);
+  });
+
   test('nome e bio sao gravados antes da sincronizacao do Auth', () async {
     final remote = _Remote();
     final repo = ProfileRepositoryImpl(remote);

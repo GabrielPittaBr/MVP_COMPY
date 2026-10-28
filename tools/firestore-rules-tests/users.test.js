@@ -6,6 +6,7 @@
  * nunca tinham sido exercitadas.
  */
 import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import {
   assertFails,
@@ -222,6 +223,37 @@ describe('nameLower e identidade de perfil (ticket 08)', () => {
 });
 
 describe('edicao de nome e biografia', () => {
+  it('perfil legado sem nameLower recebe nome normalizado e bio no merge', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users', 'legado'), {
+        id: 'legado', name: 'João', handle: '@legado', createdAt: PROFILE_CREATED_AT,
+      });
+    });
+    await assertSucceeds(setDoc(doc(as('legado'), 'users', 'legado'), {
+      name: 'João Silva', nameLower: 'joao silva', bio: 'Vôlei',
+    }, { merge: true }));
+    const data = (await getDoc(doc(as('outro'), 'users', 'legado'))).data();
+    assert.equal(data.bio, 'Vôlei');
+    assert.equal(data.nameLower, 'joao silva');
+    assert.equal(data.handle, '@legado');
+  });
+
+  it('perfil novo criado pelo cliente aceita limites e bio vazia', async () => {
+    const target = doc(as('novo'), 'users', 'novo');
+    await assertSucceeds(setDoc(target, {
+      id: 'novo', name: 'a'.repeat(60), nameLower: 'a'.repeat(60),
+      handle: '@novo', createdAt: serverTimestamp(), bio: 'b'.repeat(160),
+    }));
+    await assertSucceeds(setDoc(target, { bio: '' }, { merge: true }));
+    assert.equal((await getDoc(doc(as('outro'), 'users', 'novo'))).data().bio, '');
+  });
+
+  it('sessao ausente e perfil inexistente recusam o payload de edicao', async () => {
+    const payload = { name: 'João', nameLower: 'joao', bio: 'Vôlei' };
+    await assertFails(setDoc(doc(anonimo(), 'users', UID), payload, { merge: true }));
+    await assertFails(setDoc(doc(as('ausente'), 'users', 'ausente'), payload, { merge: true }));
+  });
+
   beforeEach(async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore();

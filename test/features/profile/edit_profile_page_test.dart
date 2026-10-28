@@ -167,6 +167,7 @@ void main() {
     Object? errorOnDelete,
     UserProfile? profile,
     ProfileRepository? profileRepository,
+    Stream<AuthUser?>? authStream,
   }) async {
     final repo = _FakeAuthRepository(
       needsPassword: needsPassword,
@@ -177,7 +178,9 @@ void main() {
       ProviderScope(
         overrides: <Override>[
           authRepositoryProvider.overrideWith((_) => repo),
-          authStateProvider.overrideWith((_) => Stream.value(const AuthUser(
+          authStateProvider.overrideWith((_) =>
+              authStream ??
+              Stream.value(const AuthUser(
                 uid: 'u_gabriel',
                 email: 'gabriel@example.com',
                 displayName: 'Gabriel',
@@ -285,6 +288,101 @@ void main() {
   });
 
   group('EditProfilePage — nome e biografia', () {
+    testWidgets(
+        'nova sessao com nome divergente no Auth permite concluir sincronizacao',
+        (tester) async {
+      final repo = _FakeProfileRepository();
+      await pumpPage(tester,
+          profileRepository: repo,
+          profile: const UserProfile(
+            summary: UserSummary(
+                id: 'u_gabriel',
+                name: 'Gabriel Silva',
+                handle: '@gabriel',
+                avatarUrl: ''),
+            bio: 'Bio ja gravada',
+            favoriteSports: [],
+            badges: [],
+            friends: [],
+            gallery: [],
+          ));
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNotNull);
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls,
+          [('u_gabriel', 'Gabriel Silva', 'Bio ja gravada', true)]);
+      expect(find.text(AppStrings.profileSaveSuccess), findsOneWidget);
+    });
+
+    testWidgets('sessao ausente ou de outra conta preserva texto e nao grava',
+        (tester) async {
+      final repo = _FakeProfileRepository();
+      for (final user in <AuthUser?>[
+        null,
+        const AuthUser(
+            uid: 'outra-conta',
+            email: '',
+            displayName: 'Outra',
+            hasUsername: true,
+            hasFavoriteSports: true),
+      ]) {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpPage(tester,
+            profileRepository: repo, authStream: Stream.value(user));
+        await tester.enterText(
+            find.widgetWithText(TextField, AppStrings.profileBioHint),
+            'Texto preservado');
+        await tester.pump();
+        await tester.tap(find.text(AppStrings.profileSaveChanges));
+        await tester.pumpAndSettle();
+        expect(repo.detailCalls, isEmpty);
+        expect(find.text('Texto preservado'), findsOneWidget);
+        expect(find.text(AppStrings.profileSaveError), findsOneWidget);
+      }
+    });
+
+    testWidgets(
+        'apos falha parcial voltar ao texto original ainda permite salvar e sincroniza',
+        (tester) async {
+      final repo = _FakeProfileRepository(
+        errorOnDetails: ProfileAuthSyncException(
+            FirebaseAuthException(code: 'network-request-failed')),
+      );
+      await pumpPage(tester, profileRepository: repo);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          'Gabriel Silva');
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint),
+          'Bio gravada');
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.profileSavePartial), findsOneWidget);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          'Gabriel');
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint), '');
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNotNull);
+      repo.errorOnDetails = null;
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls.last, ('u_gabriel', 'Gabriel', '', true));
+      expect(find.text(AppStrings.profileSaveSuccess), findsOneWidget);
+    });
+
     testWidgets('carrega os dados e nao grava sem alteracao', (tester) async {
       final repo = _FakeProfileRepository();
       await pumpPage(tester, profileRepository: repo);

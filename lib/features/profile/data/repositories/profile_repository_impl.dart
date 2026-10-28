@@ -124,8 +124,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
       // que o perfil já foi gravado para a tela oferecer uma nova tentativa.
       try {
         await _remote.updateAuthDisplayName(uid, cleanedName);
-      } catch (error) {
-        throw ProfileAuthSyncException(error);
+      } catch (error, stack) {
+        Error.throwWithStackTrace(ProfileAuthSyncException(error), stack);
       }
     }
   }

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/services/avatar_storage.dart';
+import '../../../../core/utils/firebase_errors.dart';
 import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/sport.dart';
 
@@ -16,26 +17,41 @@ class ProfileRemoteDataSource {
 
   void _requireOwner(String uid) {
     if (uid.isEmpty || _auth.currentUser?.uid != uid) {
-      throw StateError('Usuário não autenticado para editar este perfil.');
+      final error =
+          StateError('Usuário não autenticado para editar este perfil.');
+      FirebaseErrors.logFailure(
+          'ProfileDetails.identity', error, StackTrace.current);
+      throw error;
     }
   }
 
   Future<void> updatePublicDetails(String uid, String name, String bio) async {
     _requireOwner(uid);
-    await _firestore.collection('users').doc(uid).set(
-      <String, dynamic>{
-        'name': name,
-        'nameLower': TextNormalizer.normalize(name),
-        'bio': bio,
-      },
-      SetOptions(merge: true),
-    );
+    try {
+      await _firestore.collection('users').doc(uid).set(
+        <String, dynamic>{
+          'name': name,
+          'nameLower': TextNormalizer.normalize(name),
+          'bio': bio,
+        },
+        SetOptions(merge: true),
+      );
+    } catch (error, stack) {
+      FirebaseErrors.logFailure('ProfileDetails.firestore', error, stack);
+      rethrow;
+    }
   }
 
   Future<void> updateAuthDisplayName(String uid, String name) async {
     _requireOwner(uid);
-    if (_auth.currentUser!.displayName != name) {
-      await _auth.currentUser!.updateDisplayName(name);
+    final user = _auth.currentUser!;
+    if (user.displayName != name) {
+      try {
+        await user.updateDisplayName(name);
+      } catch (error, stack) {
+        FirebaseErrors.logFailure('ProfileDetails.auth', error, stack);
+        rethrow;
+      }
     }
   }
 

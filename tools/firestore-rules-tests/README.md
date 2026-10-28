@@ -11,7 +11,7 @@ segurança do Firebase, que não têm equivalente em Dart.
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 190 casos
+npm test --prefix tools/firestore-rules-tests      # 200 casos
 ```
 
 ## Pré-requisitos
@@ -31,6 +31,16 @@ mesmo emulador: o `clearFirestore()` de um apagaria os dados semeados dos
 outros no meio do teste.
 
 ## O que está coberto
+
+**Salvamento de perfil** (`profile-save.test.js`): usa Auth e Firestore locais
+com uma conta nova, reproduz `permission-denied` com o recorte literal das
+regras publicadas em 22/10/2026 e repete a edição com as regras atuais.
+Exercita somente nome, somente bio, ambos, bio vazia, limites, sincronização
+de `displayName` e leitura por outro usuário. A fixture em
+`fixtures/users-before-bio.rules` é histórica e nunca deve ser publicada.
+`users.test.js` também cobre perfis legados sem `nameLower`, perfil ausente,
+sessão ausente e tentativas de terceiros. O comando inicia Auth, Firestore
+e Storage no projeto fictício `demo-compy`.
 
 **`conversations`** e a subcoleção `messages`, nos dois papéis que importam:
 membro e não-membro. Leitura, criação, atualização do rodapé, imutabilidade
