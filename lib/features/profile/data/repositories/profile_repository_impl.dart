@@ -82,7 +82,9 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<void> updateDetails(String uid,
-      {required String name, required String bio}) async {
+      {required String name,
+      required String bio,
+      required bool nameChanged}) async {
     final cleanedName = name.trim();
     if (cleanedName.isEmpty || cleanedName.length > 60 || bio.length > 160) {
       throw ArgumentError('Nome ou biografia inválidos.');
@@ -95,10 +97,16 @@ class ProfileRepositoryImpl implements ProfileRepository {
       MockProfile.bioOverride = bio;
       return;
     }
-    // Firestore e Auth não compartilham transação. Se Auth falhar, a nova
-    // tentativa repete a escrita idempotente e conclui a sincronização.
     await _remote.updatePublicDetails(uid, cleanedName, bio);
-    await _remote.updateAuthDisplayName(uid, cleanedName);
+    if (nameChanged) {
+      // Firestore e Auth não compartilham transação. Preserve a informação de
+      // que o perfil já foi gravado para a tela oferecer uma nova tentativa.
+      try {
+        await _remote.updateAuthDisplayName(uid, cleanedName);
+      } catch (error, stack) {
+        Error.throwWithStackTrace(ProfileAuthSyncException(error), stack);
+      }
+    }
   }
 
   @override

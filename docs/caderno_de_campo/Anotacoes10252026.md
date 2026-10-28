@@ -1,0 +1,3 @@
+Taquara, 25 de Outubro de 2026
+
+- Hoje corrigimos a edição de nome e biografia para que uma mudança só na biografia não dependa do Firebase Auth. Diferenciamos a falha de gravação no Firestore da falha posterior de sincronização do nome e mantivemos o texto no formulário para repetir a tentativa. Também desabilitamos o salvamento com nome inválido e durante a operação, e cobrimos os fluxos com testes. A consulta à release remota das regras retornou 403, e o emulador local falhou ao criar uma conexão interna do Java; por isso, a regra local para biografia ainda precisa ser conferida com a publicada antes de um deploy manual autorizado. Não alteramos permissões nem publicamos regras nesta correção.

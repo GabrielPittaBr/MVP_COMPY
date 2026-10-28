@@ -6,6 +6,7 @@
  * nunca tinham sido exercitadas.
  */
 import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import {
   assertFails,
@@ -222,6 +223,37 @@ describe('nameLower e identidade de perfil (ticket 08)', () => {
 });
 
 describe('edicao de nome e biografia', () => {
+  it('perfil legado sem nameLower recebe nome normalizado e bio no merge', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users', 'legado'), {
+        id: 'legado', name: 'João', handle: '@legado', createdAt: PROFILE_CREATED_AT,
+      });
+    });
+    await assertSucceeds(setDoc(doc(as('legado'), 'users', 'legado'), {
+      name: 'João Silva', nameLower: 'joao silva', bio: 'Vôlei',
+    }, { merge: true }));
+    const data = (await getDoc(doc(as('outro'), 'users', 'legado'))).data();
+    assert.equal(data.bio, 'Vôlei');
+    assert.equal(data.nameLower, 'joao silva');
+    assert.equal(data.handle, '@legado');
+  });
+
+  it('perfil novo criado pelo cliente aceita limites e bio vazia', async () => {
+    const target = doc(as('novo'), 'users', 'novo');
+    await assertSucceeds(setDoc(target, {
+      id: 'novo', name: 'a'.repeat(60), nameLower: 'a'.repeat(60),
+      handle: '@novo', createdAt: serverTimestamp(), bio: 'b'.repeat(160),
+    }));
+    await assertSucceeds(setDoc(target, { bio: '' }, { merge: true }));
+    assert.equal((await getDoc(doc(as('outro'), 'users', 'novo'))).data().bio, '');
+  });
+
+  it('sessao ausente e perfil inexistente recusam o payload de edicao', async () => {
+    const payload = { name: 'João', nameLower: 'joao', bio: 'Vôlei' };
+    await assertFails(setDoc(doc(anonimo(), 'users', UID), payload, { merge: true }));
+    await assertFails(setDoc(doc(as('ausente'), 'users', 'ausente'), payload, { merge: true }));
+  });
+
   beforeEach(async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore();
@@ -245,6 +277,32 @@ describe('edicao de nome e biografia', () => {
         data.avatarUrl !== 'https://example.com/foto.jpg' ||
         data.handle !== `@${USERNAME}` || data.favoriteSports[0] !== 'futebol') {
       throw new Error('campos do perfil nao preservados');
+    }
+  });
+
+  it('grava somente bio pelo payload do app e permite ler novamente', async () => {
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), {
+      name: 'Gabriel Pitta', nameLower: 'gabriel pitta', bio: 'Bio nova',
+    }, { merge: true }));
+    const data = (await getDoc(doc(as(UID), 'users', UID))).data();
+    if (data.name !== 'Gabriel Pitta' || data.bio !== 'Bio nova' ||
+        data.handle !== `@${USERNAME}` ||
+        data.avatarUrl !== 'https://example.com/foto.jpg' ||
+        data.favoriteSports[0] !== 'futebol' ||
+        data.createdAt.toDate().getTime() !== PROFILE_CREATED_AT.getTime()) {
+      throw new Error('bio ou demais campos nao persistiram');
+    }
+  });
+
+  it('grava somente nome preservando a bio e os demais campos', async () => {
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), {
+      name: 'Gabriel Silva', nameLower: 'gabriel silva', bio: '',
+    }, { merge: true }));
+    const data = (await getDoc(doc(as(UID), 'users', UID))).data();
+    if (data.name !== 'Gabriel Silva' || data.nameLower !== 'gabriel silva' ||
+        data.bio !== '' || data.handle !== `@${USERNAME}` ||
+        data.favoriteSports[0] !== 'futebol') {
+      throw new Error('nome ou demais campos nao persistiram');
     }
   });
 

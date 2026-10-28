@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_flags.dart';
 import '../../../../core/services/avatar_storage.dart';
+import '../../../../core/utils/firebase_errors.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../auth/domain/entities/auth_user.dart';
@@ -45,19 +46,38 @@ final updateProfileDetailsProvider = Provider<UpdateProfileDetails>(
 );
 
 class ProfileDetailsController extends AsyncNotifier<void> {
+  // Sobrevive ao fechamento da página para permitir repetir uma falha parcial.
+  String? pendingAuthUid;
+
   @override
   Future<void> build() async {}
 
   Future<bool> save(String uid,
-      {required String name, required String bio}) async {
+      {required String name,
+      required String bio,
+      required bool nameChanged}) async {
     if (state.isLoading) return false;
     state = const AsyncLoading<void>();
     state = await AsyncValue.guard<void>(() async {
-      await ref
-          .read(updateProfileDetailsProvider)
-          .call(uid, name: name, bio: bio);
-      ref.read(authControllerProvider.notifier).reflectDisplayName(name.trim());
+      await ref.read(updateProfileDetailsProvider).call(uid,
+          name: name,
+          bio: bio,
+          nameChanged: nameChanged || pendingAuthUid == uid);
     });
+    final syncRequested = nameChanged || pendingAuthUid == uid;
+    if (state.error is ProfileAuthSyncException) pendingAuthUid = uid;
+    if (!state.hasError && pendingAuthUid == uid) pendingAuthUid = null;
+    if (!state.hasError && syncRequested) {
+      try {
+        ref
+            .read(authControllerProvider.notifier)
+            .reflectDisplayName(name.trim());
+      } catch (error, stack) {
+        // A gravação e a sincronização já concluíram. A leitura do perfil
+        // invalidada abaixo continua sendo a fonte do nome exibido.
+        FirebaseErrors.logFailure('ProfileDetails.reflect-name', error, stack);
+      }
+    }
     // Também na falha: a escrita no Firestore pode ter concluído antes de o
     // Auth falhar. A tela mantém o texto para uma nova tentativa.
     ref.invalidate(currentProfileProvider);

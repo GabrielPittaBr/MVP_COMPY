@@ -4,6 +4,13 @@ import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../entities/user_profile.dart';
 
+/// O perfil foi gravado no Firestore, mas o nome ainda não foi sincronizado no Auth.
+class ProfileAuthSyncException implements Exception {
+  const ProfileAuthSyncException(this.cause);
+
+  final Object cause;
+}
+
 abstract interface class ProfileRepository {
   Future<UserProfile> getCurrentProfile(String uid);
 
@@ -17,9 +24,9 @@ abstract interface class ProfileRepository {
   /// lista ter itens.
   Future<void> updateFavoriteSports(String uid, List<Sport> sports);
 
-  /// Atualiza os campos públicos e sincroniza o nome no Firebase Auth.
+  /// Atualiza os campos públicos; sincroniza o Auth apenas quando o nome mudou.
   Future<void> updateDetails(String uid,
-      {required String name, required String bio});
+      {required String name, required String bio, required bool nameChanged});
 
   /// Troca a foto do perfil de [uid] por [jpeg] (já recortado e reduzido).
   ///

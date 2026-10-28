@@ -272,7 +272,9 @@ abstract final class AppStrings {
   static const String profileSaveChanges = 'Salvar alterações';
   static const String profileSaveSuccess = 'Perfil atualizado.';
   static const String profileSaveError =
-      'Não foi possível salvar tudo. Tente novamente.';
+      'Não foi possível salvar o perfil. Tente novamente.';
+  static const String profileSavePartial =
+      'Alterações salvas no perfil, mas o nome da conta não foi atualizado. Tente salvar novamente.';
   static const String profileDiscardTitle = 'Descartar alterações?';
   static const String profileDiscardBody =
       'As alterações no nome e na biografia ainda não foram salvas.';
