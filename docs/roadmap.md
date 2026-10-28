@@ -48,6 +48,8 @@
 
 **9 · Chat** — Mensagens reais com o remetente certo, sala robusta e agrupada por data, conversa nova por handle, contador de não-lidas real, compartilhar local no chat, e regras de `conversations` restritas a membros, com suíte de testes no emulador.
 
+**Apresentação da lista de conversas (26/10/2026):** a aba Chat ganhou um estado vazio com ilustração feita no Flutter e ação para iniciar conversa, sem preencher a lista com dados fictícios. As linhas mostram nome, prévia, avatar, horário local para mensagens de hoje, “Ontem” ou data curta, além de destaque discreto para não lidas. A paginação, atualização da primeira página, pull to refresh e rotas existentes permanecem; uma falha na próxima página mantém as conversas carregadas e oferece nova tentativa no rodapé. A sala de mensagens não mudou.
+
 **10 · Filtro por esporte** — As categorias da Home levam à aba Eventos já filtrada, com a consulta feita no Firestore (não no cliente).
 
 **11 · Ver mais / filtros** — "Ver mais" no carrossel e um seletor de filtros dos eventos, acessível pela Home e pela aba Eventos.
@@ -59,6 +61,10 @@
 **14 · Ciclo de vida do evento** — O evento ganhou o "durante" e o "depois". Durante o evento, o selo "Acontecendo agora" aparece nas listas, e quem participa vê o card ao vivo no topo da aba Eventos e a tela do evento em andamento, com mensagem 1:1 para cada pessoa (D16). Só o Organizador encerra; se ele esquecer, uma Cloud Function agendada encerra o evento 1h depois do fim previsto, e ele recebe um aviso único ao voltar ao app (D5). Encerrados somem das listas, da Home e da busca, e ninguém mais entra neles (D17). O fim do evento gera uma notificação na central nova (o sino ao lado da engrenagem na Home), que leva à avaliação (D15). Participantes avaliam o evento, o local e quem jogou; o Organizador avalia o local e os participantes (D14). A avaliação é gravada por uma callable, que valida as regras D7, D12 e D13 no servidor. As médias aparecem no perfil, na ficha do local e no evento encerrado, sem nenhum comentário. O plano está em [`tarefa-14-ciclo-de-vida-do-evento.md`](tarefa-14-ciclo-de-vida-do-evento.md), e a decisão de usar Cloud Functions, na [ADR 0002](adr/0002-ciclo-de-vida-e-avaliacoes-com-cloud-functions.md).
 
 **Do antigo `proximos-passos.md`, também já feitos:** entrar em evento com o uid real, criar evento com o criador real, busca de eventos com debounce, eventos próximos por geolocalização, paginação das listas de eventos e conversas, nova conversa de chat e revisão das regras do Firestore. O débito técnico listado lá (`AuthService` legado, Home usando mock) também foi resolvido.
+
+**Ajustes de exploração e eventos (25/10/2026):** o mapa principal mantém Taquara como centro inicial e restringe o centro navegável a aproximadamente 30 km em cada direção (`AppGeo`), com zoom de 11,5 a 19. Os pins, filtros e o foco ao selecionar um local continuam no mesmo fluxo. O nível de habilidade já armazenado no evento agora aparece nos cards, no detalhe e na tela do evento em andamento; `Todos` é exibido como “Todos os níveis”.
+
+**Participantes dos eventos (26/10/2026):** detalhes e evento em andamento mostram uma prévia compacta com Organizador e quantidade, seguida de uma lista vertical em “Ver todos”. A apresentação acompanha os campos públicos de `users/{uid}` para as pessoas visíveis, sem regravar os snapshots do evento. Um provider por UID compartilha a assinatura entre a prévia, o Organizador e a lista; os listeners são liberados ao sair, e listagens/Home não os criam. Perfil ausente usa os dados textuais do snapshot com avatar genérico; falha de rede preserva a tela. Os atalhos de mensagem do evento em andamento ficam na lista completa.
 
 ---
 
@@ -87,9 +93,11 @@ Feito junto com a foto de perfil (`feature/foto-de-perfil`): o `GreetingHeader` 
 
 ### B · Edição de perfil completa — ✅ fechada
 
-A `EditProfilePage` (`/profile/editar`) edita nome completo (até 60 caracteres) e biografia opcional (até 160), com salvamento explícito, aviso de alterações não salvas e repetição após falha. O Firestore recebe `name`, `nameLower` e `bio` por merge; em seguida o nome é sincronizado no Firebase Auth. Como esses serviços não compartilham transação, uma falha no Auth é mostrada como falha e uma nova tentativa conclui a sincronização. Perfil próprio, Home, busca e perfil público são atualizados pelos providers. O username permanece bloqueado, os esportes usam a tela própria e a foto continua no fluxo existente de seleção, recorte e Storage ([detalhes](autenticacao.md#foto-de-perfil-avatarurl)).
+A `EditProfilePage` (`/profile/editar`) edita nome completo (até 60 caracteres) e biografia opcional (até 160), com salvamento explícito, aviso de alterações não salvas e repetição após falha. O Firestore recebe `name`, `nameLower` e `bio` por merge; a sincronização do nome com o Firebase Auth ocorre somente quando o nome foi alterado. Como esses serviços não compartilham transação, uma falha no Auth após a escrita é informada como salvamento parcial e a tela permite repetir a sincronização. Perfil próprio, Home, busca e perfil público são atualizados pelos providers. O username permanece bloqueado, os esportes usam a tela própria e a foto continua no fluxo existente de seleção, recorte e Storage ([detalhes](autenticacao.md#foto-de-perfil-avatarurl)).
 
-`validProfile()` aceita apenas `bio` opcional do tipo texto e com até 160 caracteres, sem mudar o acesso privado. Nomes e fotos copiados para eventos e conversas antigos continuam como snapshots históricos; leituras diretas de perfil mostram os dados atuais. A pendência de CORS para avatar no Chrome e o comando de configuração do bucket estão em [`checklist-publicacao.md`](checklist-publicacao.md); nenhuma configuração foi aplicada ao bucket nesta tarefa.
+`validProfile()` aceita apenas `bio` opcional do tipo texto e com até 160 caracteres, sem mudar o acesso privado. Nomes e fotos copiados para eventos e conversas antigos continuam como snapshots históricos; a apresentação dos participantes nos detalhes do evento consulta os perfis atuais quando visíveis. A pendência de CORS para avatar no Chrome e o comando de configuração do bucket estão em [`checklist-publicacao.md`](checklist-publicacao.md); nenhuma configuração foi aplicada ao bucket nesta tarefa.
+
+**Pendência de publicação:** a regra que aceita `bio` foi adicionada nesta branch em 23/10, após o último deploy de Rules registrado em 22/10. Se a release remota ainda tiver o contrato anterior, a gravação de biografia em `users/{uid}` receberá `PERMISSION_DENIED`. Conferir o ruleset ativo e publicar `firestore.rules` somente após autorização e validação no emulador; nenhuma regra foi publicada pela correção de 25/10.
 
 ### C · Tela de configurações
 

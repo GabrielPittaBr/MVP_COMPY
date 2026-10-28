@@ -49,15 +49,27 @@ class ProfileDetailsController extends AsyncNotifier<void> {
   Future<void> build() async {}
 
   Future<bool> save(String uid,
-      {required String name, required String bio}) async {
+      {required String name,
+      required String bio,
+      required bool nameChanged}) async {
     if (state.isLoading) return false;
     state = const AsyncLoading<void>();
     state = await AsyncValue.guard<void>(() async {
       await ref
           .read(updateProfileDetailsProvider)
-          .call(uid, name: name, bio: bio);
-      ref.read(authControllerProvider.notifier).reflectDisplayName(name.trim());
+          .call(uid, name: name, bio: bio, nameChanged: nameChanged);
     });
+    if (!state.hasError && nameChanged) {
+      try {
+        ref
+            .read(authControllerProvider.notifier)
+            .reflectDisplayName(name.trim());
+      } catch (error) {
+        // A gravação e a sincronização já concluíram. A leitura do perfil
+        // invalidada abaixo continua sendo a fonte do nome exibido.
+        debugPrint('[ProfileDetails] falha ao refletir nome: $error');
+      }
+    }
     // Também na falha: a escrita no Firestore pode ter concluído antes de o
     // Auth falhar. A tela mantém o texto para uma nova tentativa.
     ref.invalidate(currentProfileProvider);
@@ -75,6 +87,13 @@ final profileDetailsControllerProvider =
 final publicProfileProvider =
     FutureProvider.autoDispose.family<UserProfile?, String>(
   (ref, uid) => ref.watch(getPublicProfileProvider).call(uid),
+);
+
+/// Um listener por UID visível, compartilhado entre o organizador, a prévia
+/// e as linhas construídas da lista. autoDispose libera a assinatura ao sair.
+final publicUserSummaryProvider =
+    StreamProvider.autoDispose.family<UserSummary?, String>(
+  (ref, uid) => ref.watch(profileRepositoryProvider).watchPublicSummary(uid),
 );
 
 final searchUsersProvider = Provider<SearchUsers>(

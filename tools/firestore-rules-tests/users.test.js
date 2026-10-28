@@ -248,6 +248,32 @@ describe('edicao de nome e biografia', () => {
     }
   });
 
+  it('grava somente bio pelo payload do app e permite ler novamente', async () => {
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), {
+      name: 'Gabriel Pitta', nameLower: 'gabriel pitta', bio: 'Bio nova',
+    }, { merge: true }));
+    const data = (await getDoc(doc(as(UID), 'users', UID))).data();
+    if (data.name !== 'Gabriel Pitta' || data.bio !== 'Bio nova' ||
+        data.handle !== `@${USERNAME}` ||
+        data.avatarUrl !== 'https://example.com/foto.jpg' ||
+        data.favoriteSports[0] !== 'futebol' ||
+        data.createdAt.toDate().getTime() !== PROFILE_CREATED_AT.getTime()) {
+      throw new Error('bio ou demais campos nao persistiram');
+    }
+  });
+
+  it('grava somente nome preservando a bio e os demais campos', async () => {
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), {
+      name: 'Gabriel Silva', nameLower: 'gabriel silva', bio: '',
+    }, { merge: true }));
+    const data = (await getDoc(doc(as(UID), 'users', UID))).data();
+    if (data.name !== 'Gabriel Silva' || data.nameLower !== 'gabriel silva' ||
+        data.bio !== '' || data.handle !== `@${USERNAME}` ||
+        data.favoriteSports[0] !== 'futebol') {
+      throw new Error('nome ou demais campos nao persistiram');
+    }
+  });
+
   it('permite bio vazia ou ausente para perfis legados', async () => {
     await assertSucceeds(getDoc(doc(as('outro'), 'users', UID)));
     await assertSucceeds(setDoc(doc(as(UID), 'users', UID), { bio: '' }, { merge: true }));

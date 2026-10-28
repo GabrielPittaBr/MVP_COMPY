@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../models/event.dart';
 import '../models/event_status.dart';
 import 'event_status_chip.dart';
+import 'event_skill_level_chip.dart';
 
 /// Card horizontal de evento usado tanto na "Home > Eventos Próximos"
 /// quanto na aba "Eventos". O texto do CTA varia conforme o contexto
@@ -54,18 +55,20 @@ class EventCard extends StatelessWidget {
                   children: <Widget>[
                     Row(
                       children: <Widget>[
-                        Text(
-                          event.sport.label,
-                          style: const TextStyle(
-                            color: AppColors.onSurfaceMuted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                        Flexible(
+                          child: Text(
+                            event.sport.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.onSurfaceMuted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                         const Spacer(),
-                        if (status == EventStatus.happening)
-                          const EventStatusChip(status: EventStatus.happening)
-                        else
+                        if (status != EventStatus.happening)
                           const Icon(
                             Icons.calendar_today_outlined,
                             size: 16,
@@ -114,6 +117,16 @@ class EventCard extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              if (status == EventStatus.happening)
+                const EventStatusChip(status: EventStatus.happening),
+              EventSkillLevelChip(level: event.skillLevel, compact: true),
             ],
           ),
           const SizedBox(height: 8),

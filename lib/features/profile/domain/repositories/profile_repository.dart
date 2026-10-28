@@ -4,11 +4,22 @@ import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../entities/user_profile.dart';
 
+/// O perfil foi gravado no Firestore, mas o nome ainda não foi sincronizado no Auth.
+class ProfileAuthSyncException implements Exception {
+  const ProfileAuthSyncException(this.cause);
+
+  final Object cause;
+}
+
 abstract interface class ProfileRepository {
   Future<UserProfile> getCurrentProfile(String uid);
 
   /// Lê somente os campos públicos de `users/{uid}`. Ausência não é mock.
   Future<UserProfile?> getPublicProfile(String uid);
+
+  /// Acompanha apenas a identidade pública para apresentação em eventos.
+  /// `null` indica que o perfil deixou de existir.
+  Stream<UserSummary?> watchPublicSummary(String uid);
 
   /// Registra a escolha de esportes favoritos de [uid].
   ///
@@ -17,14 +28,15 @@ abstract interface class ProfileRepository {
   /// lista ter itens.
   Future<void> updateFavoriteSports(String uid, List<Sport> sports);
 
-  /// Atualiza os campos públicos e sincroniza o nome no Firebase Auth.
+  /// Atualiza os campos públicos; sincroniza o Auth apenas quando o nome mudou.
   Future<void> updateDetails(String uid,
-      {required String name, required String bio});
+      {required String name, required String bio, required bool nameChanged});
 
   /// Troca a foto do perfil de [uid] por [jpeg] (já recortado e reduzido).
   ///
-  /// `null` remove a foto: o perfil volta para a inicial de [name]. A foto
-  /// anterior continua valendo nos eventos e conversas que já a copiaram.
+  /// `null` remove a foto: o perfil volta para a inicial de [name].
+  /// Eventos e conversas preservam o snapshot; a apresentação do evento
+  /// pode acompanhar o perfil atual separadamente.
   Future<void> updateAvatar(String uid, {required String name, Uint8List? jpeg});
 
   /// Usuários cujo handle começa por [handlePrefix] (digitado sem o `@`).

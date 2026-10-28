@@ -43,6 +43,10 @@ class ProfileRemoteDataSource {
     return _firestore.collection('users').doc(userId).get();
   }
 
+  Stream<DocumentSnapshot<Map<String, dynamic>>> watchById(String userId) {
+    return _firestore.collection('users').doc(userId).snapshots();
+  }
+
   /// Grava o array de esportes favoritos em `users/{uid}`.
   ///
   /// `set` com merge, não `update`: preserva os demais campos do perfil em

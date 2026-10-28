@@ -14,6 +14,14 @@ class ProfileRepositoryImpl implements ProfileRepository {
   ProfileRepositoryImpl(this._remote);
   final ProfileRemoteDataSource? _remote;
 
+  static bool _validPublicUid(String uid) =>
+      uid.isNotEmpty &&
+      uid.trim() == uid &&
+      uid != '.' &&
+      uid != '..' &&
+      !uid.contains('/') &&
+      !uid.contains('\u0000');
+
   @override
   Future<UserProfile> getCurrentProfile(String uid) async {
     if (!kUseFirebaseRepos || _remote == null) return MockProfile.current;
@@ -41,12 +49,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<UserProfile?> getPublicProfile(String uid) async {
-    if (uid.isEmpty ||
-        uid.trim() != uid ||
-        uid == '.' ||
-        uid == '..' ||
-        uid.contains('/') ||
-        uid.contains('\u0000')) {
+    if (!_validPublicUid(uid)) {
       return null;
     }
     if (!kUseFirebaseRepos || _remote == null) {
@@ -72,6 +75,24 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
+  Stream<UserSummary?> watchPublicSummary(String uid) {
+    if (!_validPublicUid(uid)) return Stream<UserSummary?>.value(null);
+    if (!kUseFirebaseRepos || _remote == null) {
+      return Stream<UserSummary?>.value(MockProfile.publicById(uid)?.summary);
+    }
+    return _remote.watchById(uid).map((doc) {
+      final data = doc.data();
+      if (data == null) return null;
+      return UserSummary(
+        id: doc.id,
+        name: (data['name'] as String?) ?? '',
+        handle: (data['handle'] as String?) ?? '',
+        avatarUrl: (data['avatarUrl'] as String?) ?? '',
+      );
+    });
+  }
+
+  @override
   Future<void> updateFavoriteSports(String uid, List<Sport> sports) async {
     if (!kUseFirebaseRepos || _remote == null) {
       MockProfile.favoriteSportsOverride = List<Sport>.unmodifiable(sports);
@@ -82,7 +103,9 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<void> updateDetails(String uid,
-      {required String name, required String bio}) async {
+      {required String name,
+      required String bio,
+      required bool nameChanged}) async {
     final cleanedName = name.trim();
     if (cleanedName.isEmpty || cleanedName.length > 60 || bio.length > 160) {
       throw ArgumentError('Nome ou biografia inválidos.');
@@ -95,10 +118,16 @@ class ProfileRepositoryImpl implements ProfileRepository {
       MockProfile.bioOverride = bio;
       return;
     }
-    // Firestore e Auth não compartilham transação. Se Auth falhar, a nova
-    // tentativa repete a escrita idempotente e conclui a sincronização.
     await _remote.updatePublicDetails(uid, cleanedName, bio);
-    await _remote.updateAuthDisplayName(uid, cleanedName);
+    if (nameChanged) {
+      // Firestore e Auth não compartilham transação. Preserve a informação de
+      // que o perfil já foi gravado para a tela oferecer uma nova tentativa.
+      try {
+        await _remote.updateAuthDisplayName(uid, cleanedName);
+      } catch (error) {
+        throw ProfileAuthSyncException(error);
+      }
+    }
   }
 
   @override

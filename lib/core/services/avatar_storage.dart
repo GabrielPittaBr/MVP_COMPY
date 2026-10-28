@@ -17,9 +17,9 @@ class AvatarStorage {
   /// Nome novo a cada envio: a URL muda, então o cache do
   /// `CachedNetworkImage` nunca mostra a foto anterior.
   ///
-  /// ponytail: a foto anterior fica no bucket, porque eventos e conversas
-  /// guardam cópia da URL dela. Limpar na troca quando esses avatares
-  /// passarem a ler o perfil ao vivo.
+  /// ponytail: a foto anterior fica no bucket porque conversas ainda exibem
+  /// snapshots de avatar. Os eventos preservam a cópia histórica, mas seus
+  /// detalhes já consultam o perfil atual para apresentação.
   Future<String> upload(String uid, Uint8List jpeg) async {
     final Reference ref = _storage
         .ref('users/$uid/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg');
