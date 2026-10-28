@@ -78,14 +78,17 @@ class PaginatedConversationsController extends AsyncNotifier<List<Conversation>>
   Object? _cursor;
   bool _hasMore = true;
   bool _isLoadingMore = false;
+  bool _loadMoreFailed = false;
 
   bool get hasMore => _hasMore;
+  bool get loadMoreFailed => _loadMoreFailed;
 
   @override
   Future<List<Conversation>> build() async {
     _cursor = null;
     _hasMore = true;
     _isLoadingMore = false;
+    _loadMoreFailed = false;
     // Reage a login/logout: trocar de usuário refaz a primeira página. Passa
     // pelo `currentUserIdProvider` para o modo sem Firebase também ter
     // identidade — com o uid cru a lista mockada vinha sempre vazia.
@@ -158,6 +161,8 @@ class PaginatedConversationsController extends AsyncNotifier<List<Conversation>>
       return;
     }
     _isLoadingMore = true;
+    _loadMoreFailed = false;
+    state = AsyncData<List<Conversation>>(<Conversation>[...current]);
     try {
       final page = await ref
           .read(getConversationsProvider)
@@ -167,6 +172,11 @@ class PaginatedConversationsController extends AsyncNotifier<List<Conversation>>
       state = AsyncData<List<Conversation>>(
         <Conversation>[...current, ...page.items],
       );
+    } catch (_) {
+      // A página já carregada continua utilizável. O rodapé permite repetir
+      // sem reiniciar a lista nem gerar uma exceção não tratada no scroll.
+      _loadMoreFailed = true;
+      state = AsyncData<List<Conversation>>(<Conversation>[...current]);
     } finally {
       _isLoadingMore = false;
     }

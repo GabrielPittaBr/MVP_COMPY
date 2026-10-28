@@ -12,14 +12,14 @@ import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_status.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/event_status_chip.dart';
-import '../../../../shared/widgets/pill_tag.dart';
+import '../../../../shared/widgets/event_skill_level_chip.dart';
 import '../../../../shared/widgets/primary_button.dart';
-import '../../../../shared/widgets/user_avatar.dart';
 import '../../../chat/presentation/providers/chat_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../providers/events_providers.dart';
 import '../widgets/live_progress.dart';
+import '../widgets/participants_avatars.dart';
 
 /// Tela do evento em andamento (tarefa 14), em `/events/:id/ao-vivo`.
 ///
@@ -220,6 +220,11 @@ class _LiveScaffold extends StatelessWidget {
               Text(event.sport.label, style: const TextStyle(fontSize: 14)),
             ],
           ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: EventSkillLevelChip(level: event.skillLevel),
+          ),
           const SizedBox(height: 14),
           _Schedule(event: event, isCreator: isCreator, ended: ended),
           const SizedBox(height: 16),
@@ -248,18 +253,12 @@ class _LiveScaffold extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 24),
-          Text(
-            AppStrings.eventParticipantsCount(event.participants.length),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ParticipantsAvatars(
+            participants: event.participants,
+            organizer: event.creator,
+            meId: me.id,
+            onMessage: opening ? null : onMessage,
           ),
-          const SizedBox(height: 4),
-          for (final person in _organizerFirst(event))
-            _ParticipantTile(
-              person: person,
-              isOrganizer: person.id == event.creator.id,
-              isMe: person.id == me.id,
-              onMessage: opening ? null : () => onMessage(person),
-            ),
         ],
       ),
       bottomNavigationBar: isCreator && !ended
@@ -283,12 +282,6 @@ class _LiveScaffold extends StatelessWidget {
           : null,
     );
   }
-
-  /// O organizador no topo da lista; os demais na ordem em que entraram.
-  static List<UserSummary> _organizerFirst(Event event) => <UserSummary>[
-        ...event.participants.where((p) => p.id == event.creator.id),
-        ...event.participants.where((p) => p.id != event.creator.id),
-      ];
 }
 
 /// Horário, barra de tempo decorrido e "Faltam X" / "Passou X do previsto",
@@ -498,79 +491,6 @@ class _PlaceCard extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ParticipantTile extends StatelessWidget {
-  const _ParticipantTile({
-    required this.person,
-    required this.isOrganizer,
-    required this.isMe,
-    required this.onMessage,
-  });
-
-  final UserSummary person;
-  final bool isOrganizer;
-  final bool isMe;
-  final VoidCallback? onMessage;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: <Widget>[
-          UserAvatar(user: person, radius: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: <Widget>[
-                    Text(
-                      person.name,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (isOrganizer)
-                      const PillTag(
-                        label: AppStrings.eventLiveOrganizer,
-                        color: AppColors.primary,
-                      ),
-                    if (isMe) const PillTag(label: AppStrings.eventLiveYou),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  person.handle,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.onSurfaceMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (!isMe)
-            IconButton(
-              onPressed: onMessage,
-              tooltip: AppStrings.eventLiveMessage(person.name),
-              style: IconButton.styleFrom(
-                backgroundColor: AppColors.surfaceMuted,
-                foregroundColor: AppColors.primary,
-                fixedSize: const Size(44, 44),
-              ),
-              icon: const Icon(Icons.chat_bubble_outline, size: 20),
-            ),
         ],
       ),
     );

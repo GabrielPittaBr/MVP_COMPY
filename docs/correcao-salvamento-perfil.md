@@ -135,3 +135,34 @@ do aplicativo, de autenticação, de assinatura ou de produção foi alterada.
    a sessão autenticada permite detectar a divergência de nome ao reabrir.
 
 Não houve merge, push, deploy nem escrita em dados reais de produção.
+
+## Integração posterior dos PRs #24 e #25 — 28/10/2026
+
+Após a investigação acima, a integração foi autorizada. O PR #24 entrou em
+`develop` pelo merge commit `e4a4c7a`. Essa base foi integrada em
+`fix/salvamento-perfil`, preservando a ancestralidade dos cinco commits
+originais. A resolução manteve a recuperação de falhas parciais e a guarda
+de UID do editor, os stacks e códigos técnicos e os listeners de identidade
+pública usados pelos participantes dos eventos.
+
+Preservamos as duas notas de 25/10 e removemos declarações duplicadas que o
+merge automático havia introduzido na página de edição. A comparação com
+`develop` confirmou que os arquivos de mapa, participantes e Chat foram
+mantidos; as diferenças restantes correspondem à correção definitiva do
+perfil, seus testes e documentação.
+
+Validação do código combinado antes da integração do PR #25:
+
+- `flutter test`: **435 aprovados**.
+- `npm test --prefix tools/firestore-rules-tests`: **200 aprovados**,
+  em Auth, Firestore e Storage locais sob `demo-compy`.
+- `npm test --prefix functions`: **95 aprovados**.
+- `dart analyze lib test`: exit code 0, sem erros ou warnings,
+  com 10 informações de estilo preexistentes.
+
+Esses resultados pertencem ao estado combinado e substituem a necessidade
+de inferir compatibilidade a partir das contagens isoladas das branches.
+`firestore.rules` permaneceu no blob
+`37a7ce6972a2cab6fa69409e6b3af33d6bb7519e`, já versionado e validado.
+A publicação das regras e a conferência no Android real continuam pendentes.
+Nenhum deploy ou alteração de `main` foi realizado nesta integração.

@@ -120,6 +120,10 @@ class _FakeProfileRepository implements ProfileRepository {
       throw UnimplementedError();
 
   @override
+  Stream<UserSummary?> watchPublicSummary(String uid) =>
+      throw UnimplementedError();
+
+  @override
   Future<void> updateFavoriteSports(String uid, List<Sport> sports) =>
       throw UnimplementedError();
 

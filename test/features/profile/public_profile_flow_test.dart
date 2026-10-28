@@ -22,7 +22,6 @@ import 'package:mvp_compy/features/profile/presentation/pages/public_profile_pag
 import 'package:mvp_compy/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:mvp_compy/features/chat/presentation/pages/new_conversation_page.dart';
 import 'package:mvp_compy/features/events/presentation/providers/events_providers.dart';
-import 'package:mvp_compy/features/events/presentation/widgets/participants_avatars.dart';
 import 'package:mvp_compy/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:mvp_compy/features/profile/domain/entities/user_profile.dart';
 import 'package:mvp_compy/features/profile/domain/repositories/profile_repository.dart';
@@ -74,6 +73,10 @@ class _Profiles implements ProfileRepository {
     if (pending != null) return pending.future;
     return data[uid];
   }
+
+  @override
+  Stream<UserSummary?> watchPublicSummary(String uid) =>
+      Stream<UserSummary?>.value(data[uid]?.summary);
 
   @override
   Future<UserProfile> getCurrentProfile(String uid) async => profile(me);
@@ -192,6 +195,10 @@ void main() {
     expect(await repository.getPublicProfile(''), isNull);
     expect(await repository.getPublicProfile('a/b'), isNull);
     expect(await repository.getPublicProfile('..'), isNull);
+    expect((await repository.watchPublicSummary('u_douglas').first)?.id,
+        'u_douglas');
+    expect(await repository.watchPublicSummary('sumiu').first, isNull);
+    expect(await repository.watchPublicSummary('a/b').first, isNull);
   });
 
   Future<(GoRouter, ProviderContainer)> launch(WidgetTester tester) async {
@@ -340,10 +347,18 @@ void main() {
     expect(find.text('@ana'), findsOneWidget);
     router.pop();
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ParticipantsAvatars), const Offset(-1400, 0));
+    await tester.ensureVisible(find.byKey(const Key('participants-see-all')));
+    await tester.tap(find.byKey(const Key('participants-see-all')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Bruno Silva'));
-    await tester.tap(find.text('Bruno Silva'));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('participant-row-third')),
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('participants-full-list')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('participant-row-third')));
     await tester.pumpAndSettle();
     expect(find.text('@bruno'), findsOneWidget);
   });

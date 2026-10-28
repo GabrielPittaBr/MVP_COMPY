@@ -10,6 +10,7 @@ abstract final class AppStrings {
   // Comum
   static const String commonCancel = 'Cancelar';
   static const String commonConfirm = 'Confirmar';
+  static const String commonRetry = 'Tentar novamente';
 
   // Bottom nav
   static const String navHome = 'Início';
@@ -97,6 +98,7 @@ abstract final class AppStrings {
   static const String eventDurationCustomInvalid =
       'Informe uma duração entre 15 e 720 minutos.';
   static const String eventSkillLevel = 'Nível de habilidade';
+  static const String eventAllSkillLevels = 'Todos os níveis';
   static const String eventParticipants = 'Participantes';
   static const String eventParticipantsNumber = 'Número de participantes';
   static const String eventDescription = 'Descrição';
@@ -114,6 +116,8 @@ abstract final class AppStrings {
   static const String eventSeeMore = 'Ver mais';
   static const String eventVacanciesLabel = 'vagas restantes';
   static String eventParticipantsCount(int count) => 'Participantes ($count)';
+  static const String eventSeeAllParticipants = 'Ver todos';
+  static const String eventCloseParticipants = 'Fechar participantes';
   static const String eventJoined = 'Você entrou no evento!';
   static const String eventNotFound = 'Evento não encontrado.';
   static const String eventJoinError = 'Erro ao entrar no evento';
@@ -333,7 +337,19 @@ abstract final class AppStrings {
       'Não foi possível salvar a foto. Tente novamente.';
 
   // Chat
-  static const String chatTitle = 'Chat';
+  static const String chatTitle = 'Conversas';
+  static const String chatEmptyTitle = 'Suas conversas começam aqui';
+  static const String chatEmptyHint =
+      'Converse com outras pessoas para combinar atividades esportivas.';
+  static const String chatStartConversation = 'Iniciar conversa';
+  static const String chatNoMessages = 'Envie a primeira mensagem';
+  static const String chatLoadErrorTitle =
+      'Não foi possível carregar as conversas';
+  static const String chatLoadErrorHint =
+      'Confira sua conexão e tente novamente.';
+  static const String chatLoadMoreError =
+      'Não foi possível carregar mais conversas.';
+  static String chatUnreadCount(int count) => count > 99 ? '99+' : '$count';
   static const String chatFindMore = 'Encontre mais companheiros...';
   static const String chatHint = 'Digite uma mensagem...';
   static const String chatToday = 'Hoje';
