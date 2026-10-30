@@ -47,6 +47,11 @@ void main() {
               .widget<EventSkillLevelChip>(find.byType(EventSkillLevelChip))
               .level,
           level);
+      expect(
+          tester
+              .widget<EventSkillLevelChip>(find.byType(EventSkillLevelChip))
+              .compact,
+          isTrue);
     });
   }
 

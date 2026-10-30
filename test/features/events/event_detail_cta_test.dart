@@ -16,6 +16,7 @@ import 'package:mvp_compy/shared/models/skill_level.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
 import 'package:mvp_compy/shared/widgets/event_skill_level_chip.dart';
+import 'package:mvp_compy/shared/widgets/event_info_row.dart';
 import 'package:mvp_compy/shared/widgets/user_avatar.dart';
 import 'package:mvp_compy/features/ratings/domain/entities/rating_summary.dart';
 import 'package:mvp_compy/features/ratings/presentation/providers/ratings_providers.dart';
@@ -48,11 +49,13 @@ Event _evento({
   bool endedAutomatically = false,
   int remainingSpots = 8,
   SkillLevel skillLevel = SkillLevel.todos,
+  String title = 'Rachão',
+  Sport sport = Sport.basquete,
 }) =>
     Event(
       id: 'evt_detalhe',
-      title: 'Rachão',
-      sport: Sport.basquete,
+      title: title,
+      sport: sport,
       location: 'Parque do Trabalhador, Taquara',
       coordinates: const LatLng(-29.65, -50.78),
       dateTime: _agora.add(inicioEm),
@@ -85,9 +88,11 @@ Future<void> _abrir(
   required UserSummary quem,
   RatingSummary nota = RatingSummary.empty,
   Stream<UserSummary?>? organizerProfile,
+  Size size = const Size(800, 1600),
+  double textScale = 1,
 }) async {
   // Tela alta: a lista do detalhe só constrói o que aparece.
-  await tester.binding.setSurfaceSize(const Size(800, 1600));
+  await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(ProviderScope(
     overrides: <Override>[
@@ -105,7 +110,14 @@ Future<void> _abrir(
         (ref, target) => Stream<RatingSummary>.value(nota),
       ),
     ],
-    child: const MaterialApp(home: EventDetailPage(eventId: 'evt_detalhe')),
+    child: MaterialApp(
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+      home: const EventDetailPage(eventId: 'evt_detalhe'),
+    ),
   ));
   await tester.pumpAndSettle();
 }
@@ -116,32 +128,55 @@ void main() {
   // O detalhe escreve o dia da semana em pt_BR, como o main.dart prepara.
   setUpAll(() => initializeDateFormatting('pt_BR'));
 
-  testWidgets('detalhe explicita Todos os níveis', (tester) async {
-    await _abrir(tester, evento: Stream.value(_evento()), quem: _visitante);
-    expect(
-        find.text('${AppStrings.eventSkillLevel}: '
-            '${AppStrings.eventAllSkillLevels}'),
-        findsOneWidget);
-    expect(
-        tester
-            .widget<EventSkillLevelChip>(find.byType(EventSkillLevelChip))
-            .level,
-        SkillLevel.todos);
-  });
+  for (final level in SkillLevel.values) {
+    testWidgets('detalhe mostra ${level.label} como linha informativa',
+        (tester) async {
+      await _abrir(tester,
+          evento: Stream.value(_evento(skillLevel: level)), quem: _visitante);
+      final label = level == SkillLevel.todos
+          ? AppStrings.eventAllSkillLevels
+          : level.label;
+      expect(find.text(label), findsOneWidget);
+      expect(find.byType(EventSkillLevelChip), findsNothing);
+      final skill =
+          find.widgetWithIcon(EventInfoRow, Icons.trending_up_outlined);
+      final calendar =
+          find.widgetWithIcon(EventInfoRow, Icons.calendar_today_outlined);
+      final duration = find.widgetWithIcon(EventInfoRow, Icons.schedule);
+      final skillText = find.descendant(of: skill, matching: find.byType(Text));
+      for (final row in [calendar, duration]) {
+        final text = find.descendant(of: row, matching: find.byType(Text));
+        expect(tester.getTopLeft(text).dx, tester.getTopLeft(skillText).dx);
+        expect(tester.widget<Text>(text).style,
+            tester.widget<Text>(skillText).style);
+      }
+      expect(find.descendant(of: skill, matching: find.byType(DecoratedBox)),
+          findsNothing);
+      expect(
+          tester.getTopLeft(calendar).dy - tester.getBottomLeft(skill).dy, 8);
+    });
+  }
 
-  testWidgets('detalhe mostra o nível intermediário do evento', (tester) async {
+  testWidgets(
+      'informações quebram linha com título longo e texto ampliado em tela estreita',
+      (tester) async {
     await _abrir(tester,
-        evento: Stream.value(_evento(skillLevel: SkillLevel.intermediario)),
-        quem: _visitante);
-    expect(
-        find.text('${AppStrings.eventSkillLevel}: '
-            '${SkillLevel.intermediario.label}'),
-        findsOneWidget);
-    expect(
-        tester
-            .widget<EventSkillLevelChip>(find.byType(EventSkillLevelChip))
-            .level,
-        SkillLevel.intermediario);
+        evento: Stream.value(_evento(
+          skillLevel: SkillLevel.intermediario,
+          sport: Sport.tenisDeMesa,
+          title: 'Treino de tênis de mesa para todos os moradores do bairro',
+        )),
+        quem: _visitante,
+        size: const Size(320, 1600),
+        textScale: 1.2);
+    final calendar =
+        find.widgetWithIcon(EventInfoRow, Icons.calendar_today_outlined);
+    await tester.ensureVisible(calendar);
+    await tester.pumpAndSettle();
+    expect(find.text(SkillLevel.intermediario.label), findsOneWidget);
+    expect(find.text(Sport.tenisDeMesa.label), findsOneWidget);
+    expect(find.text('Duração: 1h'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('organizador reflete foto e nome atuais sem abrir seu perfil',
