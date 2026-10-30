@@ -97,8 +97,8 @@ final publicProfileProvider =
   (ref, uid) => ref.watch(getPublicProfileProvider).call(uid),
 );
 
-/// Um listener por UID visível, compartilhado entre o organizador, a prévia
-/// e as linhas construídas da lista. autoDispose libera a assinatura ao sair.
+/// Um listener por UID visível, compartilhado entre eventos, lista de
+/// conversas e sala de chat. autoDispose libera a assinatura ao sair.
 final publicUserSummaryProvider =
     StreamProvider.autoDispose.family<UserSummary?, String>(
   (ref, uid) => ref.watch(profileRepositoryProvider).watchPublicSummary(uid),
@@ -232,6 +232,8 @@ class AvatarController extends AsyncNotifier<void> {
           .updateAvatar(me.id, name: me.name, jpeg: jpeg);
       // Perfil, Home e quem mais lê o perfil passam a mostrar a foto nova.
       ref.invalidate(currentProfileProvider);
+      ref.invalidate(publicProfileProvider(me.id));
+      ref.invalidate(userSearchProvider);
     });
 
     final AsyncValue<void> result = state;

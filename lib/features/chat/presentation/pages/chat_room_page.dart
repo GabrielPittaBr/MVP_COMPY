@@ -6,6 +6,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/day_label.dart';
+import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/user_avatar.dart';
 import '../../domain/entities/conversation.dart';
 import '../models/chat_timeline.dart';
@@ -31,6 +32,9 @@ class ChatRoomPage extends ConsumerWidget {
     // atualiza ao lado, o provider volta a "carregando" com o valor anterior
     // preservado — segurar esse valor evita a sala piscar um spinner.
     final conversation = conversationAsync.valueOrNull;
+    final peer = conversation == null
+        ? null
+        : ref.watch(conversationPeerProvider(conversation.peer));
 
     return Scaffold(
       appBar: AppBar(
@@ -45,11 +49,11 @@ class ChatRoomPage extends ConsumerWidget {
                   ),
           child: Row(
             children: <Widget>[
-              UserAvatar(user: conversation?.peer),
+              UserAvatar(user: peer),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  conversation?.peer.name ?? AppStrings.chatFallbackTitle,
+                  peer?.name ?? AppStrings.chatFallbackTitle,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -64,7 +68,8 @@ class ChatRoomPage extends ConsumerWidget {
         ],
       ),
       body: switch ((conversation, conversationAsync.isLoading)) {
-        (final Conversation c, _) => _ChatRoomBody(conversation: c),
+        (final Conversation c, _) =>
+          _ChatRoomBody(conversation: c, peer: peer!),
         (null, true) => const Center(child: CircularProgressIndicator()),
         // Resolvida e sem conversa: ou não existe, ou o usuário não participa
         // dela — as regras do Firestore recusam a leitura nos dois casos.
@@ -77,9 +82,10 @@ class ChatRoomPage extends ConsumerWidget {
 }
 
 class _ChatRoomBody extends ConsumerStatefulWidget {
-  const _ChatRoomBody({required this.conversation});
+  const _ChatRoomBody({required this.conversation, required this.peer});
 
   final Conversation conversation;
+  final UserSummary peer;
 
   @override
   ConsumerState<_ChatRoomBody> createState() => _ChatRoomBodyState();
@@ -138,7 +144,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                       ChatMessageItem(:final message) => MessageBubble(
                           message: message,
                           isMine: message.senderId == currentUserId,
-                          peer: conversation.peer,
+                          peer: widget.peer,
                         ),
                     },
                   );
