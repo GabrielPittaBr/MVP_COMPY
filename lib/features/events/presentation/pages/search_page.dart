@@ -64,8 +64,8 @@ class SearchPage extends ConsumerWidget {
                         event: e,
                         status: status,
                         actionLabel: AppStrings.eventSeeMore,
-                        onAction: () =>
-                            context.go('${AppRoutes.events}/${e.id}'),
+                        onOpen: () =>
+                            context.go(AppRoutes.eventDetailPath(e.id)),
                       ),
                     );
                   },

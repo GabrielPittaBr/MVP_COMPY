@@ -77,7 +77,7 @@ void main() {
           event: _aoVivo,
           status: status,
           actionLabel: AppStrings.eventSeeMore,
-          onAction: () {},
+          onOpen: () {},
         ),
       ),
     );
@@ -92,7 +92,7 @@ void main() {
       EventCard(
         event: _aoVivo,
         actionLabel: AppStrings.eventSeeMore,
-        onAction: () {},
+        onOpen: () {},
       ),
     );
 
