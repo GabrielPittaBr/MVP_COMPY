@@ -33,7 +33,7 @@ void main() {
           body: EventCard(
             event: _event(level),
             actionLabel: AppStrings.eventSeeMore,
-            onAction: () {},
+            onOpen: () {},
           ),
         ),
       ));
@@ -61,7 +61,7 @@ void main() {
             event: _event(SkillLevel.todos),
             status: EventStatus.happening,
             actionLabel: AppStrings.eventSeeMore,
-            onAction: () {},
+            onOpen: () {},
           ),
         ),
       ),

@@ -101,7 +101,8 @@ class _Sections extends ConsumerWidget {
         }
 
         addSection(AppStrings.eventsSectionMine, _sectionContent(mineAsync));
-        addSection(AppStrings.eventsSectionJoined, _sectionContent(joinedAsync));
+        addSection(
+            AppStrings.eventsSectionJoined, _sectionContent(joinedAsync));
 
         final allContent = <Widget>[
           if (all.isNotEmpty) _eventsSliver(all),
@@ -184,7 +185,7 @@ class _Sections extends ConsumerWidget {
               // "Ver mais" continua valendo num evento lotado — ver
               // [EventCard.disableWhenFull].
               disableWhenFull: false,
-              onAction: () => context.go('${AppRoutes.events}/${e.id}'),
+              onOpen: () => context.go(AppRoutes.eventDetailPath(e.id)),
             ),
           );
         },
@@ -349,7 +350,8 @@ class _FilterChip extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: InputChip(
-        avatar: Icon(icon, size: 18, color: iconColor ?? AppColors.onSurfaceMuted),
+        avatar:
+            Icon(icon, size: 18, color: iconColor ?? AppColors.onSurfaceMuted),
         label: Text(label),
         onDeleted: onClear,
         deleteIcon: const Icon(Icons.close, size: 18),
@@ -370,7 +372,8 @@ class _EmptyState extends StatelessWidget {
 
   String get _message {
     if (filter.isEmpty) return AppStrings.eventsEmpty;
-    if (filter.sport != null && filter.skillLevel == null &&
+    if (filter.sport != null &&
+        filter.skillLevel == null &&
         filter.day == null) {
       return AppStrings.eventsEmptyForSport(filter.sport!.label);
     }
