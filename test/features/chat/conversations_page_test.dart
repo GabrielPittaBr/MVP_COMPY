@@ -11,6 +11,7 @@ import 'package:mvp_compy/features/chat/domain/repositories/chat_repository.dart
 import 'package:mvp_compy/features/chat/presentation/pages/conversations_page.dart';
 import 'package:mvp_compy/features/chat/presentation/providers/chat_providers.dart';
 import 'package:mvp_compy/features/chat/presentation/widgets/conversation_tile.dart';
+import 'package:mvp_compy/features/profile/presentation/providers/profile_providers.dart';
 import 'package:mvp_compy/shared/models/paged_result.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
 
@@ -80,6 +81,7 @@ Future<(GoRouter, ProviderContainer)> _open(
   final container = ProviderContainer(overrides: <Override>[
     currentUserIdProvider.overrideWithValue('me'),
     chatRepositoryProvider.overrideWithValue(repository),
+    publicUserSummaryProvider.overrideWith((ref, uid) => Stream.value(null)),
   ]);
   addTearDown(container.dispose);
   final router = GoRouter(
@@ -124,8 +126,7 @@ void main() {
     expect(find.byType(FloatingActionButton), findsNothing);
     expect(find.byType(RefreshIndicator), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.drag(find.byType(SingleChildScrollView),
-        const Offset(0, 300));
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 300));
     await tester.pumpAndSettle();
     expect(repository.fetchCalls, 2);
   });
@@ -194,12 +195,12 @@ void main() {
       repository,
       size: const Size(320, 480),
     );
-    expect(container.read(paginatedConversationsProvider).valueOrNull?.length,
-        10);
+    expect(
+        container.read(paginatedConversationsProvider).valueOrNull?.length, 10);
     await tester.drag(find.byType(ListView), const Offset(0, -1200));
     await tester.pumpAndSettle();
-    expect(container.read(paginatedConversationsProvider).valueOrNull?.length,
-        12);
+    expect(
+        container.read(paginatedConversationsProvider).valueOrNull?.length, 12);
     expect(repository.cursors, <Object?>[null, 10]);
     expect(tester.takeException(), isNull);
   });
@@ -208,7 +209,8 @@ void main() {
       (tester) async {
     final repository = _ChatRepository(<Conversation>[
       for (var i = 0; i < 12; i++) _conversation(i),
-    ])..failMore = true;
+    ])
+      ..failMore = true;
     final (_, container) = await _open(
       tester,
       repository,
@@ -216,15 +218,15 @@ void main() {
     );
     await tester.drag(find.byType(ListView), const Offset(0, -1200));
     await tester.pumpAndSettle();
-    expect(container.read(paginatedConversationsProvider).valueOrNull?.length,
-        10);
+    expect(
+        container.read(paginatedConversationsProvider).valueOrNull?.length, 10);
     expect(find.text(AppStrings.chatLoadMoreError), findsOneWidget);
     expect(tester.takeException(), isNull);
     repository.failMore = false;
     await tester.tap(find.text(AppStrings.commonRetry));
     await tester.pumpAndSettle();
-    expect(container.read(paginatedConversationsProvider).valueOrNull?.length,
-        12);
+    expect(
+        container.read(paginatedConversationsProvider).valueOrNull?.length, 12);
     expect(find.text(AppStrings.chatLoadMoreError), findsNothing);
   });
 }

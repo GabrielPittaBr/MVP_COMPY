@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_strings.dart';
@@ -6,8 +7,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/day_label.dart';
 import '../../../../shared/widgets/user_avatar.dart';
 import '../../domain/entities/conversation.dart';
+import '../providers/chat_providers.dart';
 
-class ConversationTile extends StatelessWidget {
+class ConversationTile extends ConsumerWidget {
   const ConversationTile({
     required this.conversation,
     required this.onTap,
@@ -37,7 +39,8 @@ class ConversationTile extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final peer = ref.watch(conversationPeerProvider(conversation.peer));
     final unread = conversation.unreadCount > 0;
     return Material(
       color: unread
@@ -50,7 +53,7 @@ class ConversationTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           child: Row(
             children: <Widget>[
-              UserAvatar(user: conversation.peer, radius: 27),
+              UserAvatar(user: peer, radius: 27),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -60,7 +63,7 @@ class ConversationTile extends StatelessWidget {
                       children: <Widget>[
                         Expanded(
                           child: Text(
-                            conversation.peer.name,
+                            peer.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(

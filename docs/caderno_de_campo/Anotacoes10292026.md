@@ -1,0 +1,3 @@
+Taquara, 29 de Outubro de 2026
+
+- Hoje corrigimos a identidade exibida nas conversas: lista, cabeçalho e avatares das mensagens acompanham o nome e a foto atuais pelo UID, compartilhando a assinatura do perfil sem consultar por mensagem. Preservamos os snapshots históricos como fallback e recuperamos perfis de conversas legadas pelos membros. A remoção da foto usa o ícone local, e o salvamento também renova as leituras do perfil público e da busca. Testamos dois clientes simulados com trocas de foto, remoção, nome, reabertura, perfil indisponível e histórico preservado; a suíte Flutter passou com 443 testes, e o analisador manteve somente os 10 avisos informativos anteriores.

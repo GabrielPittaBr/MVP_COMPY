@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mvp_compy/core/constants/app_assets.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
 import 'package:mvp_compy/shared/widgets/user_avatar.dart';
 
@@ -11,6 +12,20 @@ Future<void> _pump(WidgetTester tester, Widget child) {
 }
 
 void main() {
+  testWidgets('remoção com URL placeholder não solicita imagem de rede',
+      (tester) async {
+    await _pump(
+        tester,
+        UserAvatar(
+            user: UserSummary(
+                id: 'u1',
+                name: 'Ana',
+                handle: '@ana',
+                avatarUrl: AppAssets.avatar('Ana'))));
+    expect(find.byType(CachedNetworkImage), findsNothing);
+    expect(find.byIcon(Icons.person), findsOneWidget);
+  });
+
   testWidgets('URL vazia vira o ícone genérico, sem imagem de rede',
       (tester) async {
     await _pump(

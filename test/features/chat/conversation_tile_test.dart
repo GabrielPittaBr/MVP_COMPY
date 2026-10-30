@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mvp_compy/core/constants/app_strings.dart';
 import 'package:mvp_compy/features/chat/domain/entities/conversation.dart';
 import 'package:mvp_compy/features/chat/presentation/widgets/conversation_tile.dart';
+import 'package:mvp_compy/features/profile/presentation/providers/profile_providers.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
 import 'package:mvp_compy/shared/widgets/user_avatar.dart';
 
@@ -42,15 +44,19 @@ Future<void> _pumpTile(
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(MaterialApp(
-    home: Scaffold(
-      body: ConversationTile(
-        conversation: conversation,
-        now: now,
-        onTap: onTap ?? () {},
-      ),
-    ),
-  ));
+  await tester.pumpWidget(ProviderScope(
+      overrides: [
+        publicUserSummaryProvider.overrideWith((ref, uid) => Stream.value(null))
+      ],
+      child: MaterialApp(
+        home: Scaffold(
+          body: ConversationTile(
+            conversation: conversation,
+            now: now,
+            onTap: onTap ?? () {},
+          ),
+        ),
+      )));
 }
 
 void main() {
@@ -84,8 +90,7 @@ void main() {
     expect(find.text('24/10/26'), findsOneWidget);
   });
 
-  testWidgets('não lidas recebem destaque e badge; lidas não',
-      (tester) async {
+  testWidgets('não lidas recebem destaque e badge; lidas não', (tester) async {
     final now = DateTime(2026, 10, 26, 16);
     await _pumpTile(
       tester,

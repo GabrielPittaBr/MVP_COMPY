@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_assets.dart';
 import '../../core/theme/app_colors.dart';
 import '../models/user_summary.dart';
 
@@ -22,7 +23,8 @@ class UserAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = user?.avatarUrl ?? '';
     final uri = Uri.tryParse(url);
-    final valid = uri != null &&
+    final valid = !AppAssets.isPlaceholderAvatar(url) &&
+        uri != null &&
         (uri.scheme == 'https' || uri.scheme == 'http') &&
         uri.host.isNotEmpty;
     final fallback = Container(

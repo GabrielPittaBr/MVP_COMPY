@@ -66,8 +66,37 @@ void main() {
         meuUid,
       );
 
-      expect(conversation.peer.id, 'unknown');
+      expect(conversation.peer.id, 'uid_douglas');
       expect(conversation.peer.name, isNotEmpty);
+    });
+
+    test('UID de members prevalece sobre id divergente e resumos alheios', () {
+      final data = doc(summaries: {
+        'intruso': {'id': 'intruso', 'name': 'Outro'},
+        'uid_douglas': {'id': 'id_antigo', 'name': 'Douglas'},
+      });
+      final conversation = ConversationMapper.fromMap('c1', data, meuUid);
+      expect(conversation.peer.id, 'uid_douglas');
+      expect(conversation.peer.name, 'Douglas');
+      expect(conversation.peer.avatarUrl, isEmpty);
+    });
+
+    test('resumo malformado preserva UID e usa placeholder', () {
+      final conversation = ConversationMapper.fromMap(
+          'c1', doc(summaries: {'uid_douglas': 'invalido'}), meuUid);
+      expect(conversation.peer.id, 'uid_douglas');
+      expect(conversation.peer.avatarUrl, isEmpty);
+    });
+
+    test('legado sem members usa a chave do resumo como UID', () {
+      final data = doc()..remove('members');
+      final conversation = ConversationMapper.fromMap('c1', data, meuUid);
+      expect(conversation.peer.id, 'uid_douglas');
+    });
+
+    test('sem membros nem resumos usa identidade desconhecida', () {
+      final conversation = ConversationMapper.fromMap('c1', {}, meuUid);
+      expect(conversation.peer, ConversationMapper.unknownPeer);
     });
 
     test('conversa recém-criada ainda não tem lastMessageAt do servidor', () {
