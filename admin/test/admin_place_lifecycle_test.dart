@@ -649,6 +649,10 @@ class _FakePlacesRepository implements AdminPlacesRepository {
   }) => const Stream<AdminPlacesPageSnapshot>.empty();
 
   @override
+  Stream<AdminPlacesCollectionSnapshot> watchAll(AdminPlacesFilters filters) =>
+      const Stream<AdminPlacesCollectionSnapshot>.empty();
+
+  @override
   Stream<AdminPlaceRecord?> watchPlace(String id) => placeChanges.stream;
 
   @override
