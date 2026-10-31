@@ -162,6 +162,33 @@ void main() {
       }
     });
 
+    // Issue 30: o teto era um 8 fixo. O Parque do Trabalhador com os esportes
+    // de areia e o skate (12) seria descartado aqui e sumiria do mapa sem
+    // aviso.
+    test('aceita local com mais de 8 modalidades, até o enum inteiro', () {
+      final parqueCompleto = placeDocument(sports: const <String>[
+        'futebol',
+        'basquete',
+        'futsal',
+        'volei',
+        'corrida',
+        'ciclismo',
+        'caminhada',
+        'beachTennis',
+        'futevolei',
+        'voleiDePraia',
+        'futebolDeAreia',
+        'skate',
+      ]);
+      final todas = placeDocument(sports: Sport.toStorage(Sport.values));
+
+      expect(
+        SportPlace.tryFromFirestore('parque', parqueCompleto)?.sports,
+        hasLength(12),
+      );
+      expect(SportPlace.tryFromFirestore('todas', todas)?.sports, Sport.values);
+    });
+
     test('schema de PlaceAddress exige normalização e UF em maiúsculas', () {
       final data = placeDocument();
       data['address'] = <String, dynamic>{
