@@ -8,29 +8,40 @@ import '../../../core/theme/admin_colors.dart';
 import '../../../core/widgets/admin_status_pill.dart';
 import '../data/admin_places_repository.dart';
 import 'admin_places_controller.dart';
+import 'admin_places_map.dart';
 
 class AdminPlacesPage extends StatefulWidget {
   const AdminPlacesPage({
     this.repository,
     this.initialStatus = AdminPlaceStatusFilter.all,
+    this.mapTileLayer,
     super.key,
   });
 
   final AdminPlacesRepository? repository;
   final AdminPlaceStatusFilter initialStatus;
+  final Widget? mapTileLayer;
 
   @override
   State<AdminPlacesPage> createState() => _AdminPlacesPageState();
 }
 
+enum _PlacesView { list, map }
+
 class _AdminPlacesPageState extends State<AdminPlacesPage> {
+  late final AdminPlacesRepository _repository =
+      widget.repository ?? FirebaseAdminPlacesRepository();
   late final AdminPlacesController _controller = AdminPlacesController(
-    widget.repository ?? FirebaseAdminPlacesRepository(),
+    _repository,
     initialStatus: widget.initialStatus,
   )..addListener(_onChanged);
+  // Só passa a ler todos os locais quando o mapa é aberto pela primeira vez.
+  AdminPlacesMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   Timer? _searchDebounce;
+  _PlacesView _view = _PlacesView.list;
+  bool _showNamesOnMap = false;
 
   @override
   void initState() {
@@ -50,19 +61,32 @@ class _AdminPlacesPageState extends State<AdminPlacesPage> {
     _controller
       ..removeListener(_onChanged)
       ..dispose();
+    _mapController
+      ?..removeListener(_onChanged)
+      ..dispose();
     super.dispose();
   }
 
-  void _updateFilters(AdminPlacesFilters filters) =>
-      _controller.updateFilters(filters);
+  void _updateFilters(AdminPlacesFilters filters) {
+    _controller.updateFilters(filters);
+    _mapController?.watch(filters);
+  }
+
+  void _selectView(_PlacesView view) {
+    setState(() => _view = view);
+    if (view == _PlacesView.map) {
+      (_mapController ??= AdminPlacesMapController(
+        _repository,
+      )..addListener(_onChanged)).watch(_controller.state.filters);
+    }
+  }
+
+  void _openPlace(String id) =>
+      context.go('/places/${Uri.encodeComponent(id)}');
 
   @override
   Widget build(BuildContext context) {
     final state = _controller.state;
-    // Lista vazia vinda do cache significa falta de conexão sem nada salvo,
-    // não ausência de locais cadastrados.
-    final offlineWithoutCache =
-        state.isFromCache && state.places.isEmpty && !state.isLoading;
     return ListView(
       padding: adminPagePadding(context),
       children: <Widget>[
@@ -76,66 +100,135 @@ class _AdminPlacesPageState extends State<AdminPlacesPage> {
               'Locais Esportivos',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
-            FilledButton.icon(
-              onPressed: () => context.go('/places/new'),
-              icon: const Icon(Icons.add_location_alt_outlined),
-              label: const Text('Cadastrar local'),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: <Widget>[
+                SegmentedButton<_PlacesView>(
+                  segments: const <ButtonSegment<_PlacesView>>[
+                    ButtonSegment<_PlacesView>(
+                      value: _PlacesView.list,
+                      icon: Icon(Icons.view_list_outlined),
+                      label: Text('Lista'),
+                    ),
+                    ButtonSegment<_PlacesView>(
+                      value: _PlacesView.map,
+                      icon: Icon(Icons.map_outlined),
+                      label: Text('Mapa'),
+                    ),
+                  ],
+                  selected: <_PlacesView>{_view},
+                  onSelectionChanged: (selection) =>
+                      _selectView(selection.single),
+                ),
+                FilledButton.icon(
+                  onPressed: () => context.go('/places/new'),
+                  icon: const Icon(Icons.add_location_alt_outlined),
+                  label: const Text('Cadastrar local'),
+                ),
+              ],
             ),
           ],
         ),
         const SizedBox(height: 24),
         _buildFilters(state.filters),
-        if (state.isFromCache && !offlineWithoutCache) ...<Widget>[
-          const SizedBox(height: 12),
-          const _OfflineBanner(),
-        ],
-        const SizedBox(height: 16),
-        if (state.isLoading && state.places.isEmpty)
-          const _PlacesSkeleton()
-        else if (state.error != null && state.places.isEmpty)
-          _PlacesError(onRetry: _controller.retry)
-        else if (offlineWithoutCache)
-          _PlacesError(
-            onRetry: _controller.retry,
-            message: 'Sem conexão e nenhum local salvo neste navegador.',
-          )
-        else if (state.places.isEmpty)
-          _PlacesEmpty(filters: state.filters)
-        else ...<Widget>[
-          if (state.error != null) _InlineError(onRetry: _controller.retry),
-          Card(
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: <Widget>[
-                for (final (index, place) in state.places.indexed) ...<Widget>[
-                  if (index > 0) const Divider(),
-                  _PlaceTile(
-                    place: place,
-                    onTap: () =>
-                        context.go('/places/${Uri.encodeComponent(place.id)}'),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (state.isLoadingMore)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          if (state.hasMore && !state.isLoadingMore)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Center(
-                child: OutlinedButton(
-                  onPressed: _controller.loadNextPage,
-                  child: const Text('Carregar mais locais'),
-                ),
-              ),
-            ),
-        ],
+        if (_view == _PlacesView.map)
+          ..._buildMap(_mapController!)
+        else
+          ..._buildList(state),
       ],
     );
+  }
+
+  List<Widget> _buildList(AdminPlacesListState state) {
+    // Lista vazia vinda do cache significa falta de conexão sem nada salvo,
+    // não ausência de locais cadastrados.
+    final offlineWithoutCache =
+        state.isFromCache && state.places.isEmpty && !state.isLoading;
+    return <Widget>[
+      if (state.isFromCache && !offlineWithoutCache) ...<Widget>[
+        const SizedBox(height: 12),
+        const _OfflineBanner(),
+      ],
+      const SizedBox(height: 16),
+      if (state.isLoading && state.places.isEmpty)
+        const _PlacesSkeleton()
+      else if (state.error != null && state.places.isEmpty)
+        _PlacesError(onRetry: _controller.retry)
+      else if (offlineWithoutCache)
+        _PlacesError(
+          onRetry: _controller.retry,
+          message: 'Sem conexão e nenhum local salvo neste navegador.',
+        )
+      else if (state.places.isEmpty)
+        _PlacesEmpty(filters: state.filters)
+      else ...<Widget>[
+        if (state.error != null) _InlineError(onRetry: _controller.retry),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: <Widget>[
+              for (final (index, place) in state.places.indexed) ...<Widget>[
+                if (index > 0) const Divider(),
+                _PlaceTile(place: place, onTap: () => _openPlace(place.id)),
+              ],
+            ],
+          ),
+        ),
+        if (state.isLoadingMore)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        if (state.hasMore && !state.isLoadingMore)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Center(
+              child: OutlinedButton(
+                onPressed: _controller.loadNextPage,
+                child: const Text('Carregar mais locais'),
+              ),
+            ),
+          ),
+      ],
+    ];
+  }
+
+  List<Widget> _buildMap(AdminPlacesMapController mapController) {
+    final state = mapController.state;
+    final offlineWithoutCache =
+        state.isFromCache && state.places.isEmpty && !state.isLoading;
+    return <Widget>[
+      if (state.isFromCache && !offlineWithoutCache) ...<Widget>[
+        const SizedBox(height: 12),
+        const _OfflineBanner(),
+      ],
+      const SizedBox(height: 16),
+      if (state.isLoading && state.places.isEmpty)
+        const _MapSkeleton()
+      else if (state.error != null && state.places.isEmpty)
+        _PlacesError(
+          onRetry: mapController.retry,
+          message: 'Não foi possível carregar o mapa dos locais.',
+        )
+      else if (offlineWithoutCache)
+        _PlacesError(
+          onRetry: mapController.retry,
+          message: 'Sem conexão e nenhum local salvo neste navegador.',
+        )
+      else ...<Widget>[
+        if (state.error != null) _InlineError(onRetry: mapController.retry),
+        AdminPlacesMap(
+          places: state.places,
+          showNames: _showNamesOnMap,
+          onShowNamesChanged: (value) =>
+              setState(() => _showNamesOnMap = value),
+          onOpenPlace: _openPlace,
+          tileLayer: widget.mapTileLayer,
+        ),
+      ],
+    ];
   }
 
   Widget _buildFilters(AdminPlacesFilters filters) => Wrap(
@@ -404,6 +497,32 @@ class _PlacesSkeleton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MapSkeleton extends StatelessWidget {
+  const _MapSkeleton();
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Carregando mapa dos locais',
+    child: Card(
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: adminPlacesMapHeight(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            const LinearProgressIndicator(),
+            Expanded(
+              child: ColoredBox(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// Mensagem de estado vazio ou de falha, com a ação que resolve.

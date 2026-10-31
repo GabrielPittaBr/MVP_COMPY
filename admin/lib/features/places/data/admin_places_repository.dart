@@ -133,11 +133,25 @@ class AdminPlacesPageSnapshot {
   final bool isFromCache;
 }
 
+class AdminPlacesCollectionSnapshot {
+  const AdminPlacesCollectionSnapshot({
+    required this.places,
+    required this.isFromCache,
+  });
+
+  final List<AdminPlaceRecord> places;
+  final bool isFromCache;
+}
+
 abstract interface class AdminPlacesRepository {
   Stream<AdminPlacesPageSnapshot> watchPage(
     AdminPlacesFilters filters, {
     AdminPlaceCursor? after,
   });
+
+  /// Todos os locais que batem com [filters], completos e sem paginação: o
+  /// volume de locais é pequeno. Alimenta o mapa geral da página de Locais.
+  Stream<AdminPlacesCollectionSnapshot> watchAll(AdminPlacesFilters filters);
 
   Stream<AdminPlaceRecord?> watchPlace(String id);
 
@@ -187,11 +201,7 @@ class FirebaseAdminPlacesRepository implements AdminPlacesRepository {
   static const int pageSize = 20;
   final FirebaseFirestore _firestore;
 
-  @override
-  Stream<AdminPlacesPageSnapshot> watchPage(
-    AdminPlacesFilters filters, {
-    AdminPlaceCursor? after,
-  }) {
+  Query<Map<String, dynamic>> _filteredQuery(AdminPlacesFilters filters) {
     final plan = AdminPlacesQueryPlan.fromFilters(filters);
     Query<Map<String, dynamic>> query = _firestore.collection('places');
     if (plan.status != null) {
@@ -209,6 +219,15 @@ class FirebaseAdminPlacesRepository implements AdminPlacesRepository {
         '${plan.namePrefix}\uf8ff',
       ]);
     }
+    return query;
+  }
+
+  @override
+  Stream<AdminPlacesPageSnapshot> watchPage(
+    AdminPlacesFilters filters, {
+    AdminPlaceCursor? after,
+  }) {
+    var query = _filteredQuery(filters);
     if (after != null) {
       if (after is! _FirestoreAdminPlaceCursor) {
         throw ArgumentError.value(
@@ -241,6 +260,19 @@ class FirebaseAdminPlacesRepository implements AdminPlacesRepository {
           );
         });
   }
+
+  @override
+  Stream<AdminPlacesCollectionSnapshot> watchAll(AdminPlacesFilters filters) =>
+      _filteredQuery(filters)
+          .snapshots(includeMetadataChanges: true)
+          .map(
+            (snapshot) => AdminPlacesCollectionSnapshot(
+              places: snapshot.docs
+                  .map(AdminPlaceRecord.fromDocument)
+                  .toList(growable: false),
+              isFromCache: snapshot.metadata.isFromCache,
+            ),
+          );
 
   @override
   Stream<AdminPlaceRecord?> watchPlace(String id) => _firestore

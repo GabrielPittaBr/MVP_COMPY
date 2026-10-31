@@ -12,6 +12,7 @@ import '../../../core/theme/admin_colors.dart';
 import '../../../core/widgets/admin_status_pill.dart';
 import '../data/admin_place_model.dart';
 import '../data/admin_places_repository.dart';
+import 'admin_osm_map.dart';
 
 typedef AdminPlaceMapPickerBuilder = Widget Function(
   BuildContext context,
@@ -1203,10 +1204,7 @@ class _AdminPlaceMapPickerState extends State<AdminPlaceMapPicker> {
             onTap: (_, point) => widget.onSelected(point),
           ),
           children: <Widget>[
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'br.com.compy.admin',
-            ),
+            adminOsmTileLayer(),
             MarkerLayer(
               markers: <Marker>[
                 Marker(
@@ -1224,19 +1222,7 @@ class _AdminPlaceMapPickerState extends State<AdminPlaceMapPicker> {
             ),
           ],
         ),
-        const Positioned(
-          right: 8,
-          bottom: 8,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: Colors.white70),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                child: Text('© OpenStreetMap contributors'),
-              ),
-            ),
-          ),
-        ),
+        const AdminOsmAttribution(),
       ],
     ),
   );
