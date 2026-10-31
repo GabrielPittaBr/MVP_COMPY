@@ -1,12 +1,25 @@
+/**
+ * Nomes gravados das modalidades, na ordem do enum `Sport` do app. A mesma
+ * lista vive em `validSports()` do `firestore.rules` e em `adminSportLabels`
+ * do painel admin: esporte novo entra nos quatro lugares.
+ */
 export const supportedSports = [
   'futebol',
+  'futsal',
   'basquete',
   'volei',
+  'handebol',
+  'tenis',
   'tenisDeMesa',
-  'futsal',
+  'padel',
+  'futebolDeAreia',
+  'voleiDePraia',
+  'futevolei',
+  'beachTennis',
   'corrida',
   'ciclismo',
   'caminhada',
+  'skate',
 ] as const;
 
 export type SupportedSport = (typeof supportedSports)[number];
@@ -101,7 +114,9 @@ function validateAddress(address: PlaceAddress): void {
 
 function validateSports(sports: readonly SupportedSport[], primarySport: SupportedSport): void {
   if (sports.length < 1 || sports.length > supportedSports.length) {
-    throw new PlaceValidationError('sports deve conter de uma a oito modalidades.');
+    throw new PlaceValidationError(
+      `sports deve conter de 1 a ${supportedSports.length} modalidades.`,
+    );
   }
   if (new Set(sports).size !== sports.length || !sports.every((sport) => supportedSports.includes(sport))) {
     throw new PlaceValidationError('sports contém modalidade inválida ou duplicada.');
