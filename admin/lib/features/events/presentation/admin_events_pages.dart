@@ -4,6 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/admin_sports.dart';
 import '../../../core/operations/admin_operations.dart';
 import '../../../core/shell/admin_shell.dart';
 import '../../../core/theme/admin_colors.dart';
@@ -189,7 +190,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
             items: <DropdownMenuItem<String>>[
               const DropdownMenuItem(value: '', child: Text('Todas')),
               for (final MapEntry(key: value, value: label)
-                  in _sportLabels.entries)
+                  in adminSportLabels.entries)
                 DropdownMenuItem(value: value, child: Text(label)),
             ],
             onChanged: (value) => _controller.updateFilters(
@@ -1073,19 +1074,8 @@ class _EventsOfflineBanner extends StatelessWidget {
   );
 }
 
-const Map<String, String> _sportLabels = <String, String>{
-  'futebol': 'Futebol',
-  'basquete': 'Basquete',
-  'volei': 'Vôlei',
-  'tenisDeMesa': 'Tênis de mesa',
-  'futsal': 'Futsal',
-  'corrida': 'Corrida',
-  'ciclismo': 'Ciclismo',
-  'caminhada': 'Caminhada',
-};
-
 String _sportLabel(String sport) =>
-    _sportLabels[sport] ?? (sport.isEmpty ? 'Modalidade não informada' : sport);
+    sport.isEmpty ? 'Modalidade não informada' : adminSportLabel(sport);
 
 String _skillLabel(String level) => switch (level) {
   'iniciante' => 'Iniciante',

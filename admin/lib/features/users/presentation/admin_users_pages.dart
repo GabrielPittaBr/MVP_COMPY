@@ -2,6 +2,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/admin_sports.dart';
 import '../../../core/operations/admin_operations.dart';
 import '../../../core/shell/admin_shell.dart';
 import '../../../core/theme/admin_theme.dart';
@@ -1341,17 +1342,7 @@ class _MessageCard extends StatelessWidget {
 
 String _sportsLabel(List<String> sports) {
   if (sports.isEmpty) return 'Nenhuma selecionada';
-  const labels = <String, String>{
-    'futebol': 'Futebol',
-    'basquete': 'Basquete',
-    'volei': 'Vôlei',
-    'tenisDeMesa': 'Tênis de mesa',
-    'futsal': 'Futsal',
-    'corrida': 'Corrida',
-    'ciclismo': 'Ciclismo',
-    'caminhada': 'Caminhada',
-  };
-  return sports.map((sport) => labels[sport] ?? sport).join(', ');
+  return sports.map(adminSportLabel).join(', ');
 }
 
 String _dateLabel(DateTime? date) =>

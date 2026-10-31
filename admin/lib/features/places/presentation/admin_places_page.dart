@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/admin_sports.dart';
 import '../../../core/shell/admin_shell.dart';
 import '../../../core/theme/admin_colors.dart';
 import '../../../core/widgets/admin_status_pill.dart';
@@ -307,19 +308,11 @@ class _AdminPlacesPageState extends State<AdminPlacesPage> {
             initialValue: filters.sport ?? '',
             isExpanded: true,
             decoration: const InputDecoration(labelText: 'Modalidade'),
-            items: const <DropdownMenuItem<String>>[
-              DropdownMenuItem(value: '', child: Text('Todas')),
-              DropdownMenuItem(value: 'futebol', child: Text('Futebol')),
-              DropdownMenuItem(value: 'basquete', child: Text('Basquete')),
-              DropdownMenuItem(value: 'volei', child: Text('Vôlei')),
-              DropdownMenuItem(
-                value: 'tenisDeMesa',
-                child: Text('Tênis de mesa'),
-              ),
-              DropdownMenuItem(value: 'futsal', child: Text('Futsal')),
-              DropdownMenuItem(value: 'corrida', child: Text('Corrida')),
-              DropdownMenuItem(value: 'ciclismo', child: Text('Ciclismo')),
-              DropdownMenuItem(value: 'caminhada', child: Text('Caminhada')),
+            items: <DropdownMenuItem<String>>[
+              const DropdownMenuItem(value: '', child: Text('Todas')),
+              for (final MapEntry(key: value, value: label)
+                  in adminSportLabels.entries)
+                DropdownMenuItem(value: value, child: Text(label)),
             ],
             onChanged: (value) => _updateFilters(
               filters.copyWith(
@@ -404,7 +397,7 @@ class _PlaceTile extends StatelessWidget {
                       children: <Widget>[
                         if (compact) pill,
                         ...place.sports.map(
-                          (sport) => _SportTag(_sportLabel(sport)),
+                          (sport) => _SportTag(adminSportLabel(sport)),
                         ),
                       ],
                     ),
@@ -423,18 +416,6 @@ class _PlaceTile extends StatelessWidget {
       ),
     );
   }
-
-  String _sportLabel(String value) => switch (value) {
-    'futebol' => 'Futebol',
-    'basquete' => 'Basquete',
-    'volei' => 'Vôlei',
-    'tenisDeMesa' => 'Tênis de mesa',
-    'futsal' => 'Futsal',
-    'corrida' => 'Corrida',
-    'ciclismo' => 'Ciclismo',
-    'caminhada' => 'Caminhada',
-    _ => value,
-  };
 }
 
 class _SportTag extends StatelessWidget {

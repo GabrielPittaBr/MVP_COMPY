@@ -246,6 +246,10 @@ void main() {
         ),
       );
       final submit = find.widgetWithText(FilledButton, 'Cadastrar inativo');
+      // Com 16 modalidades (issue 30) os chips quebram em mais linhas e o
+      // botão passa da altura da tela de teste.
+      await tester.ensureVisible(submit);
+      await tester.pumpAndSettle();
       await tester.tap(submit);
       await tester.pumpAndSettle();
 
