@@ -48,7 +48,7 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 
 **Entrada no app:** cadastro e login por e-mail/senha ou **conta Google**, escolha de um nome de usuário único e onboarding de esportes favoritos — tudo protegido por um guard de rotas que leva cada pessoa exatamente ao degrau que falta.
 
-**Modalidades:** futebol · futsal · vôlei · basquete · tênis de mesa · corrida · ciclismo · caminhada
+**Modalidades:** futebol · futsal · basquete · vôlei · handebol · tênis · tênis de mesa · padel · futebol de areia · vôlei de praia · futevôlei · beach tennis · corrida · ciclismo · caminhada · skate
 
 ---
 
@@ -151,7 +151,7 @@ As regras do Firestore e do Storage têm suíte própria, em Node, porque não h
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 190 casos
+npm test --prefix tools/firestore-rules-tests      # 206 casos
 ```
 
 As Cloud Functions também têm lint e testes próprios:
@@ -170,12 +170,14 @@ npm test --prefix functions                        # 81 testes
 | `lib/` | Código do aplicativo |
 | `test/` | Testes de unidade e de widget |
 | `assets/images/` | Logo e ícone do app |
+| `assets/fonts/` | Fonte de ícones das modalidades que não existem nos Material Icons |
 | `firestore.rules` · `firestore.indexes.json` | Regras de segurança e índices do Firestore |
 | `storage.rules` | Regras do Cloud Storage (fotos de perfil) |
 | `tools/firestore-rules-tests/` | Suíte Node que exercita as regras no emulador |
 | `admin/` | Painel administrativo (Flutter Web) para locais esportivos e contas — ver [`docs/admin/painel-administrativo.md`](docs/admin/painel-administrativo.md) |
 | `functions/` | Cloud Functions (TypeScript): as do painel e as do ciclo de vida do evento (encerramento automático, notificações e avaliações) |
 | `tools/firebase-admin/` | Scripts locais com Admin SDK (bootstrap do administrador, migrações) |
+| `tools/sport-icons/` | Gerador (Python) da fonte de ícones das modalidades e dos SVGs de cada ícone |
 | `docs/` | Roadmap, checklist de publicação, decisões de produto e notas de depuração |
 
 ---
