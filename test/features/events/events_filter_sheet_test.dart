@@ -56,6 +56,57 @@ void main() {
     }
   });
 
+  // Issue 30: com 16 modalidades a grade ocupa quatro fileiras. A folha não
+  // passa de 85% da tela e rola por dentro; num aparelho pequeno (360x640
+  // lógicos), o último esporte precisa continuar alcançável e o "Aplicar",
+  // fixo embaixo, à vista.
+  for (final double escala in <double>[1, 1.3]) {
+    testWidgets(
+        'em tela pequena com fonte ${escala}x a folha rola até o último '
+        'esporte, sem overflow', (tester) async {
+      tester.view.physicalSize = const Size(720, 1280);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(escala)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => showEventsFilterSheet(context),
+                  child: const Text('abrir'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('abrir'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final ultimo = Sport.values.last;
+      await tester.ensureVisible(find.text(ultimo.label));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(ultimo.label));
+      await tester.pump();
+      await tester.tap(find.text('Aplicar'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(container.read(eventsFilterProvider).sport, ultimo);
+    });
+  }
+
   testWidgets('escolher modalidade e aplicar publica o filtro',
       (tester) async {
     final container = await pumpSheet(tester);

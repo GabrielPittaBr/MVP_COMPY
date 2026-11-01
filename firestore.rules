@@ -96,12 +96,14 @@ service cloud.firestore {
                 || hasValidNameLower());
       }
 
-      // Tarefa 13: no máximo 8 esportes (tamanho do enum `Sport`), lista de
-      // strings — evita que `Sport.values.firstWhere` estoure na leitura.
+      // Tarefa 13: no máximo 16 esportes (tamanho do enum `Sport`, que passou
+      // de 8 para 16 na issue 30), lista de strings — evita que
+      // `Sport.values.firstWhere` estoure na leitura. Mudou o enum, muda aqui
+      // e em `validSports()` dos locais.
       function validFavoriteSports() {
         return !('favoriteSports' in request.resource.data.keys())
             || (request.resource.data.favoriteSports is list
-                && request.resource.data.favoriteSports.size() <= 8);
+                && request.resource.data.favoriteSports.size() <= 16);
       }
 
       allow read: if signedIn();
@@ -449,15 +451,21 @@ service cloud.firestore {
                          '^[0-9]{8}$')));
       }
 
+      // Os nomes são os `storageName` do enum `Sport` do app, na mesma ordem.
+      // A mesma lista existe no painel admin (`adminSportLabels`) e no Admin
+      // SDK (`supportedSports`): esporte novo entra nos três, senão o admin
+      // não consegue salvar o local.
       function validSports() {
         return request.resource.data.sports is list
             && request.resource.data.sports.size() >= 1
-            && request.resource.data.sports.size() <= 8
+            && request.resource.data.sports.size() <= 16
             && request.resource.data.sports.toSet().size()
                == request.resource.data.sports.size()
             && request.resource.data.sports.toSet().hasOnly(
-                 ['futebol', 'basquete', 'volei', 'tenisDeMesa', 'futsal',
-                  'corrida', 'ciclismo', 'caminhada'])
+                 ['futebol', 'futsal', 'basquete', 'volei',
+                  'handebol', 'tenis', 'tenisDeMesa', 'padel',
+                  'futebolDeAreia', 'voleiDePraia', 'futevolei', 'beachTennis',
+                  'corrida', 'ciclismo', 'caminhada', 'skate'])
             && request.resource.data.primarySport in request.resource.data.sports;
       }
 

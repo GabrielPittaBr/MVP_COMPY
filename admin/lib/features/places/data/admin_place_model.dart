@@ -3,18 +3,14 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/constants/admin_sports.dart';
 import 'admin_places_repository.dart';
 
-const adminPlaceSports = <String>[
-  'futebol',
-  'basquete',
-  'volei',
-  'tenisDeMesa',
-  'futsal',
-  'corrida',
-  'ciclismo',
-  'caminhada',
-];
+/// Nomes gravados que um Local Esportivo aceita em `sports`, na ordem dos
+/// chips do formulário. Derivado de [adminSportLabels] para não existir uma
+/// segunda lista a esquecer.
+final List<String> adminPlaceSports =
+    List<String>.unmodifiable(adminSportLabels.keys);
 
 const adminBrazilianStates = <String>{
   'AC',

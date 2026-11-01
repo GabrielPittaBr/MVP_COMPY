@@ -219,8 +219,11 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-/// Grade com todas as modalidades do enum — é por aqui que os 8 esportes
+/// Grade com todas as modalidades do enum — é por aqui que todos os esportes
 /// ficam alcançáveis, e não só os 3 do carrossel da Home.
+///
+/// A grade não rola sozinha: quem rola é o `ListView` da folha, que nunca
+/// passa de 85% da tela.
 class _SportGrid extends StatelessWidget {
   const _SportGrid({required this.selected, required this.onSelected});
 
@@ -229,13 +232,19 @@ class _SportGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 4,
+    return GridView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 0.85,
+      // Altura fixa, não proporção — o mesmo conserto da grade de favoritos.
+      // Por proporção, numa tela estreita a célula ficava baixa demais e a
+      // segunda linha de "Futebol de areia" ou "Tênis de mesa" era cortada.
+      // 52 do círculo + 6 + duas linhas de 11pt, com folga para fonte maior.
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        mainAxisExtent: 104,
+      ),
       children: <Widget>[
         for (final sport in Sport.values)
           SportSelectTile(

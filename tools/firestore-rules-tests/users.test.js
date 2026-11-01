@@ -356,21 +356,27 @@ describe('esportes favoritos (tarefa 13)', () => {
     await assertSucceeds(gravarEsportes(as(UID), UID, []));
   });
 
+  // Issue 30: o enum `Sport` passou de 8 para 16 esportes.
+  const TODOS_OS_ESPORTES = [
+    'futebol', 'futsal', 'basquete', 'volei',
+    'handebol', 'tenis', 'tenisDeMesa', 'padel',
+    'futebolDeAreia', 'voleiDePraia', 'futevolei', 'beachTennis',
+    'corrida', 'ciclismo', 'caminhada', 'skate',
+  ];
+
   it('o enum inteiro cabe no limite', async () => {
+    await assertSucceeds(gravarEsportes(as(UID), UID, TODOS_OS_ESPORTES));
+  });
+
+  it('esportes novos de areia sao aceitos', async () => {
     await assertSucceeds(
-      gravarEsportes(as(UID), UID, [
-        'futebol', 'basquete', 'volei', 'tenisDeMesa',
-        'futsal', 'corrida', 'ciclismo', 'caminhada',
-      ]),
+      gravarEsportes(as(UID), UID, ['beachTennis', 'futevolei', 'voleiDePraia']),
     );
   });
 
-  it('mais de 8 esportes e recusado', async () => {
+  it('mais de 16 esportes e recusado', async () => {
     await assertFails(
-      gravarEsportes(as(UID), UID, [
-        'futebol', 'basquete', 'volei', 'tenisDeMesa',
-        'futsal', 'corrida', 'ciclismo', 'caminhada', 'futebol',
-      ]),
+      gravarEsportes(as(UID), UID, [...TODOS_OS_ESPORTES, 'futebol']),
     );
   });
 

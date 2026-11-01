@@ -323,7 +323,10 @@ class SportPlace extends Equatable {
           address == null ||
           sportsRaw is! List ||
           sports.isEmpty ||
-          sports.length > 8 ||
+          // Amarrado ao enum, não a um número: um local com todas as
+          // modalidades é válido, e um teto fixo esquecido aqui sumiria com
+          // ele do mapa sem aviso quando o enum crescesse.
+          sports.length > Sport.values.length ||
           sports.length != sportsRaw.length ||
           sports.toSet().length != sports.length ||
           primarySport == null ||
