@@ -1,5 +1,12 @@
 # Checklist de publicação
 
+> **Auditoria de 02/11/2026:** as regras publicadas em 31/10 já aceitam `bio` e
+> 16 modalidades; os 16 índices estão READY e Storage coincide com o local.
+> O código integrado de amizades ainda exige publicar suas Rules e a Function
+> nova. O build Android local passou, mas usa a chave de debug porque a chave
+> oficial não existe nesta máquina. Não distribuir esse artefato como atualização
+> da v1.0.0. Ver [evidências, comandos e validação presencial](validacao-feintec-2026.md).
+
 Os bloqueios que este repositório conhecia foram resolvidos em 10/08/2026, na
 preparação da **v0.1.0**. O documento deixa de ser lista de pendências e passa
 a registrar *o que foi feito* — porque metade disso é irreversível e a outra
