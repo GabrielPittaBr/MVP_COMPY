@@ -125,6 +125,12 @@ Não executamos migrações, exclusões reais ou limpeza de produção.
 
 ## Validação local
 
+Na integração com a correção visual dos eventos, a combinação passou em
+**509 testes Flutter**, mantendo 219 testes de regras e 98 de Functions.
+A [auditoria para a FEINTEC](validacao-feintec-2026.md) registra a comparação
+somente leitura com o Firebase publicado e o build Android local. Os resultados
+abaixo são os da implementação original, anterior à integração.
+
 - `flutter test --no-pub`: **500 aprovados**, incluindo 17 testes novos da
   feature (domínio, mapper, repositórios, providers e widgets).
 - `dart analyze`: código 0, sem erros/warnings; 10 informações preexistentes.
