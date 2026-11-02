@@ -80,6 +80,10 @@ Usuários autenticados podem abrir `users/{uid}` pelo organizador ou pelos parti
 
 ---
 
+## Sistema de amizades — implementação local em 02/11/2026
+
+Implementado em `feature/sistema-amizades`, com publicação pendente. O perfil público mantém Mensagem e permite enviar, cancelar e responder solicitações, além de desfazer uma amizade com confirmação. O perfil próprio mostra contagem e prévia de amigos reais, Ver todos e pendências recebidas. A tela de amizades separa Amigos, Recebidas e Enviadas, usa os perfis públicos atuais e mantém a interface estável se um perfil sumir. Uma relação privada por par de UIDs no Firestore garante a simetria, sem campos novos nos perfis ou exigência de amizade para conversar. As regras, os fluxos e as consultas passaram nos emuladores; a Function de limpeza após exclusão de perfil tem testes de lotes e repetição. Passaram 500 testes Flutter, 219 das regras e 98 de Functions. É necessário publicar as regras e o novo gatilho antes de distribuir o app; não houve deploy ou homologação no Android físico. Schema, permissões, custo da assinatura compartilhada, limpeza e roteiro de publicação estão em [amizades.md](amizades.md).
+
 ## Backlog — prioridade média e baixa
 
 Itens herdados do antigo `proximos-passos.md` que continuam pendentes, conferidos no código em 2026-09-27. A tarefa 14 já fechou, então eles são os próximos.

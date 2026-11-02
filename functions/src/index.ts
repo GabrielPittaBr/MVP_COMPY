@@ -17,3 +17,4 @@ export { deleteEvent } from './event_deletion.js';
 export { autoEndOverdueEvents } from './event_lifecycle.js';
 export { submitEventRatings } from './event_ratings.js';
 export { onEventEnded } from './event_notifications.js';
+export { onProfileDeletedFriendships } from './friendships_cleanup.js';
