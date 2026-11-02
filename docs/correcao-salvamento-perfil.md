@@ -1,5 +1,9 @@
 # Correção do salvamento de perfil — 28/10/2026
 
+> Atualização de 02/11/2026: uma nova consulta somente leitura confirmou que o
+> ruleset publicado em 31/10 já aceita `bio`. A pendência abaixo é histórica e
+> está resolvida no ambiente publicado. Veja a [auditoria atual](validacao-feintec-2026.md).
+
 ## Causa e evidências
 
 A release ativa do Firestore de `compy-tcc` ainda não permite o campo `bio`.

@@ -10,10 +10,11 @@ rules_version = '2';
 // pendente". Cada bloco abaixo referencia a tarefa que o originou.
 //
 // Convenção deste arquivo:
-//   - `delete` é negado por padrão. A única exceção é a exclusão de conta:
+//   - `delete` é negado por padrão, com exceções explícitas. Na exclusão de conta:
 //     o dono apaga o próprio `users/{uid}`, o `private/contact`, as próprias
 //     notificações (`users/{uid}/notifications`) e a reserva em
-//     `usernames/{username}`. Nenhuma outra coleção apaga nada.
+//     `usernames/{username}`. `friendships` também permite exclusão pelos
+//     participantes, nas condições específicas de cancelamento/remoção.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -334,6 +335,54 @@ service cloud.firestore {
                     || isManualEnd()
                     || isJoin();
       allow delete: if false;
+    }
+
+    // Uma única relação privada por par. ':' não faz parte dos UIDs
+    // aceitos pelo contrato, evitando colisões na concatenação.
+    match /friendships/{pairId} {
+      function validUid(uid) {
+        return uid is string && uid.matches('^[a-zA-Z0-9_-]{1,128}$');
+      }
+      function canonical(members) {
+        return members is list && members.size() == 2
+            && validUid(members[0]) && validUid(members[1])
+            && members[0] < members[1]
+            && pairId == members[0] + ':' + members[1];
+      }
+      function validRelation() {
+        let d = request.resource.data;
+        return d.keys().hasAll(['members', 'senderId', 'status', 'requestedAt'])
+            && d.keys().hasOnly(['members', 'senderId', 'status', 'requestedAt', 'acceptedAt'])
+            && canonical(d.members) && d.senderId in d.members
+            && d.requestedAt is timestamp
+            && (d.status == 'pending' && !('acceptedAt' in d)
+                || d.status == 'accepted' && d.acceptedAt is timestamp);
+      }
+      // A transação precisa poder ler um par ainda inexistente. O ID
+      // validado restringe essa leitura aos dois envolvidos, sem consulta
+      // aberta a documentos de terceiros.
+      allow get: if signedIn() && canonical(pairId.split(':'))
+                 && request.auth.uid in pairId.split(':');
+      allow list: if signedIn() && request.auth.uid in resource.data.members;
+      allow create: if signedIn() && validRelation()
+                    && request.resource.data.senderId == request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.requestedAt == request.time
+                    && exists(/databases/$(database)/documents/users/$(request.resource.data.members[0]))
+                    && exists(/databases/$(database)/documents/users/$(request.resource.data.members[1]));
+      allow update: if signedIn() && validRelation()
+                    && request.auth.uid in resource.data.members
+                    && request.auth.uid != resource.data.senderId
+                    && resource.data.status == 'pending'
+                    && request.resource.data.status == 'accepted'
+                    && changed().hasOnly(['status', 'acceptedAt'])
+                    && request.resource.data.acceptedAt == request.time
+                    && exists(/databases/$(database)/documents/users/$(resource.data.members[0]))
+                    && exists(/databases/$(database)/documents/users/$(resource.data.members[1]));
+      // Em pending, o remetente cancela e o destinatário recusa. Em
+      // accepted qualquer um desfaz. Terceiros nunca apagam.
+      allow delete: if signedIn() && request.auth.uid in resource.data.members
+                    && resource.data.status in ['pending', 'accepted'];
     }
 
     // ── conversations / messages ─────────────────────────────────────

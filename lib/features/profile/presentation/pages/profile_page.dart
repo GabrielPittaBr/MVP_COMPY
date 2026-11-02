@@ -52,7 +52,6 @@ class ProfilePage extends ConsumerWidget {
                 Text(profile.bio.trim()),
               ],
               const SizedBox(height: 24),
-
               _SectionTitle(
                 AppStrings.profileFavoriteSports,
                 // Entrada dedicada em vez de sequestrar "Editar perfil":
@@ -63,7 +62,6 @@ class ProfilePage extends ConsumerWidget {
               const SizedBox(height: 8),
               FavoriteSportsChips(sports: profile.favoriteSports),
               const SizedBox(height: 24),
-
               const _SectionTitle(AppStrings.profileBadges),
               const SizedBox(height: 12),
               BadgesRow(
@@ -71,12 +69,8 @@ class ProfilePage extends ConsumerWidget {
                 onSeeMore: () => context.push(AppRoutes.profileBadges),
               ),
               const SizedBox(height: 24),
-
-              const _SectionTitle(AppStrings.profileFriends),
-              const SizedBox(height: 12),
-              FriendsAvatars(friends: profile.friends),
+              const FriendsSection(),
               const SizedBox(height: 24),
-
               const _SectionTitle(AppStrings.profileRatings),
               const SizedBox(height: 12),
               RatingBreakdown(
@@ -89,7 +83,6 @@ class ProfilePage extends ConsumerWidget {
                     RatingSummary.empty,
               ),
               const SizedBox(height: 24),
-
               const _SectionTitle(AppStrings.profileGallery),
               const SizedBox(height: 12),
               PhotoGallery(photos: profile.gallery),
