@@ -20,7 +20,7 @@ Aplicativo móvel que conecta praticantes de esporte em **Taquara/RS**.
 [![OpenStreetMap](https://img.shields.io/badge/OpenStreetMap-flutter__map%207-7EBC6F?style=for-the-badge&logo=openstreetmap&logoColor=white)](https://openstreetmap.org)
 [![Android](https://img.shields.io/badge/Android-br.com.compy.app-3DDC84?style=for-the-badge&logo=android&logoColor=white)](android/app/build.gradle.kts)
 
-![Versão](https://img.shields.io/badge/Vers%C3%A3o-v0.1.0-1F3A8A?style=for-the-badge)
+[![Versão](https://img.shields.io/badge/Vers%C3%A3o-v1.0.0-1F3A8A?style=for-the-badge)](https://github.com/GabrielPittaBr/MVP_COMPY/releases/latest)
 ![Testes](https://img.shields.io/badge/Testes-376%20passando-10B981?style=for-the-badge)
 ![Regras](https://img.shields.io/badge/Regras%20do%20Firestore%20e%20Storage-190%20casos-F59E0B?style=for-the-badge)
 ![Licença](https://img.shields.io/badge/Uso-acad%C3%AAmico-6B7280?style=for-the-badge)
@@ -63,6 +63,16 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 | <img src="docs/assets/screenshots/evento-detalhe.jpg" width="220"> | <img src="docs/assets/screenshots/chat.jpg" width="220"> | <img src="docs/assets/screenshots/perfil.jpg" width="220"> |
 
 </div>
+
+---
+
+## Baixar
+
+O APK de Android (7.0 ou superior) fica sempre no mesmo endereço, que aponta para a versão mais recente:
+
+**[compy-release.apk](https://github.com/GabrielPittaBr/MVP_COMPY/releases/latest/download/compy-release.apk)**
+
+Como o app não vem da Play Store, o Android pede autorização para instalar de fora dela na primeira vez. As notas de cada versão ficam em [Releases](https://github.com/GabrielPittaBr/MVP_COMPY/releases).
 
 ---
 
@@ -190,7 +200,7 @@ O repositório segue **Gitflow**:
 main  ←  develop  ←  feature/… · fix/… · refactor/… · chore/… · style/…
 ```
 
-`main` guarda o que está estável e versionado; `develop` recebe as branches de trabalho; releases sobem de `develop` para `main`. A v0.1.0 já saiu assinada, com pacote definitivo `br.com.compy.app`.
+`main` guarda o que está estável e versionado; `develop` recebe as branches de trabalho; releases sobem de `develop` para `main`. A v0.1.0 já saiu assinada, com pacote definitivo `br.com.compy.app`; a v1.0.0 mantém a mesma chave e passou a usar um link de download fixo — o passo a passo está em [`docs/checklist-publicacao.md`](docs/checklist-publicacao.md#5-distribuição-pelo-github-releases).
 
 ---
 

@@ -14,6 +14,7 @@ metade não está em lugar nenhum do código.
 | 2 | `google-services.json` com OAuth | ✅ 3 `oauth_client` para o pacote novo |
 | 3 | Regras e índices no Firestore | ✅ publicados e conferidos; regras republicadas em 22/10/2026 com a tarefa 14, os locais e o avatar |
 | 4 | Storage: bucket, regras e CORS | 🟡 bucket ativo e regras publicadas; falta o CORS — ver [item 4](#4-storage-fotos-de-perfil) |
+| 5 | Distribuição com link fixo | ✅ GitHub Releases, desde a v1.0.0 — ver [item 5](#5-distribuição-pelo-github-releases) |
 
 Verificações que sustentam a tabela: `dart analyze` sem erros, `flutter test`
 169/169, `npm test --prefix tools/firestore-rules-tests` 83/83, e um
@@ -139,12 +140,47 @@ gcloud storage buckets update gs://compy-tcc.firebasestorage.app --cors-file=cor
 Só `GET` fica liberado: o envio passa pelo SDK, que já é autenticado e
 validado pelas regras.
 
+## 5. Distribuição pelo GitHub Releases
+
+O APK sai como asset de uma release no GitHub, e o QR code de download aponta
+para um link que **não muda entre versões**:
+
+```
+https://github.com/GabrielPittaBr/MVP_COMPY/releases/latest/download/compy-release.apk
+```
+
+O GitHub resolve `latest` para a release mais recente que não seja rascunho
+nem pré-lançamento. Até a v0.1.0 o arquivo levava a versão no nome
+(`compy-v0.1.0.apk`), e cada versão nova pedia um QR code novo. A partir da
+v1.0.0 o nome é sempre o mesmo, e o link continua valendo enquanto quatro
+regras forem seguidas a cada versão:
+
+1. **O asset se chama `compy-release.apk`**, sem a versão no nome.
+2. **A release sai como _latest_**, sem `--prerelease` nem `--draft`.
+3. **O build number sobe** (`version: X.Y.Z+N` no `pubspec.yaml`, que o Gradle
+   usa como `versionCode`). O Android recusa instalar por cima um APK com
+   `versionCode` menor ou igual ao instalado. A v0.1.0 foi o `+1`, a v1.0.0 é
+   o `+2`.
+4. **A chave é a mesma** do [item 0](#0-assinatura-de-release). APK assinado
+   com outra chave não atualiza o app instalado; o Android exige desinstalar
+   antes, e o usuário perde a sessão.
+
+O ritual, a partir de `main` já com o merge de `develop`:
+
+```bash
+flutter build apk --release
+apksigner verify --print-certs build/app/outputs/flutter-apk/app-release.apk  # SHA-1 do item 0
+cp build/app/outputs/flutter-apk/app-release.apk compy-release.apk
+git tag -a vX.Y.Z -m "Compy vX.Y.Z" && git push origin vX.Y.Z
+gh release create vX.Y.Z compy-release.apk --title "Compy vX.Y.Z" --notes-file <notas.md>
+```
+
 ---
 
 ## O que ainda falta para uma publicação na Play Store
 
-Nada disto bloqueou a v0.1.0, que sai por link direto (Firebase App
-Distribution). Vira bloqueio no dia em que o destino for a loja.
+Nada disto bloqueou a v0.1.0 nem a v1.0.0, que saem por link direto (GitHub
+Releases). Vira bloqueio no dia em que o destino for a loja.
 
 - **Conta de desenvolvedor** (US$ 25, uma vez) e ficha da loja: descrição,
   capturas, ícone 512×512, banner 1024×500.
