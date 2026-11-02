@@ -28,15 +28,32 @@ abstract interface class EventsRepository {
   /// características de [fetchCreatedBy].
   Future<List<Event>> fetchJoinedBy(String uid, {EventsFilter filter});
 
+  /// Eventos não encerrados em que [uid] está inscrito, em tempo real e sem
+  /// o filtro da folha (tarefa 14). Alimenta o card do evento ao vivo, que
+  /// ignora o filtro, e a seção "Participando", que aplica o filtro no
+  /// cliente.
+  Stream<List<Event>> watchJoinedActive(String uid);
+
   /// Busca eventos por nome (prefixo do título) ou modalidade esportiva.
   Future<List<Event>> search(String query);
 
   Future<Event?> getById(String id);
 
+  /// Acompanha um evento em tempo real; emite `null` se ele não existe.
+  Stream<Event?> watchById(String id);
+
   /// Adiciona [user] (o usuário autenticado) como participante e
   /// decrementa vagas. Idempotente para quem já participa.
   /// Lança [EventFullException] se o evento estiver lotado (RN-05).
   Future<Event> joinEvent(String eventId, UserSummary user);
+
+  /// Encerramento manual pelo criador (tarefa 14): grava o fim real com o
+  /// horário do servidor e `endedAutomatically = false`.
+  ///
+  /// Lança [EventAlreadyEndedException] se o evento já estava encerrado —
+  /// inclusive quando a regra recusa por ter passado da folga de 1h, caso
+  /// em que a Function encerra por ele.
+  Future<void> endEvent(String eventId);
 
   /// Cria um novo evento com os dados informados.
   Future<Event> createEvent(
@@ -67,6 +84,13 @@ class EventCreationOfflineException implements Exception {
   const EventCreationOfflineException();
   @override
   String toString() => 'Reconecte-se para criar o evento.';
+}
+
+/// O evento já estava encerrado quando o criador tentou encerrar.
+class EventAlreadyEndedException implements Exception {
+  const EventAlreadyEndedException();
+  @override
+  String toString() => 'Este evento já foi encerrado.';
 }
 
 /// Exceção lançada ao tentar entrar em um evento sem vagas (RN-05).

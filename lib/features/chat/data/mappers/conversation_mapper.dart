@@ -5,7 +5,8 @@ import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/conversation.dart';
 
 /// Converte `conversations/{id}` para [Conversation], resolvendo o peer
-/// (o membro que não é o usuário corrente) via `memberSummaries`.
+/// (o membro que não é o usuário corrente) por UID em `members`.
+/// `memberSummaries` é um snapshot histórico e fallback de apresentação.
 ///
 /// Trabalha sobre o mapa cru, e não sobre o snapshot, para servir aos dois
 /// caminhos: a consulta paginada da lista e a leitura avulsa que a sala faz
@@ -35,10 +36,29 @@ abstract final class ConversationMapper {
     final summaries =
         (data['memberSummaries'] as Map<String, dynamic>?) ?? const {};
 
+    // O UID vem dos membros, nunca do id embutido no resumo. Mesmo sem
+    // resumo, uma conversa legada ainda pode consultar o perfil atual.
+    // Documentos sem members usam a chave histórica como último recurso.
+    final members = data['members'];
+    final peerIds =
+        members is List ? members.whereType<String>() : summaries.keys;
     UserSummary peer = unknownPeer;
-    for (final entry in summaries.entries) {
-      if (entry.key != currentUserId) {
-        peer = UserSummary.fromMap(entry.value);
+    for (final uid in peerIds) {
+      if (uid.isNotEmpty && uid != currentUserId) {
+        final raw = summaries[uid];
+        final summary = raw is Map ? raw : const <String, dynamic>{};
+        peer = UserSummary(
+          id: uid,
+          name: summary['name'] is String
+              ? summary['name'] as String
+              : unknownPeer.name,
+          handle: summary['handle'] is String
+              ? summary['handle'] as String
+              : unknownPeer.handle,
+          avatarUrl: summary['avatarUrl'] is String
+              ? summary['avatarUrl'] as String
+              : '',
+        );
         break;
       }
     }

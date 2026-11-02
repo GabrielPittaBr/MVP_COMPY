@@ -4,7 +4,6 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../../shared/models/sport.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/badge.dart';
-import '../../domain/entities/rating_summary.dart';
 import '../../domain/entities/user_profile.dart';
 
 abstract final class MockProfile {
@@ -14,15 +13,18 @@ abstract final class MockProfile {
   /// papel que o [InMemoryEventsStore] cumpre para eventos: sem isso, salvar
   /// o onboarding com `kUseFirebaseRepos = false` não teria efeito nenhum.
   static List<Sport>? favoriteSportsOverride;
+  static String? nameOverride;
+  static String? bioOverride;
 
   static UserProfile get current => UserProfile(
         summary: UserSummary(
           id: 'u_joao',
-          name: 'João Souza',
+          name: nameOverride ?? 'João Souza',
           handle: '@joao.souza',
           avatarUrl: AppAssets.avatar('João', size: 200),
         ),
-        bio: 'Apaixonado por esportes coletivos. Busca parceiros para treinar em Taquara.',
+        bio: bioOverride ??
+            'Apaixonado por esportes coletivos. Busca parceiros para treinar em Taquara.',
         favoriteSports: favoriteSportsOverride ??
             const <Sport>[Sport.futebol, Sport.volei, Sport.basquete],
         badges: const <SportBadge>[
@@ -54,11 +56,6 @@ abstract final class MockProfile {
               avatarUrl: AppAssets.avatar('A${i + 1}'),
             ),
         ],
-        rating: const RatingSummary(
-          average: 4.8,
-          count: 12,
-          breakdown: <int, double>{5: 0.70, 4: 0.20, 3: 0.05, 2: 0.03, 1: 0.01},
-        ),
         gallery: const <String>[
           AppAssets.galleryTeamPhoto,
           AppAssets.galleryTeamPhoto,
@@ -103,4 +100,38 @@ abstract final class MockProfile {
           avatarUrl: AppAssets.avatar('Eduardo'),
         ),
       ];
+
+  /// Apenas identidades presentes nas fixtures do modo mockado.
+  static UserProfile? publicById(String uid) {
+    if (uid == current.summary.id) return current;
+    final users = <UserSummary>[
+      ...searchable,
+      UserSummary(
+        id: 'u_carlao',
+        name: 'Carlos Alberto',
+        handle: '@carlao.alberto',
+        avatarUrl: AppAssets.avatar('Carlos'),
+      ),
+      for (var i = 0; i < 10; i++)
+        UserSummary(
+          id: 'p_$i',
+          name: 'Participante ${i + 1}',
+          handle: '@p${i + 1}',
+          avatarUrl: AppAssets.avatar('${i + 1}'),
+        ),
+    ];
+    for (final user in users) {
+      if (user.id == uid) {
+        return UserProfile(
+          summary: user,
+          bio: '',
+          favoriteSports: const [],
+          badges: const [],
+          friends: const [],
+          gallery: const [],
+        );
+      }
+    }
+    return null;
+  }
 }

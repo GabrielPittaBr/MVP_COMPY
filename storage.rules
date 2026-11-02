@@ -1,0 +1,27 @@
+rules_version = '2';
+
+// Regras do Cloud Storage do COMPY. Hoje o bucket guarda só fotos de perfil.
+// Testes: tools/firestore-rules-tests/storage.test.js (emulador).
+service firebase.storage {
+  match /b/{bucket}/o {
+    // ── users/{uid}/avatar_<millis>.jpg ─────────────────────────────
+    // Foto de perfil. O app sempre envia JPEG 512x512 (~50-100 KB), então
+    // o teto de 1 MB só barra quem não passou pelo app.
+    //
+    // Cada troca de foto cria um arquivo novo, nunca sobrescreve: eventos e
+    // conversas guardam cópia da URL antiga e ela precisa continuar válida.
+    // No Storage, sobrescrever o conteúdo também é `create` (o `update` é só
+    // de metadados), daí o `resource == null`. `list` e `delete` existem
+    // para a exclusão de conta apagar a pasta inteira do dono.
+    match /users/{uid}/{fileName} {
+      allow get: if request.auth != null;
+      allow list, delete: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && resource == null
+                    && fileName.matches('avatar_[0-9]+[.]jpg')
+                    && request.resource.size < 1024 * 1024
+                    && request.resource.contentType == 'image/jpeg';
+    }
+  }
+}

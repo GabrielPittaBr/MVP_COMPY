@@ -1,3 +1,4 @@
+import '../../../../shared/widgets/user_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +10,6 @@ import '../../../../core/utils/firebase_errors.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/entities/place_cannot_be_shared_exception.dart';
 import '../providers/chat_providers.dart';
-import 'peer_avatar.dart';
 
 /// Escolhe para qual conversa o local vai (D11).
 ///
@@ -130,7 +130,7 @@ class _SharePlaceSheetState extends ConsumerState<SharePlaceSheet> {
                       return ListTile(
                         onTap: _sending ? null : () => _send(conversation),
                         leading:
-                            PeerAvatar(peer: conversation.peer, radius: 24),
+                            UserAvatar(user: conversation.peer, radius: 24),
                         title: Text(
                           conversation.peer.name,
                           style: const TextStyle(fontWeight: FontWeight.w700),

@@ -1,7 +1,7 @@
 name: mvp_compy
 description: COMPY — App para conectar praticantes de esportes em Taquara/RS.
 publish_to: "none"
-version: 0.1.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -26,6 +26,9 @@ dependencies:
   firebase_auth: ^5.1.4
   cloud_firestore: ^5.2.1
   firebase_app_check: ^0.3.0
+  # Callable da avaliação do evento (tarefa 14)
+  cloud_functions: ^5.6.2
+  firebase_storage: ^12.4.10
 
   # Login com Google (RF — autenticação social)
   google_sign_in: ^6.2.1
@@ -43,6 +46,12 @@ dependencies:
   # Imagens em rede com cache
   cached_network_image: ^3.3.1
   url_launcher: ^6.3.1
+
+  # Foto de perfil: escolher (galeria/câmera), recortar com zoom e reduzir
+  # para JPEG antes do envio
+  image_picker: ^1.2.4
+  crop_your_image: ^2.0.1
+  image: ^4.12.0
 
   # Util
   intl: ^0.20.2
@@ -65,3 +74,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+  fonts:
+    # Ícones das modalidades que não existem nos Material Icons. Gerada por
+    # tools/sport-icons/build_font.py; ver lib/core/theme/compy_sport_icons.dart.
+    - family: CompySportIcons
+      fonts:
+        - asset: assets/fonts/CompySportIcons.otf

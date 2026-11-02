@@ -21,3 +21,7 @@ const bool kUseFirebaseRepos = AppFlags.useFirebaseRepos;
 /// Android seria `10.0.2.2`.
 const bool kUseFirebaseEmulators =
     bool.fromEnvironment('USE_FIREBASE_EMULATORS');
+
+/// Região das Cloud Functions do projeto — a mesma das Functions do painel
+/// administrativo (`functions/src/config.ts`).
+const String kFunctionsRegion = 'southamerica-east1';

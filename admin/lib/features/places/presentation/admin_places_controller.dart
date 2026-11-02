@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../data/admin_place_model.dart';
 import '../data/admin_places_repository.dart';
 
 class AdminPlacesListState {
@@ -180,6 +181,76 @@ class AdminPlacesController extends ChangeNotifier {
   @override
   void dispose() {
     _cancelPages();
+    super.dispose();
+  }
+}
+
+class AdminPlacesMapState {
+  const AdminPlacesMapState({
+    this.places = const <AdminPlaceRecord>[],
+    this.isLoading = true,
+    this.isFromCache = false,
+    this.error,
+  });
+
+  final List<AdminPlaceRecord> places;
+  final bool isLoading;
+  final bool isFromCache;
+  final Object? error;
+}
+
+/// Acompanha todos os locais dos filtros atuais para o mapa geral, sem a
+/// paginação da lista.
+class AdminPlacesMapController extends ChangeNotifier {
+  AdminPlacesMapController(this._repository);
+
+  final AdminPlacesRepository _repository;
+  AdminPlacesMapState _state = const AdminPlacesMapState();
+  StreamSubscription<AdminPlacesCollectionSnapshot>? _subscription;
+  AdminPlacesFilters? _filters;
+
+  AdminPlacesMapState get state => _state;
+
+  void watch(AdminPlacesFilters filters) {
+    if (filters == _filters) return;
+    _filters = filters;
+    _subscribe();
+  }
+
+  void retry() {
+    if (_filters != null) _subscribe();
+  }
+
+  void _subscribe() {
+    unawaited(_subscription?.cancel());
+    _state = const AdminPlacesMapState();
+    notifyListeners();
+    _subscription = _repository
+        .watchAll(_filters!)
+        .listen(
+          (snapshot) {
+            _state = AdminPlacesMapState(
+              places: List<AdminPlaceRecord>.unmodifiable(snapshot.places),
+              isLoading: false,
+              isFromCache: snapshot.isFromCache,
+            );
+            notifyListeners();
+          },
+          onError: (Object error) {
+            _state = AdminPlacesMapState(
+              places: _state.places,
+              isLoading: false,
+              isFromCache: _state.isFromCache,
+              error: error,
+            );
+            notifyListeners();
+          },
+        );
+  }
+
+  @override
+  void dispose() {
+    unawaited(_subscription?.cancel());
     super.dispose();
   }
 }

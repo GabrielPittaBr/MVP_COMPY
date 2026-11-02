@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Dashboard administrativo', () {
-    test('usa aggregates de perfis e contagens de places por status', () {
+    test('usa aggregates de perfis, places por status e eventos', () {
       expect(
         AdminDashboardCountQuery.definitions,
         const <AdminDashboardCountQuery>[
@@ -25,6 +25,7 @@ void main() {
             filterField: 'status',
             filterValue: 'inactive',
           ),
+          AdminDashboardCountQuery(collection: 'events'),
         ],
       );
     });
@@ -37,8 +38,15 @@ void main() {
           profileCount: 42,
           activePlaceCount: 7,
           inactivePlaceCount: 2,
+          eventCount: 15,
+          upcomingEventCount: 4,
         ),
       );
+      // Alto o bastante para a ListView construir também os atalhos.
+      tester.view.physicalSize = const Size(1100, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(body: AdminDashboardPage(repository: repository)),
@@ -51,7 +59,11 @@ void main() {
       expect(find.text('42'), findsOneWidget);
       expect(find.text('7'), findsOneWidget);
       expect(find.text('2'), findsOneWidget);
+      expect(find.text('Eventos esportivos'), findsOneWidget);
+      expect(find.text('15'), findsOneWidget);
+      expect(find.text('4'), findsOneWidget);
       expect(find.text('Contagem de perfis Firestore'), findsOneWidget);
+      expect(find.text('Ver eventos'), findsOneWidget);
       expect(find.text('Cadastrar local'), findsOneWidget);
       expect(find.text('Ver locais inativos'), findsOneWidget);
       expect(find.text('Buscar usuário'), findsOneWidget);
@@ -65,6 +77,8 @@ void main() {
           profileCount: 1,
           activePlaceCount: 2,
           inactivePlaceCount: 3,
+          eventCount: 5,
+          upcomingEventCount: 4,
         ),
       );
       await tester.pumpWidget(

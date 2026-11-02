@@ -45,6 +45,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               active: metrics.activePlaceCount,
               inactive: metrics.inactivePlaceCount,
             );
+            final events = _EventsMetric(
+              total: metrics.eventCount,
+              upcoming: metrics.upcomingEventCount,
+            );
             return LayoutBuilder(
               builder: (context, constraints) {
                 if (constraints.maxWidth < 720) {
@@ -54,18 +58,27 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       users,
                       const SizedBox(height: 16),
                       places,
+                      const SizedBox(height: 16),
+                      events,
                     ],
                   );
                 }
-                return IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      Expanded(flex: 2, child: users),
-                      const SizedBox(width: 16),
-                      Expanded(flex: 3, child: places),
-                    ],
-                  ),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Expanded(flex: 2, child: users),
+                          const SizedBox(width: 16),
+                          Expanded(flex: 3, child: places),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    events,
+                  ],
                 );
               },
             );
@@ -78,6 +91,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           spacing: 12,
           runSpacing: 12,
           children: <Widget>[
+            _ShortcutButton(
+              label: 'Ver eventos',
+              icon: Icons.event_outlined,
+              onPressed: () => context.go('/events'),
+            ),
             _ShortcutButton(
               label: 'Cadastrar local',
               icon: Icons.add_location_alt_outlined,
@@ -144,13 +162,13 @@ class _PlacesMetric extends StatelessWidget {
           spacing: 40,
           runSpacing: 16,
           children: <Widget>[
-            _PlaceCount(
+            _LegendCount(
               value: active,
               label: 'ativos',
               semanticsLabel: 'Locais ativos',
               color: colors.secondary,
             ),
-            _PlaceCount(
+            _LegendCount(
               value: inactive,
               label: 'inativos',
               semanticsLabel: 'Locais inativos',
@@ -188,8 +206,9 @@ class _PlacesMetric extends StatelessWidget {
   }
 }
 
-class _PlaceCount extends StatelessWidget {
-  const _PlaceCount({
+/// Contagem com a legenda colorida que a identifica.
+class _LegendCount extends StatelessWidget {
+  const _LegendCount({
     required this.value,
     required this.label,
     required this.semanticsLabel,
@@ -226,6 +245,47 @@ class _PlaceCount extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// Eventos que ainda vão acontecer e o total já criado no app.
+class _EventsMetric extends StatelessWidget {
+  const _EventsMetric({required this.total, required this.upcoming});
+
+  final int total;
+  final int upcoming;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return _MetricPanel(
+      title: 'Eventos esportivos',
+      icon: Icons.event_outlined,
+      children: <Widget>[
+        Wrap(
+          spacing: 40,
+          runSpacing: 16,
+          children: <Widget>[
+            _LegendCount(
+              value: upcoming,
+              label: 'agendados',
+              semanticsLabel: 'Eventos agendados',
+              color: colors.primary,
+            ),
+            _LegendCount(
+              value: total,
+              label: 'no total',
+              semanticsLabel: 'Eventos no total',
+              color: colors.outline,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Encerrados saem das listas do app, mas continuam aqui até serem excluídos.',
+        ),
+      ],
+    );
+  }
 }
 
 class _MetricNumber extends StatelessWidget {

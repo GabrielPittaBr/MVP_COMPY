@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_flags.dart';
+import '../../../../shared/models/user_summary.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/chat_remote_datasource.dart';
 import '../../data/datasources/in_memory_chat_store.dart';
 import '../../data/repositories/chat_repository_impl.dart';
@@ -18,7 +20,9 @@ import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/watch_messages.dart';
 
 final chatRemoteDataSourceProvider = Provider<ChatRemoteDataSource?>(
-  (ref) => kUseFirebaseRepos ? ChatRemoteDataSource(FirebaseFirestore.instance) : null,
+  (ref) => kUseFirebaseRepos
+      ? ChatRemoteDataSource(FirebaseFirestore.instance)
+      : null,
 );
 
 /// Identidade de quem está usando o app: vai no `senderId` da mensagem e
@@ -69,23 +73,39 @@ final markConversationAsReadProvider = Provider<MarkConversationAsRead>(
   (ref) => MarkConversationAsRead(ref.watch(chatRepositoryProvider)),
 );
 
+/// Identidade atual para apresentação, sem alterar o snapshot da conversa.
+/// Lista e sala compartilham publicUserSummaryProvider pelo UID; os balões
+/// recebem o resultado da sala, sem assinaturas por mensagem. Sem um perfil
+/// atual disponível, usamos o snapshot como fallback. Foto vazia
+/// em um perfil existente é remoção, nunca motivo para recuperar a antiga.
+final conversationPeerProvider =
+    Provider.autoDispose.family<UserSummary, UserSummary>((ref, snapshot) {
+  if (snapshot.id.isEmpty || snapshot.id == 'unknown') return snapshot;
+  return ref.watch(publicUserSummaryProvider(snapshot.id)).valueOrNull ??
+      snapshot;
+});
+
 /// Lista paginada de conversas — blocos de 10 via `startAfterDocument`.
 /// Use `loadMore()` no scroll e `ref.invalidate` para recarregar.
-class PaginatedConversationsController extends AsyncNotifier<List<Conversation>> {
+class PaginatedConversationsController
+    extends AsyncNotifier<List<Conversation>> {
   static const int pageSize = 10;
 
   String? _userId;
   Object? _cursor;
   bool _hasMore = true;
   bool _isLoadingMore = false;
+  bool _loadMoreFailed = false;
 
   bool get hasMore => _hasMore;
+  bool get loadMoreFailed => _loadMoreFailed;
 
   @override
   Future<List<Conversation>> build() async {
     _cursor = null;
     _hasMore = true;
     _isLoadingMore = false;
+    _loadMoreFailed = false;
     // Reage a login/logout: trocar de usuário refaz a primeira página. Passa
     // pelo `currentUserIdProvider` para o modo sem Firebase também ter
     // identidade — com o uid cru a lista mockada vinha sempre vazia.
@@ -158,6 +178,8 @@ class PaginatedConversationsController extends AsyncNotifier<List<Conversation>>
       return;
     }
     _isLoadingMore = true;
+    _loadMoreFailed = false;
+    state = AsyncData<List<Conversation>>(<Conversation>[...current]);
     try {
       final page = await ref
           .read(getConversationsProvider)
@@ -167,6 +189,11 @@ class PaginatedConversationsController extends AsyncNotifier<List<Conversation>>
       state = AsyncData<List<Conversation>>(
         <Conversation>[...current, ...page.items],
       );
+    } catch (_) {
+      // A página já carregada continua utilizável. O rodapé permite repetir
+      // sem reiniciar a lista nem gerar uma exceção não tratada no scroll.
+      _loadMoreFailed = true;
+      state = AsyncData<List<Conversation>>(<Conversation>[...current]);
     } finally {
       _isLoadingMore = false;
     }

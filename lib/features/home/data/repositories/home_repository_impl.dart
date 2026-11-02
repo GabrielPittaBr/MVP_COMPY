@@ -3,6 +3,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../../core/constants/app_flags.dart';
 import '../../../../core/constants/app_geo.dart';
 import '../../../../shared/models/event.dart';
+import '../../../../shared/models/event_status.dart';
 import '../../../../shared/models/sport.dart';
 import '../../domain/entities/sport_category.dart';
 import '../../domain/repositories/home_repository.dart';
@@ -14,8 +15,12 @@ import '../datasources/home_remote_datasource.dart';
 /// Implementação que decide a fonte de dados (Firebase ou vazio) com base
 /// na flag global [kUseFirebaseRepos].
 class HomeRepositoryImpl implements HomeRepository {
-  HomeRepositoryImpl(this._remote);
+  HomeRepositoryImpl(this._remote, {DateTime Function() clock = DateTime.now})
+      : _clock = clock;
   final HomeRemoteDataSource? _remote;
+
+  /// "Agora" usado para esconder os encerrados (D17, tarefa 14).
+  final DateTime Function() _clock;
 
   static const Distance _distance = Distance();
 
@@ -51,12 +56,19 @@ class HomeRepositoryImpl implements HomeRepository {
       return Stream<List<Event>>.value(const <Event>[]);
     }
 
-    return _remote.watchEvents().map((docs) {
+    return _remote
+        .watchEvents(notBefore: openEventsNotBefore(_clock()))
+        .map((docs) {
       // O lote vem ordenado por data; aqui recortamos pelo raio e
-      // reordenamos por proximidade (RF03).
+      // reordenamos por proximidade (RF03). O limite inferior da consulta
+      // não pega tudo — um evento curto que terminou de manhã, ou um
+      // encerrado à mão, ainda cai na janela —, então o status no relógio
+      // tira os encerrados do que sobrou.
+      final now = _clock();
       final events = <({Event event, double km})>[];
       for (final doc in docs) {
         final event = Event.fromMap(doc.id, doc.data());
+        if (event.statusAt(now) == EventStatus.ended) continue;
         final km = _distance.as(
           LengthUnit.Kilometer,
           center,

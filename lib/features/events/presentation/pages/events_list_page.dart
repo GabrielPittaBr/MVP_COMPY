@@ -8,9 +8,11 @@ import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/widgets/event_card.dart';
+import '../../../../shared/widgets/event_status_chip.dart';
 import '../../domain/entities/events_filter.dart';
 import '../providers/events_providers.dart';
 import '../widgets/events_filter_sheet.dart';
+import '../widgets/live_event_card.dart';
 
 /// Aba "Eventos" — três seções ("Criados por mim", "Participando" e
 /// "Todos os eventos"), sendo a última paginada com scroll infinito.
@@ -68,6 +70,10 @@ class _Sections extends ConsumerWidget {
     final allAsync = ref.watch(paginatedEventsProvider);
     final mineAsync = ref.watch(myEventsProvider);
     final joinedAsync = ref.watch(joinedEventsProvider);
+    // Só a presença do card importa aqui: o andamento dele muda a cada 30s,
+    // e quem se redesenha com isso é só o [_LiveEventsSliver].
+    final hasLive =
+        ref.watch(liveEventsProvider.select((events) => events.isNotEmpty));
 
     return allAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -95,7 +101,8 @@ class _Sections extends ConsumerWidget {
         }
 
         addSection(AppStrings.eventsSectionMine, _sectionContent(mineAsync));
-        addSection(AppStrings.eventsSectionJoined, _sectionContent(joinedAsync));
+        addSection(
+            AppStrings.eventsSectionJoined, _sectionContent(joinedAsync));
 
         final allContent = <Widget>[
           if (all.isNotEmpty) _eventsSliver(all),
@@ -109,6 +116,11 @@ class _Sections extends ConsumerWidget {
         } else {
           addSection(AppStrings.eventsSectionAll, allContent);
         }
+
+        // O card ao vivo entra por último, mas no topo: assim a primeira
+        // seção continua sem divisória em cima, e o card não depende do
+        // filtro da folha (tarefa 14).
+        if (hasLive) slivers.insert(0, const _LiveEventsSliver());
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -164,13 +176,41 @@ class _Sections extends ConsumerWidget {
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (context, i) {
           final e = events[i];
-          return EventCard(
+          return EventStatusBuilder(
             event: e,
-            actionLabel: AppStrings.eventSeeMore,
-            // "Ver mais" continua valendo num evento lotado — ver
-            // [EventCard.disableWhenFull].
-            disableWhenFull: false,
-            onAction: () => context.go('${AppRoutes.events}/${e.id}'),
+            builder: (context, status) => EventCard(
+              event: e,
+              status: status,
+              actionLabel: AppStrings.eventSeeMore,
+              // "Ver mais" continua valendo num evento lotado — ver
+              // [EventCard.disableWhenFull].
+              disableWhenFull: false,
+              onOpen: () => context.go(AppRoutes.eventDetailPath(e.id)),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Card(s) do evento acontecendo de que o usuário participa.
+class _LiveEventsSliver extends ConsumerWidget {
+  const _LiveEventsSliver();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final events = ref.watch(liveEventsProvider);
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      sliver: SliverList.separated(
+        itemCount: events.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, i) {
+          final event = events[i];
+          return LiveEventCard(
+            event: event,
+            onOpen: () => context.go(AppRoutes.liveEventPath(event.id)),
           );
         },
       ),
@@ -310,7 +350,8 @@ class _FilterChip extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: InputChip(
-        avatar: Icon(icon, size: 18, color: iconColor ?? AppColors.onSurfaceMuted),
+        avatar:
+            Icon(icon, size: 18, color: iconColor ?? AppColors.onSurfaceMuted),
         label: Text(label),
         onDeleted: onClear,
         deleteIcon: const Icon(Icons.close, size: 18),
@@ -331,7 +372,8 @@ class _EmptyState extends StatelessWidget {
 
   String get _message {
     if (filter.isEmpty) return AppStrings.eventsEmpty;
-    if (filter.sport != null && filter.skillLevel == null &&
+    if (filter.sport != null &&
+        filter.skillLevel == null &&
         filter.day == null) {
       return AppStrings.eventsEmptyForSport(filter.sport!.label);
     }

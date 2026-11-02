@@ -1,5 +1,7 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mvp_compy/core/constants/app_assets.dart';
 import 'package:mvp_compy/core/constants/app_strings.dart';
 import 'package:mvp_compy/features/home/presentation/widgets/greeting_header.dart';
 
@@ -20,6 +22,9 @@ void main() {
     WidgetTester tester, {
     required VoidCallback onAvatarTap,
     required VoidCallback onSettingsTap,
+    VoidCallback? onNotificationsTap,
+    int unreadNotifications = 0,
+    String? avatarUrl,
   }) async {
     ignoreImageErrors();
     await tester.pumpWidget(
@@ -29,6 +34,9 @@ void main() {
             userName: 'Gabriel',
             onAvatarTap: onAvatarTap,
             onSettingsTap: onSettingsTap,
+            onNotificationsTap: onNotificationsTap ?? () {},
+            unreadNotifications: unreadNotifications,
+            avatarUrl: avatarUrl,
           ),
         ),
       ),
@@ -66,6 +74,90 @@ void main() {
 
       expect(settingsTaps, 1);
       expect(avatarTaps, 0);
+    });
+
+    testWidgets('o sino abre a central e mostra as não lidas', (tester) async {
+      var taps = 0;
+      await pumpHeader(
+        tester,
+        onAvatarTap: () {},
+        onSettingsTap: () {},
+        onNotificationsTap: () => taps++,
+        unreadNotifications: 2,
+      );
+
+      expect(find.text('2'), findsOneWidget);
+      expect(
+        find.byTooltip(AppStrings.notificationsBellSemantics(2)),
+        findsOneWidget,
+      );
+      expect(AppStrings.notificationsBellSemantics(2),
+          'Notificações, 2 não lidas');
+      await tester.tap(find.byIcon(Icons.notifications_outlined));
+      await tester.pump();
+      expect(taps, 1);
+    });
+
+    testWidgets('a partir de 10 o badge mostra "9+"', (tester) async {
+      await pumpHeader(
+        tester,
+        onAvatarTap: () {},
+        onSettingsTap: () {},
+        unreadNotifications: 12,
+      );
+
+      expect(find.text('9+'), findsOneWidget);
+    });
+
+    testWidgets('sem não lidas, nada de badge', (tester) async {
+      await pumpHeader(tester, onAvatarTap: () {}, onSettingsTap: () {});
+
+      expect(find.text('0'), findsNothing);
+      expect(
+        find.byTooltip(AppStrings.notificationsTitle),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('"COMPY" continua no centro com o sino', (tester) async {
+      await pumpHeader(
+        tester,
+        onAvatarTap: () {},
+        onSettingsTap: () {},
+        unreadNotifications: 3,
+      );
+
+      final titulo = tester.getCenter(find.text(AppStrings.appName));
+      final tela = tester.getCenter(find.byType(Scaffold));
+      expect(titulo.dx, closeTo(tela.dx, 0.5));
+    });
+
+    String avatarShown(WidgetTester tester) {
+      final CircleAvatar avatar =
+          tester.widget<CircleAvatar>(find.byType(CircleAvatar));
+      return (avatar.backgroundImage! as CachedNetworkImageProvider).url;
+    }
+
+    testWidgets('mostra a foto do perfil', (tester) async {
+      const String foto = 'https://firebasestorage.googleapis.com/foto.jpg';
+      await pumpHeader(
+        tester,
+        onAvatarTap: () {},
+        onSettingsTap: () {},
+        avatarUrl: foto,
+      );
+      expect(avatarShown(tester), foto);
+    });
+
+    // Perfil ainda carregando (null) ou antigo, sem o campo ('').
+    testWidgets('sem foto, fica a inicial do nome', (tester) async {
+      await pumpHeader(
+        tester,
+        onAvatarTap: () {},
+        onSettingsTap: () {},
+        avatarUrl: '',
+      );
+      expect(avatarShown(tester), AppAssets.avatar('Gabriel'));
     });
 
     testWidgets('continua saudando pelo nome', (tester) async {

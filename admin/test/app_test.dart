@@ -6,6 +6,7 @@ import 'package:compy_admin/core/routing/admin_router.dart';
 import 'package:compy_admin/core/shell/admin_shell.dart';
 import 'package:compy_admin/features/auth/presentation/admin_auth_feature.dart';
 import 'package:compy_admin/features/dashboard/data/admin_dashboard_repository.dart';
+import 'package:compy_admin/features/events/data/admin_events_repository.dart';
 import 'package:compy_admin/features/places/data/admin_places_repository.dart';
 import 'package:compy_admin/features/users/data/admin_users_repository.dart';
 import 'package:flutter/material.dart';
@@ -48,7 +49,13 @@ void main() {
   );
 
   test('guard preserva deep link até autenticação e rejeita destino externo', () {
-    for (final destination in <String>['/dashboard', '/users', '/places']) {
+    for (final destination in <String>[
+      '/dashboard',
+      '/events',
+      '/events/evt-1',
+      '/users',
+      '/places',
+    ]) {
       final redirect = redirectForAdminRoute(
         location: Uri.parse(destination).path,
         accessState: AdminAccessState.signedOut,
@@ -212,6 +219,9 @@ void main() {
       '/places?status=inactive',
     );
     expect(fromUrl('https://admin.example/users/a-user'), '/users/a-user');
+    expect(fromUrl('https://admin.example/events'), '/events');
+    expect(fromUrl('https://admin.example/events/evt-1'), '/events/evt-1');
+    expect(fromUrl('https://admin.example/events/evt-1/extra'), isNull);
     expect(
       fromUrl('https://admin.example/login?from=%2Fusers'),
       '/login?from=%2Fusers',
@@ -276,6 +286,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Detalhes do Usuário'), findsOneWidget);
     expect(find.byTooltip('Sair'), findsOneWidget);
+  });
+
+  testWidgets('deep link de evento abre o detalhe dentro do shell', (
+    tester,
+  ) async {
+    final events = _FakeAdminEventsRepository();
+    await tester.pumpWidget(
+      CompyAdminApp(
+        authGateway: _FakeAdminAuthGateway(candidate: _authorizedCandidate),
+        initialLocation: '/events/evt-1',
+        eventsRepository: events,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(events.loadedIds, <String>['evt-1']);
+    expect(find.text('Detalhes do Evento'), findsOneWidget);
+    expect(find.text('Evento não encontrado.'), findsOneWidget);
+    // Na largura de celular, o título da barra é a seção selecionada.
+    expect(find.widgetWithText(AppBar, 'Eventos'), findsOneWidget);
   });
 
   testWidgets(
@@ -420,6 +450,8 @@ class _FakeAdminDashboardRepository implements AdminDashboardRepository {
         profileCount: 0,
         activePlaceCount: 0,
         inactivePlaceCount: 0,
+        eventCount: 0,
+        upcomingEventCount: 0,
       );
 }
 
@@ -473,6 +505,13 @@ class _FakeAdminUsersRepository implements AdminUsersRepository {
   );
 
   @override
+  Future<AdminUserDeletionResult> deleteUserAccount({
+    required String uid,
+    required String reason,
+    required String operationId,
+  }) async => AdminUserDeletionResult(uid: uid, completedAt: DateTime.utc(2026));
+
+  @override
   Future<AdminUsersPageSnapshot> searchProfiles(
     AdminUserSearchType type,
     String query, {
@@ -482,4 +521,17 @@ class _FakeAdminUsersRepository implements AdminUsersRepository {
     cursor: null,
     isFromCache: false,
   );
+}
+
+class _FakeAdminEventsRepository implements AdminEventsRepository {
+  final List<String> loadedIds = <String>[];
+
+  @override
+  Future<AdminEventRecord?> loadEvent(String id) async {
+    loadedIds.add(id);
+    return null;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

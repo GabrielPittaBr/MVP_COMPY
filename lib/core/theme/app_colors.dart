@@ -27,6 +27,11 @@ abstract final class AppColors {
   // Estado
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
+
+  /// Texto de aviso sobre fundo claro (tarefa 14): o [warning] não passa no
+  /// AA como texto sobre branco, e este laranja escuro dá 5,0:1. Também é o
+  /// contorno da estrela cheia.
+  static const Color warningText = Color(0xFFB45309);
   static const Color error = Color(0xFFDC2626);
 
   // Bottom nav (item ativo herda preto, conforme mockup)

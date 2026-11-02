@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mvp_compy/features/maps/presentation/widgets/place_details_sheet.dart';
+import 'package:mvp_compy/features/ratings/domain/entities/rating_summary.dart';
+import 'package:mvp_compy/features/ratings/presentation/providers/ratings_providers.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/sport_place.dart';
+
+/// A ficha mostra a média do local (tarefa 14), que lê `ratingSummaries`;
+/// sem Firebase no teste, a média vem vazia.
+Widget _withRatings(Widget app) => ProviderScope(
+      overrides: <Override>[
+        ratingSummaryProvider.overrideWith(
+          (ref, target) => Stream<RatingSummary>.value(RatingSummary.empty),
+        ),
+      ],
+      child: app,
+    );
 
 void main() {
   testWidgets('carousel swaps the individual image credit when swiped', (
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      _withRatings(MaterialApp(
         home: Scaffold(
           body: PlaceDetailsSheet(
             place: _place(
@@ -29,7 +43,7 @@ void main() {
             onShare: () {},
           ),
         ),
-      ),
+      )),
     );
     await tester.pump();
 
@@ -48,7 +62,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      _withRatings(MaterialApp(
         home: Scaffold(
           body: PlaceDetailsSheet(
             place: _place(
@@ -62,7 +76,7 @@ void main() {
             onShare: () {},
           ),
         ),
-      ),
+      )),
     );
     await tester.pump();
 
@@ -77,7 +91,7 @@ void main() {
   ) async {
     final place = _place(accessType: null);
     await tester.pumpWidget(
-      MaterialApp(
+      _withRatings(MaterialApp(
         home: Scaffold(
           body: PlaceDetailsSheet(
             place: place,
@@ -85,7 +99,7 @@ void main() {
             onShare: () {},
           ),
         ),
-      ),
+      )),
     );
     await tester.pump();
 

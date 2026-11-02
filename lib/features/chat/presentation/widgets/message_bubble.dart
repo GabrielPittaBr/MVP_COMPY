@@ -1,10 +1,10 @@
+import '../../../../shared/widgets/user_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/message.dart';
-import 'peer_avatar.dart';
 import 'place_message_card.dart';
 
 /// Balão de mensagem alinhado conforme [isMine].
@@ -34,7 +34,7 @@ class MessageBubble extends StatelessWidget {
             isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: <Widget>[
           if (!isMine) ...<Widget>[
-            PeerAvatar(peer: peer, radius: 14),
+            UserAvatar(user: peer, radius: 14),
             const SizedBox(width: 8),
           ],
           Flexible(

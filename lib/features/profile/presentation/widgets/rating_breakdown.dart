@@ -2,17 +2,37 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../domain/entities/rating_summary.dart';
+import '../../../../core/utils/rating_format.dart';
+import '../../../../shared/widgets/star_rating.dart';
+import '../../../ratings/domain/entities/rating_summary.dart';
 
 /// Bloco com a média de estrelas + barras de distribuição (1 a 5).
+///
+/// A média vem de `ratingSummaries` (tarefa 14) e aparece com vírgula
+/// decimal ("4,8"). Nenhum comentário aparece aqui (D13).
 class RatingBreakdown extends StatelessWidget {
-  const RatingBreakdown({required this.summary, super.key});
+  const RatingBreakdown({
+    required this.summary,
+    this.isOwnProfile = true,
+    super.key,
+  });
 
   final RatingSummary summary;
 
+  /// O estado vazio fala em primeira pessoa ("Você ainda não…") só no
+  /// próprio perfil; no de outra pessoa, é o neutro "Sem avaliações ainda".
+  final bool isOwnProfile;
+
   @override
   Widget build(BuildContext context) {
-    if (!summary.hasRatings) return const _NoRatingsYet();
+    if (!summary.hasRatings) {
+      return isOwnProfile
+          ? const _NoRatingsYet()
+          : const Text(
+              AppStrings.ratingsNone,
+              style: TextStyle(fontSize: 14, color: AppColors.onSurfaceMuted),
+            );
+    }
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -21,22 +41,14 @@ class RatingBreakdown extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              summary.average.toStringAsFixed(1),
+              RatingFormat.average(summary.average),
               style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w700),
             ),
-            Row(
-              children: List<Widget>.generate(
-                5,
-                (i) => Icon(
-                  i < summary.average.round() ? Icons.star : Icons.star_border,
-                  color: AppColors.warning,
-                  size: 16,
-                ),
-              ),
-            ),
+            StarRating(value: summary.average.round(), size: 16),
             Text(
-              '${summary.count} avaliações',
-              style: const TextStyle(color: AppColors.onSurfaceMuted, fontSize: 12),
+              AppStrings.ratingsCount(summary.count),
+              style: const TextStyle(
+                  color: AppColors.onSurfaceMuted, fontSize: 12),
             ),
           ],
         ),
@@ -87,8 +99,7 @@ class RatingBreakdown extends StatelessWidget {
 /// O que ocupa o lugar da média enquanto ninguém avaliou.
 ///
 /// Mostrar "0,0" com cinco estrelas vazias comunica nota mínima, não ausência
-/// de nota — e hoje é o que todo usuário vê, porque a avaliação de verdade
-/// ainda não existe (tarefa 14 do roadmap).
+/// de nota.
 class _NoRatingsYet extends StatelessWidget {
   const _NoRatingsYet();
 

@@ -14,12 +14,17 @@ import '../../features/chat/presentation/pages/new_conversation_page.dart';
 import '../../features/events/presentation/pages/create_event_page.dart';
 import '../../features/events/presentation/pages/event_detail_page.dart';
 import '../../features/events/presentation/pages/events_list_page.dart';
+import '../../features/events/presentation/pages/live_event_page.dart';
 import '../../features/events/presentation/pages/search_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/maps/presentation/pages/maps_page.dart';
+import '../../features/notifications/presentation/pages/notifications_page.dart';
+import '../../features/notifications/presentation/widgets/auto_end_notice.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/favorite_sports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/profile/presentation/pages/public_profile_page.dart';
+import '../../features/ratings/presentation/pages/event_rating_page.dart';
 import '../../shared/pages/under_construction_page.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 import '../constants/app_strings.dart';
@@ -39,11 +44,26 @@ abstract final class AppRoutes {
   static const String home = '/home';
   static const String events = '/events';
   static const String eventDetail = '/events/:id';
+
+  /// Tela do evento em andamento (tarefa 14) — filha do detalhe, no branch
+  /// de Eventos.
+  static const String liveEvent = '/events/:id/ao-vivo';
+  static String eventDetailPath(String id) => '$events/$id';
+  static String liveEventPath(String id) => '$events/$id/ao-vivo';
+
+  /// Avaliação do evento encerrado (tarefa 14) — na raiz, fora do shell:
+  /// abre em tela cheia, sem a barra inferior, com `push`.
+  static const String eventRating = '/avaliacao/:eventId';
+  static String eventRatingPath(String id) => '/avaliacao/$id';
   static const String create = '/create';
   static const String chat = '/chat';
   static const String chatRoom = '/chat/:conversationId';
   static const String chatNew = '/chat/nova';
   static const String profile = '/profile';
+  static const String publicProfile = '/profile/usuarios/:uid';
+
+  static String publicProfileFor(String uid) =>
+      publicProfile.replaceFirst(':uid', Uri.encodeComponent(uid));
 
   /// Edição dos esportes favoritos — sub-rota do perfil, dentro do shell.
   /// Separada de [onboardingSports] porque o guard manda quem já concluiu o
@@ -61,6 +81,9 @@ abstract final class AppRoutes {
 
   /// Configurações — o botão da Home já existe; a tela, ainda não.
   static const String settings = '/home/configuracoes';
+
+  /// Central de notificações (tarefa 14) — aberta pelo sino da Home.
+  static const String notifications = '/home/notificacoes';
 
   /// Insígnias — o "Ver mais" do perfil já existe; a tela, ainda não.
   static const String profileBadges = '/profile/insignias';
@@ -94,7 +117,15 @@ String? authRedirect({
   required bool isLoading,
   required bool hasError,
   required String location,
+  bool isSubmitting = false,
 }) {
+  // Login ou cadastro em andamento: fica na tela até o controller decidir.
+  // No cadastro por e-mail o stream emite o usuário novo antes de o perfil
+  // existir (`hasUsername: false`), e sem isto o guard jogava para
+  // /username no meio do envio — por mais tempo quanto mais o cadastro
+  // demora, e o upload da foto de perfil demora.
+  if (isSubmitting && _publicRoutes.contains(location)) return null;
+
   // Estado de auth ainda carregando: splash.
   if (isLoading) {
     return location == AppRoutes.splash ? null : AppRoutes.splash;
@@ -176,6 +207,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         // null sem passar pela leitura do perfil.
         hasError: authAsync.hasError,
         location: state.uri.path,
+        isSubmitting: controllerAsync.isLoading,
       );
     },
 
@@ -214,6 +246,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const FavoriteSportsPage(),
       ),
 
+      // ── Avaliação do evento (fora do shell — tela cheia) ───────────────────
+      GoRoute(
+        path: AppRoutes.eventRating,
+        builder: (context, state) =>
+            EventRatingPage(eventId: state.pathParameters['eventId']!),
+      ),
+
       // ── Shell com bottom nav preservando estado entre as 5 abas (RNF07) ───
       StatefulShellRoute.indexedStack(
         builder: (context, state, navShell) =>
@@ -243,6 +282,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       title: AppStrings.settingsTitle,
                     ),
                   ),
+                  GoRoute(
+                    path: 'notificacoes',
+                    builder: (context, state) => const NotificationsPage(),
+                  ),
                 ],
               ),
             ],
@@ -258,6 +301,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: ':id',
                     builder: (context, state) =>
                         EventDetailPage(eventId: state.pathParameters['id']!),
+                    routes: <RouteBase>[
+                      GoRoute(
+                        path: 'ao-vivo',
+                        builder: (context, state) =>
+                            LiveEventPage(eventId: state.pathParameters['id']!),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -323,6 +373,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'editar',
                     builder: (context, state) => const EditProfilePage(),
                   ),
+                  GoRoute(
+                    path: 'usuarios/:uid',
+                    builder: (context, state) => PublicProfilePage(
+                      uid: state.pathParameters['uid']!,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -340,15 +396,19 @@ class _ScaffoldWithNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: navShell,
-      bottomNavigationBar: AppBottomNav(
-        currentIndex: navShell.currentIndex,
-        // `goBranch` preserva o estado da aba (RNF07): voltar para "Eventos"
-        // não recria a página, mantém scroll e detalhes anteriores.
-        onTap: (index) => navShell.goBranch(
-          index,
-          initialLocation: index == navShell.currentIndex,
+    // O aviso único de encerramento automático (tarefa 14) mora aqui por ser
+    // o primeiro widget de toda rota do shell.
+    return AutoEndNotice(
+      child: Scaffold(
+        body: navShell,
+        bottomNavigationBar: AppBottomNav(
+          currentIndex: navShell.currentIndex,
+          // `goBranch` preserva o estado da aba (RNF07): voltar para "Eventos"
+          // não recria a página, mantém scroll e detalhes anteriores.
+          onTap: (index) => navShell.goBranch(
+            index,
+            initialLocation: index == navShell.currentIndex,
+          ),
         ),
       ),
     );

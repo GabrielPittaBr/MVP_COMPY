@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../../features/home/data/datasources/mock_events.dart';
+import '../../../../features/notifications/data/datasources/in_memory_notifications_store.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/events_filter.dart';
@@ -49,12 +50,28 @@ class InMemoryEventsStore {
   List<Event> joinedBy(String uid, EventsFilter filter) =>
       _sortedByDate((e) => e.participantIds.contains(uid), filter);
 
+  /// [joinedBy] em tempo real, sem filtro da folha.
+  Stream<List<Event>> watchJoinedBy(String uid) =>
+      watchAll().map((_) => joinedBy(uid, const EventsFilter()));
+
   /// As duas seções não são paginadas, então (ao contrário da lista
   /// principal) podem ordenar em memória sem risco de cursor inconsistente.
   List<Event> _sortedByDate(bool Function(Event) test, EventsFilter filter) {
     final result = _events.where((e) => test(e) && filter.matches(e)).toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
     return List<Event>.unmodifiable(result);
+  }
+
+  /// Acompanha um evento — espelha o `doc(id).snapshots()` do Firestore,
+  /// para o detalhe refletir join e encerramento sem recarregar.
+  Stream<Event?> watchById(String id) =>
+      watchAll().map((events) => _find(events, id)).distinct();
+
+  static Event? _find(List<Event> events, String id) {
+    for (final event in events) {
+      if (event.id == id) return event;
+    }
+    return null;
   }
 
   Event? getById(String id) {
@@ -89,9 +106,51 @@ class InMemoryEventsStore {
     return updated;
   }
 
-  Event add(Event draft) {
-    _events = <Event>[draft, ..._events];
+  /// Encerra [eventId] em [at] — no mock, faz o papel do criador e da
+  /// Function. Lança [StateError] se o evento já estava encerrado; o
+  /// repositório traduz para a exceção de domínio.
+  Event end(String eventId, {required DateTime at, bool automatic = false}) {
+    final index = _events.indexWhere((e) => e.id == eventId);
+    if (index == -1) {
+      throw StateError('Evento $eventId não encontrado');
+    }
+    final current = _events[index];
+    if (current.endedAt != null) {
+      throw StateError('Evento $eventId já encerrado');
+    }
+    final ended = current.copyWith(endedAt: at, endedAutomatically: automatic);
+    _events[index] = ended;
     _controller.add(List<Event>.unmodifiable(_events));
-    return draft;
+    // O papel do gatilho `onEventEnded`: avisar cada participante.
+    InMemoryNotificationsStore.instance.createEventEnded(ended, at: at);
+    return ended;
   }
+
+  /// Registra que [uid] avaliou [eventId] — no mock, faz o papel da
+  /// callable `submitEventRatings`, que grava o `ratedBy`.
+  Event markRated(String eventId, String uid) {
+    final index = _events.indexWhere((e) => e.id == eventId);
+    if (index == -1) {
+      throw StateError('Evento $eventId não encontrado');
+    }
+    final current = _events[index];
+    if (current.ratedBy.contains(uid)) return current;
+    final rated = current.copyWith(ratedBy: <String>[...current.ratedBy, uid]);
+    _events[index] = rated;
+    _controller.add(List<Event>.unmodifiable(_events));
+    return rated;
+  }
+
+  /// Grava [draft] como o Firestore faria: rascunho sem id (o formulário
+  /// manda `id: ''`) ganha um id gerado, senão a rota de detalhe do evento
+  /// recém-criado não teria o que abrir.
+  Event add(Event draft) {
+    final event =
+        draft.id.isEmpty ? draft.copyWith(id: 'evt_local_${++_lastId}') : draft;
+    _events = <Event>[event, ..._events];
+    _controller.add(List<Event>.unmodifiable(_events));
+    return event;
+  }
+
+  int _lastId = 0;
 }

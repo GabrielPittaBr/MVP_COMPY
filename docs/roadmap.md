@@ -1,8 +1,9 @@
 # Roadmap — COMPY
 
 > Criado em 2026-08-08, revisado em 2026-08-09 com as decisões de produto.
-> **Atualizado em 2026-09-27:** 13 das 14 tarefas de prioridade alta fechadas (conferido no `git log` de `develop` e no código). Resta a tarefa 14.
+> **Atualizado em 2026-10-22:** as 14 tarefas de prioridade alta estão fechadas. O deploy da 14 (regras e Cloud Functions) está registrado em [`admin/firebase-deployment.md`](admin/firebase-deployment.md). O APK novo ainda precisa ser gerado e distribuído.
 > Este documento absorveu o antigo `proximos-passos.md`: o que ainda estava pendente nele virou o [Backlog](#backlog--prioridade-média-e-baixa) no fim.
+> **Atualizado em 2026-10-22:** visualização de perfis públicos concluída em `feature/perfil-publico-usuarios`.
 
 ---
 
@@ -23,7 +24,7 @@
 | 11 | "Ver mais" nas categorias + filtros | `feature/ver-mais-categorias` | ✅ Fechada |
 | 12 | Três seções na aba Eventos | `feature/secoes-aba-eventos` | ✅ Fechada — **ajustes pendentes** |
 | 13 | Onboarding de esportes favoritos | `feature/onboarding-esportes-favoritos` | ✅ Fechada |
-| 14 | Ciclo de vida do evento: durante, pós e avaliação | `feature/ciclo-vida-evento` | ⏳ **Aberta** |
+| 14 | Ciclo de vida do evento: durante, pós e avaliação | `feature/ciclo-vida-evento` | ✅ Fechada |
 
 ---
 
@@ -47,6 +48,10 @@
 
 **9 · Chat** — Mensagens reais com o remetente certo, sala robusta e agrupada por data, conversa nova por handle, contador de não-lidas real, compartilhar local no chat, e regras de `conversations` restritas a membros, com suíte de testes no emulador.
 
+**Apresentação da lista de conversas (26/10/2026):** a aba Chat ganhou um estado vazio com ilustração feita no Flutter e ação para iniciar conversa, sem preencher a lista com dados fictícios. As linhas mostram nome, prévia, avatar, horário local para mensagens de hoje, “Ontem” ou data curta, além de destaque discreto para não lidas. A paginação, atualização da primeira página, pull to refresh e rotas existentes permanecem; uma falha na próxima página mantém as conversas carregadas e oferece nova tentativa no rodapé. A sala de mensagens não mudou.
+
+**Identidade atual no chat (29/10/2026):** lista, cabeçalho da sala e avatares dos balões acompanham o perfil público atual pelo UID. Reutilizamos a assinatura compartilhada dos participantes de eventos, sem listener por mensagem. `memberSummaries` permanece histórico e serve de fallback durante carregamento, ausência ou falha do perfil; foto removida em um perfil disponível mostra o placeholder local. Conversas legadas sem resumos recuperam a identidade por `members`. Não há regravação de conversas ou mensagens. Ver [diagnóstico e testes com dois clientes simulados](chat-identidade-perfil.md).
+
 **10 · Filtro por esporte** — As categorias da Home levam à aba Eventos já filtrada, com a consulta feita no Firestore (não no cliente).
 
 **11 · Ver mais / filtros** — "Ver mais" no carrossel e um seletor de filtros dos eventos, acessível pela Home e pela aba Eventos.
@@ -55,129 +60,48 @@
 
 **13 · Esportes favoritos** — Contas novas passam por `/onboarding/esportes` antes da Home. Os favoritos ficam em `users/{uid}`, são editáveis pelo perfil e o carrossel da Home passa a segui-los. Junto, o e-mail saiu do documento público de perfil para `users/{uid}/private/contact`, legível só pelo dono (RN-06).
 
+**14 · Ciclo de vida do evento** — O evento ganhou o "durante" e o "depois". Durante o evento, o selo "Acontecendo agora" aparece nas listas, e quem participa vê o card ao vivo no topo da aba Eventos e a tela do evento em andamento, com mensagem 1:1 para cada pessoa (D16). Só o Organizador encerra; se ele esquecer, uma Cloud Function agendada encerra o evento 1h depois do fim previsto, e ele recebe um aviso único ao voltar ao app (D5). Encerrados somem das listas, da Home e da busca, e ninguém mais entra neles (D17). O fim do evento gera uma notificação na central nova (o sino ao lado da engrenagem na Home), que leva à avaliação (D15). Participantes avaliam o evento, o local e quem jogou; o Organizador avalia o local e os participantes (D14). A avaliação é gravada por uma callable, que valida as regras D7, D12 e D13 no servidor. As médias aparecem no perfil, na ficha do local e no evento encerrado, sem nenhum comentário. O plano está em [`tarefa-14-ciclo-de-vida-do-evento.md`](tarefa-14-ciclo-de-vida-do-evento.md), e a decisão de usar Cloud Functions, na [ADR 0002](adr/0002-ciclo-de-vida-e-avaliacoes-com-cloud-functions.md).
+
 **Do antigo `proximos-passos.md`, também já feitos:** entrar em evento com o uid real, criar evento com o criador real, busca de eventos com debounce, eventos próximos por geolocalização, paginação das listas de eventos e conversas, nova conversa de chat e revisão das regras do Firestore. O débito técnico listado lá (`AuthService` legado, Home usando mock) também foi resolvido.
+
+**Ajustes de exploração e eventos (25/10/2026):** o mapa principal mantém Taquara como centro inicial e restringe o centro navegável a aproximadamente 30 km em cada direção (`AppGeo`), com zoom de 11,5 a 19. Os pins, filtros e o foco ao selecionar um local continuam no mesmo fluxo. O nível de habilidade já armazenado no evento agora aparece nos cards, no detalhe e na tela do evento em andamento; `Todos` é exibido como “Todos os níveis”.
+
+**Cards interativos (29/10/2026):** Home, aba Eventos e busca abrem os detalhes pelo toque no corpo inteiro do card, mantendo o CTA e as regras de vagas. Mesmo com “Participar” bloqueado, o corpo permite consultar os detalhes. O calendário tem alvo de toque de 48 px e abre somente uma folha compacta com data completa em português, início, término previsto e duração; quando termina em outro dia, essa data também aparece. A folha fecha pelo botão, gesto, barreira ou voltar, sem inscrever, mudar filtros ou regravar o evento. O selo “Acontecendo agora” continua substituindo o calendário. Evitamos duplicar a ação de detalhes na acessibilidade e permitimos que o cabeçalho de eventos próximos da Home quebre linha em telas estreitas. Os testes verificam gestos independentes, eventos lotados e legados, horários locais/UTC, virada do ano, texto ampliado, navegação por ID e preservação de filtro e paginação.
+
+**Participantes dos eventos (26/10/2026):** detalhes e evento em andamento mostram uma prévia compacta com Organizador e quantidade, seguida de uma lista vertical em “Ver todos”. A apresentação acompanha os campos públicos de `users/{uid}` para as pessoas visíveis, sem regravar os snapshots do evento. Um provider por UID compartilha a assinatura entre a prévia, o Organizador e a lista; os listeners são liberados ao sair, e listagens/Home não os criam. Perfil ausente usa os dados textuais do snapshot com avatar genérico; falha de rede preserva a tela. Os atalhos de mensagem do evento em andamento ficam na lista completa.
 
 ---
 
-## 14. Ciclo de vida do evento: durante, pós e avaliação
+## Funcionalidade concluída — perfis públicos de outros usuários
 
-**Branch:** `feature/ciclo-vida-evento` · **Tamanho:** G · **`/to-tickets`: SIM** · **Dependências (3 e 12): ✅ fechadas**
+**Branch:** `feature/perfil-publico-usuarios` · **Status:** ✅ Concluída em 2026-10-22.
 
-### Objetivo
-
-Um evento hoje só tem "antes". Esta tarefa entrega o "durante" e o "depois": card do evento em andamento, encerramento (manual ou automático) e o fluxo de avaliação.
-
-### O que já está pronto e ajuda
-
-- `endsAt` existe (tarefa 3): é derivado em `Event` e gravado no Firestore.
-- `participantIds` e a seção "Participando" existem (tarefa 12). É deles que sai o card do evento em andamento.
-- **As regras da coleção `ratings` já estão escritas** em `firestore.rules`: leitura negada, sem update/delete, validação das estrelas e da justificativa abaixo de 3.
-- Em `events`, o `TODO(tarefa 14)` já marca onde abrir a exceção do encerramento automático.
-- `RatingSummary.hasRatings` e `SportPlace.hasRatings` já tratam o "sem avaliações" na UI. Falta só alimentá-los.
-- A suíte de testes de regras (`tools/firestore-rules-tests/`) já está montada para cobrir as regras novas.
-
-### O que falta
-
-- **Eventos passados continuam em "Todos os eventos"**, porque a lista não filtra por `endsAt`. Provavelmente é o primeiro ticket.
-- Nenhum campo de encerramento (`endedAt` etc.) nem status.
-- Nenhuma tela de "durante" ou de avaliação, e nada grava em `ratings`.
-
-### Corte sugerido para o `/to-tickets`
-
-1. **Status derivado**: `agendado` / `acontecendo` / `encerrado` a partir de `dateTime`, `endsAt` e `endedAt`. Sem UI nova.
-2. **Esconder encerrados** de "Todos os eventos" e marcar "Acontecendo agora" no `EventCard`.
-3. **Card do evento ao vivo** no topo da aba Eventos + botão "Encerrar" para o criador.
-4. **Encerramento automático** + aviso ao criador na volta.
-5. **Avaliação**: tela, validações e gravação em `ratings`.
-6. **Média real** alimentando o perfil (`RatingBreakdown`) e o local (`PlaceDetailsSheet`).
-
-### Modelagem proposta
-
-Campos novos em `Event`:
-
-| Campo | Tipo | Para quê |
-|---|---|---|
-| `endedAt` | `Timestamp?` | `null` = não encerrado. Marca o fim real. |
-| `endedAutomatically` | `bool` | Distingue encerramento manual do automático (D5). |
-| `creatorNotifiedOfAutoEnd` | `bool` | Garante que o aviso apareça **uma vez** só. |
-
-Status derivado no cliente, sem Cloud Function:
-
-- `endedAt != null` → **encerrado**
-- `now >= dateTime && now < endsAt + 1h` → **acontecendo** (a hora extra é a tolerância para o criador encerrar)
-- `now >= endsAt + 1h` → **encerrado automaticamente**: grava `endedAt` e `endedAutomatically = true` na primeira leitura que perceber, em transação para não gravar duas vezes
-- caso contrário → **agendado**
-
-### Comportamento: evento em andamento (D5)
-
-- Card do evento **acima das três seções** da aba Eventos, **somente se o usuário estiver participando**.
-- O card leva à tela do evento em andamento: participantes, dados do evento, atalho para o chat.
-- **"Encerrar evento" só para o criador.** Encerrar grava `endedAt` e leva direto à avaliação.
-- Se o criador esquecer, o evento encerra sozinho 1h após o fim previsto. Ao reabrir o app ele vê "Seu evento foi encerrado automaticamente" e cai **na mesma tela de finalização**. `creatorNotifiedOfAutoEnd` garante que isso aconteça uma vez.
-- Presença não distingue "inscrito" de "compareceu" (D6).
-
-### Comportamento: avaliação (D7, D12, D13)
-
-Três alvos: **participantes** (incluindo o organizador), **o evento** e **o local**.
-
-- Avaliar **evento** e **local** é obrigatório. **Participantes** é opcional: botão "Pular" em cada card e "Pular todas as avaliações de participantes" na tela.
-- Card de participante/organizador: foto de perfil, nome, 5 estrelas vazias e caixa de comentário.
-- **Só estrelas: permitido. Só comentário: nunca.**
-- **Abaixo de 3 estrelas, comentário obrigatório, nos três alvos (D12).** Bloquear o avanço com mensagem clara.
-- **Comentários não são públicos (D13).** Guardar tudo, exibir só a média.
-- Coleção `ratings`: `eventId`, `fromUid`, `targetType` (`user` | `event` | `place`), `targetId`, `stars`, `comment?`, `createdAt`. Id composto por (`fromUid`, `targetType`, `targetId`, `eventId`) para impedir avaliação duplicada.
-
-### 🔒 Regras do Firestore: o que ainda precisa ser decidido
-
-- **`ratings`:** a regra existe, mas falta decidir se `create` exige que o autor tenha participado do evento e que ele esteja encerrado (custa um `get()` por avaliação). Também falta decidir como a média desnormalizada é gravada no alvo (`users/{uid}`, evento, local): sem `read` em `ratings`, o cliente não consegue recalcular a média a partir das avaliações.
-- **`events`:** abrir a exceção do `TODO(tarefa 14)`, em que qualquer participante pode gravar `endedAt`/`endedAutomatically` só se `endsAt + 1h` já passou e `endedAt` ainda é nulo. É a regra mais delicada do arquivo; cobrir na suíte do emulador antes de publicar.
-
-### Critérios de aceite
-
-- Eventos encerrados somem de "Todos os eventos".
-- Participante de evento em andamento vê o card no topo da aba Eventos; quem não participa, não vê.
-- Só o criador vê "Encerrar evento".
-- Evento esquecido encerra 1h depois do fim previsto, e o criador é avisado uma única vez ao reabrir o app.
-- Não é possível concluir a avaliação sem avaliar evento e local.
-- Não é possível enviar comentário sem estrelas, nem nota abaixo de 3 sem justificativa, nos três alvos.
-- As médias aparecem no perfil e na tela do local; os comentários não aparecem em lugar nenhum.
-
-### Perguntas em aberto
-
-1. **Quem lembra o usuário de avaliar?** Um pendente que nunca some incomoda; sem lembrete, quase ninguém avalia. Decidir na fatia 5.
-2. **Encerramento automático: regra do Firestore ou Cloud Function?** A exceção na regra é grátis mas delicada; a function é limpa mas adiciona infraestrutura ao TCC. Medir as duas na fatia 4.
-
-> O item "Sistema de avaliação entre usuários" do antigo `proximos-passos.md` foi absorvido por esta tarefa.
+Usuários autenticados podem abrir `users/{uid}` pelo organizador ou pelos participantes de um evento, pelo cabeçalho de uma conversa e pelo resultado da busca de usuários. A tela mostra apenas nome, handle, avatar, biografia existente e esportes favoritos. O botão "Mensagem" usa o fluxo 1:1 existente. Perfis ausentes e falhas de leitura têm estados próprios; o UID do próprio usuário mostra a tela proprietária. A lista rolável do evento mantém todos os participantes identificáveis. As regras do Firestore não precisaram mudar.
 
 ---
 
 ## Backlog — prioridade média e baixa
 
-Itens herdados do antigo `proximos-passos.md` que continuam pendentes, conferidos no código em 2026-09-27. Entram depois da tarefa 14.
+Itens herdados do antigo `proximos-passos.md` que continuam pendentes, conferidos no código em 2026-09-27. A tarefa 14 já fechou, então eles são os próximos.
 
 | # | Tarefa | Branch sugerida | Tam. | `/to-tickets`? | 🔒 |
 |---|---|---|---|---|---|
-| A | Avatar real na Home | `fix/avatar-real-home` | P | Não | |
-| B | Edição de perfil completa (nome, bio, foto) | `feature/editar-perfil-completo` | M/G | Talvez | 🔒 |
+| A | ~~Avatar real na Home~~ ✅ feito em `feature/foto-de-perfil` | — | P | Não | |
+| B | Edição de perfil completa (nome, bio) — **foto ✅ feita** | `feature/editar-perfil-completo` | M | Não | ✅ fechada |
 | C | Tela de configurações | `feature/tela-configuracoes` | M | Não | |
 | D | Push notifications (FCM) | `feature/push-notifications` | G | Sim | |
 
-### A · Avatar real na Home
+### A · Avatar real na Home — ✅ fechado
 
-O `GreetingHeader` ainda desenha `AppAssets.avatar(userName)`, o placeholder com a inicial do nome, embora `users/{uid}.avatarUrl` exista. O `currentUserSummaryProvider` já expõe o `UserSummary` do usuário logado: basta a Home passar o `avatarUrl` dele para o header.
+Feito junto com a foto de perfil (`feature/foto-de-perfil`): o `GreetingHeader` usa o `avatarUrl` do perfil e só mostra a inicial enquanto o perfil carrega.
 
-**Arquivos:** `lib/features/home/presentation/widgets/greeting_header.dart`, `lib/features/home/presentation/pages/home_page.dart`.
+### B · Edição de perfil completa — ✅ fechada
 
-### B · Edição de perfil completa
+A `EditProfilePage` (`/profile/editar`) edita nome completo (até 60 caracteres) e biografia opcional (até 160), com salvamento explícito, aviso de alterações não salvas e repetição após falha. O Firestore recebe `name`, `nameLower` e `bio` por merge; a sincronização do nome com o Firebase Auth ocorre somente quando o nome foi alterado. Como esses serviços não compartilham transação, uma falha no Auth após a escrita é informada como salvamento parcial e a tela permite repetir a sincronização. Perfil próprio, Home, busca e perfil público são atualizados pelos providers. O username permanece bloqueado, os esportes usam a tela própria e a foto continua no fluxo existente de seleção, recorte e Storage ([detalhes](autenticacao.md#foto-de-perfil-avatarurl)).
 
-A `EditProfilePage` (`/profile/editar`) hoje mostra o username desabilitado e permite excluir a conta. Os esportes favoritos já são editáveis pela tela própria. Faltam **nome, bio e foto**.
+`validProfile()` aceita apenas `bio` opcional do tipo texto e com até 160 caracteres, sem mudar o acesso privado. Nomes e fotos copiados para eventos e conversas antigos continuam como snapshots históricos; a apresentação dos participantes nos detalhes do evento consulta os perfis atuais quando visíveis. A pendência de CORS para avatar no Chrome e o comando de configuração do bucket estão em [`checklist-publicacao.md`](checklist-publicacao.md); nenhuma configuração foi aplicada ao bucket nesta tarefa.
 
-- `ProfileRemoteDataSource` só sabe gravar `favoriteSports`. Falta um `update` geral.
-- `bio` já é lida pelo `ProfileRepositoryImpl`, mas nunca é escrita.
-- Foto exige Firebase Storage e um seletor de imagem (`firebase_storage` e `image_picker` não estão instalados), com a URL gravada em `users/{uid}.avatarUrl`. Se o volume for grande, vale quebrar com `/to-tickets` em "nome e bio" primeiro e "foto" depois.
-- Nome alterado precisa ir também para o Firebase Auth (`updateDisplayName`), como na tarefa 1, senão a saudação da Home diverge.
-
-**🔒 Regras do Firestore — precisa decidir:** o `validProfile()` de `users` só aceita `['id', 'name', 'handle', 'avatarUrl', 'createdAt', 'favoriteSports']`. Gravar `bio` hoje é **recusado**. Decidir o limite de tamanho da bio e incluí-la no `hasOnly`. Se entrar Storage, escrever também as regras do bucket (só o dono grava a própria foto, tamanho e tipo limitados).
+**Pendência de publicação confirmada em 28/10:** a release ativa ainda usa o ruleset de 22/10, sem `bio` na lista de campos permitidos. Reproduzimos `permission-denied` com esse contrato no emulador e validamos as regras locais com biografia preenchida e vazia, inclusive para perfis legados e novos. A correção preserva a tentativa após falha parcial, inclusive ao reabrir o editor na mesma sessão, e registra etapa e código técnico sem dados pessoais. Publicar as regras locais continua sendo um passo manual autorizado; nenhum deploy foi feito. Ver [evidências e validação](correcao-salvamento-perfil.md).
 
 ### C · Tela de configurações
 
@@ -185,13 +109,13 @@ A engrenagem da Home abre `/home/configuracoes`, que hoje é a `UnderConstructio
 
 ### D · Push notifications (FCM)
 
-Nada instalado ainda. Notificar quando: uma conversa recebe mensagem, alguém entra no seu evento, o evento vai começar, você recebe uma avaliação. Sem backend, disparar push exige Cloud Functions, o que é infraestrutura nova para o TCC. Decidir antes se vale; se sim, quebrar com `/to-tickets`.
+Nada instalado ainda. Notificar quando: uma conversa recebe mensagem, alguém entra no seu evento, o evento vai começar, você recebe uma avaliação. A tarefa 14 já trouxe a central de notificações in-app e Cloud Functions no projeto (plano Blaze), então o push pode partir das notificações que o gatilho `onEventEnded` já cria. Decidir antes se vale; se sim, quebrar com `/to-tickets`.
 
 ---
 
 ## Registro de decisões
 
-Continuam valendo. As que tocam a tarefa 14 estão referenciadas acima.
+Continuam valendo. D14 a D17 vieram do planejamento da tarefa 14, em 21/10/2026.
 
 | # | Decisão |
 |---|---|
@@ -208,4 +132,8 @@ Continuam valendo. As que tocam a tarefa 14 estão referenciadas acima.
 | D11 | "Favoritar" sai da tela de local; "Compartilhar" veio com o chat. |
 | D12 | Nota abaixo de 3 estrelas exige justificativa nos três alvos. |
 | D13 | Comentários de avaliação não são públicos. |
+| D14 | O Organizador não avalia o próprio evento: avalia o local e os participantes. A nota do evento vem só de quem participou. |
+| D15 | A avaliação começa pela central de notificações in-app (o sino na Home), sem seção nova na aba Eventos. |
+| D16 | O atalho de chat do evento em andamento é conversa 1:1: "Falar com o organizador" e um botão de mensagem por participante. |
+| D17 | Eventos encerrados somem das listas: as três seções da aba Eventos, a Home e a busca. |
 </content>

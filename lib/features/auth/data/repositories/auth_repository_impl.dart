@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../domain/entities/auth_user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
@@ -28,12 +30,14 @@ class AuthRepositoryImpl implements AuthRepository {
     required String username,
     required String email,
     required String password,
+    Uint8List? photo,
   }) =>
       _dataSource.signUpWithEmail(
         name: name,
         username: username,
         email: email,
         password: password,
+        photo: photo,
       );
 
   @override
@@ -49,8 +53,17 @@ class AuthRepositoryImpl implements AuthRepository {
     required String username,
     required String name,
     required String email,
+    Uint8List? photo,
+    String? photoUrl,
   }) =>
-      _dataSource.setUsername(uid: uid, username: username, name: name, email: email);
+      _dataSource.setUsername(
+        uid: uid,
+        username: username,
+        name: name,
+        email: email,
+        photo: photo,
+        photoUrl: photoUrl,
+      );
 
   @override
   Future<void> signOut() => _dataSource.signOut();

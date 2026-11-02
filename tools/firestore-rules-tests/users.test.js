@@ -6,6 +6,7 @@
  * nunca tinham sido exercitadas.
  */
 import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import {
   assertFails,
@@ -221,6 +222,114 @@ describe('nameLower e identidade de perfil (ticket 08)', () => {
   });
 });
 
+describe('edicao de nome e biografia', () => {
+  it('perfil legado sem nameLower recebe nome normalizado e bio no merge', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users', 'legado'), {
+        id: 'legado', name: 'João', handle: '@legado', createdAt: PROFILE_CREATED_AT,
+      });
+    });
+    await assertSucceeds(setDoc(doc(as('legado'), 'users', 'legado'), {
+      name: 'João Silva', nameLower: 'joao silva', bio: 'Vôlei',
+    }, { merge: true }));
+    const data = (await getDoc(doc(as('outro'), 'users', 'legado'))).data();
+    assert.equal(data.bio, 'Vôlei');
+    assert.equal(data.nameLower, 'joao silva');
+    assert.equal(data.handle, '@legado');
+  });
+
+  it('perfil novo criado pelo cliente aceita limites e bio vazia', async () => {
+    const target = doc(as('novo'), 'users', 'novo');
+    await assertSucceeds(setDoc(target, {
+      id: 'novo', name: 'a'.repeat(60), nameLower: 'a'.repeat(60),
+      handle: '@novo', createdAt: serverTimestamp(), bio: 'b'.repeat(160),
+    }));
+    await assertSucceeds(setDoc(target, { bio: '' }, { merge: true }));
+    assert.equal((await getDoc(doc(as('outro'), 'users', 'novo'))).data().bio, '');
+  });
+
+  it('sessao ausente e perfil inexistente recusam o payload de edicao', async () => {
+    const payload = { name: 'João', nameLower: 'joao', bio: 'Vôlei' };
+    await assertFails(setDoc(doc(anonimo(), 'users', UID), payload, { merge: true }));
+    await assertFails(setDoc(doc(as('ausente'), 'users', 'ausente'), payload, { merge: true }));
+  });
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users', UID), {
+        id: UID, name: 'Gabriel Pitta', nameLower: 'gabriel pitta',
+        handle: `@${USERNAME}`, avatarUrl: 'https://example.com/foto.jpg',
+        favoriteSports: ['futebol'], createdAt: PROFILE_CREATED_AT,
+      });
+      await setDoc(doc(db, 'users', UID, 'private', 'contact'), {
+        email: 'privado@example.com',
+      });
+    });
+  });
+
+  it('dono grava nome e bio e preserva os demais campos', async () => {
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), {
+      name: 'Gabriel Silva', nameLower: 'gabriel silva', bio: 'Jogo futebol.',
+    }, { merge: true }));
+    const data = (await getDoc(doc(as(UID), 'users', UID))).data();
+    if (data.name !== 'Gabriel Silva' || data.bio !== 'Jogo futebol.' ||
+        data.avatarUrl !== 'https://example.com/foto.jpg' ||
+        data.handle !== `@${USERNAME}` || data.favoriteSports[0] !== 'futebol') {
+      throw new Error('campos do perfil nao preservados');
+    }
+  });
+
+  it('grava somente bio pelo payload do app e permite ler novamente', async () => {
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), {
+      name: 'Gabriel Pitta', nameLower: 'gabriel pitta', bio: 'Bio nova',
+    }, { merge: true }));
+    const data = (await getDoc(doc(as(UID), 'users', UID))).data();
+    if (data.name !== 'Gabriel Pitta' || data.bio !== 'Bio nova' ||
+        data.handle !== `@${USERNAME}` ||
+        data.avatarUrl !== 'https://example.com/foto.jpg' ||
+        data.favoriteSports[0] !== 'futebol' ||
+        data.createdAt.toDate().getTime() !== PROFILE_CREATED_AT.getTime()) {
+      throw new Error('bio ou demais campos nao persistiram');
+    }
+  });
+
+  it('grava somente nome preservando a bio e os demais campos', async () => {
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), {
+      name: 'Gabriel Silva', nameLower: 'gabriel silva', bio: '',
+    }, { merge: true }));
+    const data = (await getDoc(doc(as(UID), 'users', UID))).data();
+    if (data.name !== 'Gabriel Silva' || data.nameLower !== 'gabriel silva' ||
+        data.bio !== '' || data.handle !== `@${USERNAME}` ||
+        data.favoriteSports[0] !== 'futebol') {
+      throw new Error('nome ou demais campos nao persistiram');
+    }
+  });
+
+  it('permite bio vazia ou ausente para perfis legados', async () => {
+    await assertSucceeds(getDoc(doc(as('outro'), 'users', UID)));
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), { bio: '' }, { merge: true }));
+    await assertSucceeds(setDoc(doc(as(UID), 'users', UID), {
+      bio: 'a'.repeat(160),
+    }, { merge: true }));
+  });
+
+  it('recusa bio longa, tipo invalido e nome longo', async () => {
+    await assertFails(setDoc(doc(as(UID), 'users', UID), { bio: 'a'.repeat(161) }, { merge: true }));
+    await assertFails(setDoc(doc(as(UID), 'users', UID), { bio: 7 }, { merge: true }));
+    await assertFails(setDoc(doc(as(UID), 'users', UID), {
+      name: 'a'.repeat(61), nameLower: 'a'.repeat(61),
+    }, { merge: true }));
+  });
+
+  it('recusa escrita por terceiros e leitura do contato privado', async () => {
+    await assertFails(setDoc(doc(as('outro'), 'users', UID), {
+      bio: 'alterada',
+    }, { merge: true }));
+    await assertFails(getDoc(doc(as('outro'), 'users', UID, 'private', 'contact')));
+  });
+});
+
 describe('esportes favoritos (tarefa 13)', () => {
   beforeEach(async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
@@ -247,21 +356,27 @@ describe('esportes favoritos (tarefa 13)', () => {
     await assertSucceeds(gravarEsportes(as(UID), UID, []));
   });
 
+  // Issue 30: o enum `Sport` passou de 8 para 16 esportes.
+  const TODOS_OS_ESPORTES = [
+    'futebol', 'futsal', 'basquete', 'volei',
+    'handebol', 'tenis', 'tenisDeMesa', 'padel',
+    'futebolDeAreia', 'voleiDePraia', 'futevolei', 'beachTennis',
+    'corrida', 'ciclismo', 'caminhada', 'skate',
+  ];
+
   it('o enum inteiro cabe no limite', async () => {
+    await assertSucceeds(gravarEsportes(as(UID), UID, TODOS_OS_ESPORTES));
+  });
+
+  it('esportes novos de areia sao aceitos', async () => {
     await assertSucceeds(
-      gravarEsportes(as(UID), UID, [
-        'futebol', 'basquete', 'volei', 'tenisDeMesa',
-        'futsal', 'corrida', 'ciclismo', 'caminhada',
-      ]),
+      gravarEsportes(as(UID), UID, ['beachTennis', 'futevolei', 'voleiDePraia']),
     );
   });
 
-  it('mais de 8 esportes e recusado', async () => {
+  it('mais de 16 esportes e recusado', async () => {
     await assertFails(
-      gravarEsportes(as(UID), UID, [
-        'futebol', 'basquete', 'volei', 'tenisDeMesa',
-        'futsal', 'corrida', 'ciclismo', 'caminhada', 'futebol',
-      ]),
+      gravarEsportes(as(UID), UID, [...TODOS_OS_ESPORTES, 'futebol']),
     );
   });
 
@@ -284,6 +399,66 @@ describe('esportes favoritos (tarefa 13)', () => {
         { favoriteSports: ['futebol'], ratingAverage: 5 },
         { merge: true },
       ),
+    );
+  });
+});
+
+describe('foto de perfil (avatarUrl)', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users', UID), {
+        id: UID,
+        name: 'Gabriel Pitta',
+        nameLower: 'gabriel pitta',
+        handle: `@${USERNAME}`,
+        avatarUrl: 'https://placehold.co/100x100/png?text=G',
+        createdAt: PROFILE_CREATED_AT,
+      });
+    });
+  });
+
+  /** Espelha `ProfileRemoteDataSource.updateAvatarUrl`. */
+  const gravarFoto = (db, uid, avatarUrl) =>
+    setDoc(doc(db, 'users', uid), { avatarUrl }, { merge: true });
+
+  it('o dono troca pela URL do Storage', async () => {
+    await assertSucceeds(
+      gravarFoto(
+        as(UID),
+        UID,
+        `https://firebasestorage.googleapis.com/v0/b/compy-tcc.firebasestorage.app/o/users%2F${UID}%2Favatar_1.jpg?alt=media&token=abc`,
+      ),
+    );
+  });
+
+  it('a URL do emulador do Storage (http) tambem passa', async () => {
+    await assertSucceeds(
+      gravarFoto(as(UID), UID, `http://localhost:9199/v0/b/demo/o/users%2F${UID}%2Favatar_1.jpg`),
+    );
+  });
+
+  it('a foto do Google tambem passa', async () => {
+    await assertSucceeds(
+      gravarFoto(as(UID), UID, 'https://lh3.googleusercontent.com/a/ACg8oc=s400-c'),
+    );
+  });
+
+  it('o que nao e endereco web e recusado', async () => {
+    await assertFails(gravarFoto(as(UID), UID, 'javascript:alert(1)'));
+    await assertFails(gravarFoto(as(UID), UID, ''));
+    await assertFails(gravarFoto(as(UID), UID, 42));
+  });
+
+  it('URL acima de 2048 caracteres e recusada', async () => {
+    await assertFails(
+      gravarFoto(as(UID), UID, `https://exemplo.com/${'a'.repeat(2048)}`),
+    );
+  });
+
+  it('ninguem troca a foto de outro', async () => {
+    await assertFails(
+      gravarFoto(as('uid_outro'), UID, 'https://lh3.googleusercontent.com/a/x'),
     );
   });
 });

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../../core/operations/admin_operations.dart';
 import '../../places/data/admin_places_repository.dart';
 
 enum AdminUserSearchType { name, handle, uid, email }
@@ -137,6 +138,29 @@ class AdminUserSuspensionResult {
   }
 }
 
+class AdminUserDeletionResult {
+  const AdminUserDeletionResult({required this.uid, required this.completedAt});
+
+  final String uid;
+  final DateTime completedAt;
+
+  factory AdminUserDeletionResult.fromCallable(Object? value) {
+    final completedAt = value is Map && value['completedAt'] is String
+        ? DateTime.tryParse(value['completedAt'] as String)
+        : null;
+    if (value is! Map ||
+        value['uid'] is! String ||
+        (value['uid'] as String).isEmpty ||
+        completedAt == null) {
+      throw const FormatException('Retorno da exclusão de conta inválido.');
+    }
+    return AdminUserDeletionResult(
+      uid: value['uid'] as String,
+      completedAt: completedAt.toUtc(),
+    );
+  }
+}
+
 DateTime? _parseDate(Object? value) =>
     value is String ? DateTime.tryParse(value) : null;
 
@@ -253,6 +277,19 @@ class AdminUsersCallableClient {
     return AdminUserSuspensionResult.fromCallable(response);
   }
 
+  Future<AdminUserDeletionResult> deleteUserAccount({
+    required String uid,
+    required String reason,
+    required String operationId,
+  }) async {
+    final response = await _call('deleteUserAccount', <String, Object?>{
+      'uid': uid,
+      'reason': normalizeAdminReason(reason),
+      'operationId': operationId,
+    });
+    return AdminUserDeletionResult.fromCallable(response);
+  }
+
   Future<Object?> _call(String name, Map<String, Object?> payload) async {
     final testInvoker = invoker;
     if (testInvoker != null) return testInvoker(name, payload);
@@ -265,7 +302,7 @@ class AdminUsersCallableClient {
 }
 
 String normalizeAdminSuspensionReason(String value) =>
-    value.trim().replaceAll(RegExp(r'\s+'), ' ');
+    normalizeAdminReason(value);
 
 abstract interface class AdminUsersRepository {
   Future<AdminUsersPageSnapshot> searchProfiles(
@@ -284,6 +321,13 @@ abstract interface class AdminUsersRepository {
   Future<AdminUserSuspensionResult> setUserSuspension({
     required String uid,
     required AdminUserSuspensionAction action,
+    required String reason,
+    required String operationId,
+  });
+
+  /// Exclusão definitiva da Conta de Usuário e do Perfil, pela Callable.
+  Future<AdminUserDeletionResult> deleteUserAccount({
+    required String uid,
     required String reason,
     required String operationId,
   });
@@ -431,6 +475,17 @@ class FirebaseAdminUsersRepository implements AdminUsersRepository {
   }) => _callableClient.setUserSuspension(
     uid: uid,
     action: action,
+    reason: reason,
+    operationId: operationId,
+  );
+
+  @override
+  Future<AdminUserDeletionResult> deleteUserAccount({
+    required String uid,
+    required String reason,
+    required String operationId,
+  }) => _callableClient.deleteUserAccount(
+    uid: uid,
     reason: reason,
     operationId: operationId,
   );

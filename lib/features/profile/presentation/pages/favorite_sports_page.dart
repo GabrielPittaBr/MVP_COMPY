@@ -95,51 +95,64 @@ class _FavoriteSportsPageState extends ConsumerState<FavoriteSportsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              if (isOnboarding) ...<Widget>[
-                Text(
-                  AppStrings.onboardingSportsTitle,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onSurface,
-                      ),
-                ),
-                const SizedBox(height: 10),
-              ],
-              Text(
-                isOnboarding
-                    ? AppStrings.onboardingSportsHint
-                    : AppStrings.onboardingSportsEditHint,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.onSurfaceMuted,
-                    ),
-              ),
-              const SizedBox(height: 28),
+              // Título e dica rolam junto com a grade; só os botões ficam
+              // fixos. Com 16 modalidades a grade tem quatro fileiras, e num
+              // aparelho pequeno com fonte ampliada um cabeçalho fixo deixava
+              // para ela uma faixa estreita demais para rolar.
               Expanded(
                 child: SingleChildScrollView(
-                  // `mainAxisExtent`, não `childAspectRatio`: por proporção a
-                  // altura da célula segue a largura da tela, e em tela
-                  // estreita "Tênis de mesa" não cabia em duas linhas — era o
-                  // "BOTTOM OVERFLOWED BY 1.8 PIXELS" da primeira fileira.
-                  // Altura explícita: 52 do círculo + 6 + duas linhas de 11pt.
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 12,
-                      mainAxisExtent: 104,
-                    ),
-                    itemCount: Sport.values.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      final Sport sport = Sport.values[index];
-                      return SportSelectTile(
-                        sport: sport,
-                        isSelected: _selected.contains(sport),
-                        onTap: isSaving ? null : () => _toggle(sport),
-                      );
-                    },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      if (isOnboarding) ...<Widget>[
+                        Text(
+                          AppStrings.onboardingSportsTitle,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.onSurface,
+                              ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      Text(
+                        isOnboarding
+                            ? AppStrings.onboardingSportsHint
+                            : AppStrings.onboardingSportsEditHint,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.onSurfaceMuted,
+                            ),
+                      ),
+                      const SizedBox(height: 28),
+                      // `mainAxisExtent`, não `childAspectRatio`: por proporção
+                      // a altura da célula segue a largura da tela, e em tela
+                      // estreita "Tênis de mesa" não cabia em duas linhas — era
+                      // o "BOTTOM OVERFLOWED BY 1.8 PIXELS" da primeira fileira.
+                      // Altura explícita: 52 do círculo + 6 + duas linhas de
+                      // 11pt.
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          mainAxisSpacing: 16,
+                          crossAxisSpacing: 12,
+                          mainAxisExtent: 104,
+                        ),
+                        itemCount: Sport.values.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final Sport sport = Sport.values[index];
+                          return SportSelectTile(
+                            sport: sport,
+                            isSelected: _selected.contains(sport),
+                            onTap: isSaving ? null : () => _toggle(sport),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),

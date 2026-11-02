@@ -35,6 +35,9 @@ void main() {
     AppRoutes.profileFavoriteSports,
     AppRoutes.maps,
     '/events/abc',
+    '/events/abc/ao-vivo',
+    '/avaliacao/abc',
+    AppRoutes.notifications,
   ];
 
   const List<String> todasAsRotas = <String>[
@@ -172,6 +175,52 @@ void main() {
     // campo existir, não a lista ter itens. Este é o caso do "pular".
     test('quem pulou a escolha entra no app como qualquer outro', () {
       expect(settle(completo, AppRoutes.splash), AppRoutes.home);
+    });
+  });
+
+  group('login ou cadastro em andamento', () {
+    // O stream traz o usuário recém-criado antes de o perfil ser gravado.
+    test('segura a tela de cadastro até o controller terminar', () {
+      expect(
+        authRedirect(
+          user: semUsername,
+          isLoading: false,
+          hasError: false,
+          location: AppRoutes.signup,
+          isSubmitting: true,
+        ),
+        isNull,
+      );
+      expect(redirect(semEsportes, AppRoutes.signup),
+          AppRoutes.onboardingSports);
+    });
+
+    test('segura também o login', () {
+      expect(
+        authRedirect(
+          user: completo,
+          isLoading: false,
+          hasError: false,
+          location: AppRoutes.login,
+          isSubmitting: true,
+        ),
+        isNull,
+      );
+    });
+
+    // Exclusão de conta e logout também deixam o controller carregando, mas
+    // acontecem dentro do app: ali o guard segue normal.
+    test('fora das telas de entrada não segura nada', () {
+      expect(
+        authRedirect(
+          user: semUsername,
+          isLoading: false,
+          hasError: false,
+          location: AppRoutes.home,
+          isSubmitting: true,
+        ),
+        AppRoutes.username,
+      );
     });
   });
 

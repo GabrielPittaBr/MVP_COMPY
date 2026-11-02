@@ -11,6 +11,8 @@ abstract final class AdminColors {
   // Piso da quadra: navegação, login e ação principal.
   static const Color primary = Color(0xFF1F3A8A);
   static const Color primaryPressed = Color(0xFF172D6E);
+  // Fundo azul-claro de destaques informativos, com texto em [primary].
+  static const Color primaryContainer = Color(0xFFDCE4F7);
   // Linha verde da quadra: só decoração sobre o azul, nunca texto.
   static const Color courtLine = Color(0xFF34D399);
 

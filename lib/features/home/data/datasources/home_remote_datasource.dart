@@ -23,11 +23,20 @@ class HomeRemoteDataSource {
   static const int defaultLimit = 50;
 
   /// Stream dos eventos mais próximos em data, ordenados por `dateTime`.
+  ///
+  /// [notBefore] corta os eventos que já não podem estar abertos (tarefa
+  /// 14). Sem ele, o lote de [limit] documentos se enchia de eventos
+  /// passados e os próximos ficavam de fora.
   Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> watchEvents({
     int limit = defaultLimit,
+    DateTime? notBefore,
   }) {
-    return _firestore
-        .collection('events')
+    Query<Map<String, dynamic>> query = _firestore.collection('events');
+    if (notBefore != null) {
+      query = query.where('dateTime',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(notBefore));
+    }
+    return query
         .orderBy('dateTime')
         .limit(limit)
         .snapshots()

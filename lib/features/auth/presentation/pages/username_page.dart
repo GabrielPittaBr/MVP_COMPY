@@ -1,9 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/username_rules.dart';
+import '../../../../shared/widgets/avatar_picker.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../domain/entities/auth_user.dart';
 import '../providers/auth_providers.dart';
@@ -16,6 +19,7 @@ import '../widgets/auth_text_field.dart';
 /// corrigir antes de o valor virar `users/{uid}.name`. O **e-mail é
 /// read-only**: é a chave da credencial Google, e mudá-lo aqui só criaria
 /// divergência entre o que o Firebase Auth sabe e o que o Firestore guarda.
+/// A **foto** do Google vem sugerida e pode ser trocada ou removida.
 class UsernamePage extends ConsumerStatefulWidget {
   const UsernamePage({required this.user, super.key});
 
@@ -31,6 +35,12 @@ class _UsernamePageState extends ConsumerState<UsernamePage> {
   final _usernameController = TextEditingController();
   late final TextEditingController _nameController =
       TextEditingController(text: widget.user.displayName);
+
+  /// Foto do Google; vira `null` quando o usuário remove ou escolhe outra.
+  late String? _photoUrl = widget.user.photoUrl;
+
+  /// JPEG escolhido aqui, enviado só ao confirmar.
+  Uint8List? _photo;
 
   @override
   void dispose() {
@@ -62,7 +72,9 @@ class _UsernamePageState extends ConsumerState<UsernamePage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: Text(AppStrings.authChooseUsername)),
       body: SafeArea(
-        child: Padding(
+        // Rola como o cadastro: com a foto, o formulário não cabe em tela
+        // pequena com o teclado aberto.
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
           child: Form(
             key: _formKey,
@@ -76,6 +88,26 @@ class _UsernamePageState extends ConsumerState<UsernamePage> {
                       ),
                 ),
                 const SizedBox(height: 24),
+
+                // Foto (sugerida pelo Google, opcional)
+                ListenableBuilder(
+                  listenable: _nameController,
+                  builder: (_, __) => AvatarPicker(
+                    name: _nameController.text,
+                    photoUrl: _photoUrl,
+                    photoBytes: _photo,
+                    busy: isLoading,
+                    onPicked: (Uint8List photo) => setState(() {
+                      _photo = photo;
+                      _photoUrl = null;
+                    }),
+                    onRemoved: () => setState(() {
+                      _photo = null;
+                      _photoUrl = null;
+                    }),
+                  ),
+                ),
+                const SizedBox(height: 16),
 
                 // Nome (editável, pré-preenchido pelo Google)
                 AuthTextField(
@@ -131,6 +163,8 @@ class _UsernamePageState extends ConsumerState<UsernamePage> {
           username: _usernameController.text.trim(),
           name: _nameController.text.trim(),
           email: widget.user.email,
+          photo: _photo,
+          photoUrl: _photoUrl,
         );
   }
 }

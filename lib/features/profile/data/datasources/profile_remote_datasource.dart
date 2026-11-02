@@ -1,14 +1,66 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:typed_data';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../../../../core/services/avatar_storage.dart';
+import '../../../../core/utils/firebase_errors.dart';
 import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/sport.dart';
 
 class ProfileRemoteDataSource {
-  ProfileRemoteDataSource(this._firestore);
+  ProfileRemoteDataSource(this._firestore, this._avatars, {FirebaseAuth? auth})
+      : _auth = auth ?? FirebaseAuth.instance;
   final FirebaseFirestore _firestore;
+  final AvatarStorage _avatars;
+  final FirebaseAuth _auth;
+
+  void _requireOwner(String uid) {
+    if (uid.isEmpty || _auth.currentUser?.uid != uid) {
+      final error =
+          StateError('Usuário não autenticado para editar este perfil.');
+      FirebaseErrors.logFailure(
+          'ProfileDetails.identity', error, StackTrace.current);
+      throw error;
+    }
+  }
+
+  Future<void> updatePublicDetails(String uid, String name, String bio) async {
+    _requireOwner(uid);
+    try {
+      await _firestore.collection('users').doc(uid).set(
+        <String, dynamic>{
+          'name': name,
+          'nameLower': TextNormalizer.normalize(name),
+          'bio': bio,
+        },
+        SetOptions(merge: true),
+      );
+    } catch (error, stack) {
+      FirebaseErrors.logFailure('ProfileDetails.firestore', error, stack);
+      rethrow;
+    }
+  }
+
+  Future<void> updateAuthDisplayName(String uid, String name) async {
+    _requireOwner(uid);
+    final user = _auth.currentUser!;
+    if (user.displayName != name) {
+      try {
+        await user.updateDisplayName(name);
+      } catch (error, stack) {
+        FirebaseErrors.logFailure('ProfileDetails.auth', error, stack);
+        rethrow;
+      }
+    }
+  }
 
   Future<DocumentSnapshot<Map<String, dynamic>>> fetchById(String userId) {
     return _firestore.collection('users').doc(userId).get();
+  }
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> watchById(String userId) {
+    return _firestore.collection('users').doc(userId).snapshots();
   }
 
   /// Grava o array de esportes favoritos em `users/{uid}`.
@@ -23,6 +75,19 @@ class ProfileRemoteDataSource {
   Future<void> updateFavoriteSports(String userId, List<String> sports) {
     return _firestore.collection('users').doc(userId).set(
       <String, dynamic>{Sport.favoriteSportsField: sports},
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Envia a foto ao Storage e devolve a URL de download.
+  Future<String> uploadAvatar(String userId, Uint8List jpeg) =>
+      _avatars.upload(userId, jpeg);
+
+  /// Grava `users/{uid}.avatarUrl`. Merge pelo mesmo motivo de
+  /// [updateFavoriteSports].
+  Future<void> updateAvatarUrl(String userId, String avatarUrl) {
+    return _firestore.collection('users').doc(userId).set(
+      <String, dynamic>{'avatarUrl': avatarUrl},
       SetOptions(merge: true),
     );
   }

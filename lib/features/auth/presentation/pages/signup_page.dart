@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,11 +7,12 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/username_rules.dart';
+import '../../../../shared/widgets/avatar_picker.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../providers/auth_providers.dart';
 import '../widgets/auth_text_field.dart';
 
-/// Tela de cadastro manual — Nome, Username, E-mail e Senha.
+/// Tela de cadastro manual — foto (opcional), Nome, Username, E-mail e Senha.
 class SignupPage extends ConsumerStatefulWidget {
   const SignupPage({super.key});
 
@@ -23,6 +26,9 @@ class _SignupPageState extends ConsumerState<SignupPage> {
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  /// JPEG já recortado; só é enviado junto com o cadastro.
+  Uint8List? _photo;
 
   @override
   void dispose() {
@@ -69,6 +75,20 @@ class _SignupPageState extends ConsumerState<SignupPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
+                // Foto (opcional). Ouve o nome para a inicial acompanhar o
+                // que é digitado enquanto não há foto.
+                ListenableBuilder(
+                  listenable: _nameController,
+                  builder: (_, __) => AvatarPicker(
+                    name: _nameController.text,
+                    photoBytes: _photo,
+                    busy: isLoading,
+                    onPicked: (Uint8List photo) => setState(() => _photo = photo),
+                    onRemoved: () => setState(() => _photo = null),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 // Nome
                 AuthTextField(
                   hint: AppStrings.authName,
@@ -156,6 +176,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
           username: _usernameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
+          photo: _photo,
         );
   }
 }

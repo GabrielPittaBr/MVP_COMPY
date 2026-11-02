@@ -285,9 +285,43 @@ describe('places — escrita administrativa e schema', () => {
     await assertFails(setDoc(doc(asUser(), 'places', 'novo'), validPlace()));
   });
 
+  // Issue 30: as modalidades passaram de 8 para 16. Mesma ordem do enum
+  // `Sport` do app.
+  const TODAS_AS_MODALIDADES = [
+    'futebol', 'futsal', 'basquete', 'volei',
+    'handebol', 'tenis', 'tenisDeMesa', 'padel',
+    'futebolDeAreia', 'voleiDePraia', 'futevolei', 'beachTennis',
+    'corrida', 'ciclismo', 'caminhada', 'skate',
+  ];
+
+  it('Administrador cria local com as modalidades novas de areia', async () => {
+    await assertSucceeds(
+      setDoc(doc(asAdmin(), 'places', 'arena-de-areia'), {
+        ...validPlace(),
+        sports: ['beachTennis', 'futevolei', 'voleiDePraia', 'futebolDeAreia'],
+        primarySport: 'beachTennis',
+      }),
+    );
+  });
+
+  it('Administrador cria local com as 16 modalidades', async () => {
+    await assertSucceeds(
+      setDoc(doc(asAdmin(), 'places', 'todas-as-modalidades'), {
+        ...validPlace(),
+        sports: TODAS_AS_MODALIDADES,
+        primarySport: 'skate',
+      }),
+    );
+  });
+
   for (const [name, mutation] of [
     ['campo fora da whitelist', { rating: 5 }],
     ['modalidade duplicada', { sports: ['futebol', 'futebol'] }],
+    // Natação ficou fora da issue 30: nome que o enum não conhece continua
+    // barrado, mesmo junto das 16 válidas.
+    ['modalidade desconhecida', { sports: ['futebol', 'natacao'] }],
+    ['17 modalidades', { sports: [...TODAS_AS_MODALIDADES, 'natacao'] }],
+    ['rótulo no lugar do nome gravado', { sports: ['Beach tennis'], primarySport: 'Beach tennis' }],
     ['modalidade principal incompatível', { primarySport: 'volei' }],
     ['CEP com máscara', { address: { ...validPlace().address, postalCode: '95600-354' } }],
     ['imagem sem HTTPS', { imageUrl: 'http://example.test/place.png' }],

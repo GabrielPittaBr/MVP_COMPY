@@ -8,7 +8,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../features/events/domain/entities/events_filter.dart';
 import '../../../../features/events/presentation/providers/events_providers.dart';
 import '../../../../features/events/presentation/widgets/events_filter_sheet.dart';
+import '../../../../features/profile/presentation/providers/profile_providers.dart';
 import '../../../../shared/widgets/event_card.dart';
+import '../../../../shared/widgets/event_status_chip.dart';
+import '../../../notifications/presentation/providers/notifications_providers.dart';
 import '../providers/home_providers.dart';
 import '../widgets/category_circle.dart';
 import '../widgets/explore_map_card.dart';
@@ -23,6 +26,8 @@ class HomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userName = ref.watch(greetingNameProvider);
+    final avatarUrl =
+        ref.watch(currentUserSummaryProvider).valueOrNull?.avatarUrl;
     final categories = ref.watch(categoriesProvider);
     final eventsAsync = ref.watch(nearbyEventsProvider);
 
@@ -35,15 +40,18 @@ class HomePage extends ConsumerWidget {
             children: <Widget>[
               GreetingHeader(
                 userName: userName,
+                avatarUrl: avatarUrl,
                 // `go`, e não `push`: o avatar troca de aba. Mesmo caminho do
                 // carrossel de categorias logo abaixo, que leva a Eventos.
                 onAvatarTap: () => context.go(AppRoutes.profile),
                 onSettingsTap: () => context.push(AppRoutes.settings),
+                unreadNotifications:
+                    ref.watch(unreadNotificationsCountProvider),
+                onNotificationsTap: () => context.push(AppRoutes.notifications),
               ),
               const SizedBox(height: 16),
               const SearchField(),
               const SizedBox(height: 24),
-
               const _SectionTitle(AppStrings.homeCategories),
               const SizedBox(height: 12),
               SizedBox(
@@ -77,32 +85,35 @@ class HomePage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-
               const _SectionTitle(AppStrings.homeExplore),
               const SizedBox(height: 12),
               ExploreMapCard(onTap: () => context.go(AppRoutes.maps)),
               const SizedBox(height: 24),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  const _SectionTitle(AppStrings.homeNearbyEvents),
-                  TextButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 16,
-                      color: AppColors.onSurfaceMuted,
-                    ),
-                    label: const Text(
-                      AppStrings.homeFilterByDate,
-                      style: TextStyle(
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  children: <Widget>[
+                    const _SectionTitle(AppStrings.homeNearbyEvents),
+                    TextButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(
+                        Icons.calendar_today_outlined,
+                        size: 16,
                         color: AppColors.onSurfaceMuted,
-                        fontSize: 13,
+                      ),
+                      label: const Text(
+                        AppStrings.homeFilterByDate,
+                        style: TextStyle(
+                          color: AppColors.onSurfaceMuted,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               eventsAsync.when(
                 data: (events) => events.isEmpty
@@ -110,11 +121,15 @@ class HomePage extends ConsumerWidget {
                     : Column(
                         children: <Widget>[
                           for (final e in events)
-                            EventCard(
+                            EventStatusBuilder(
                               event: e,
-                              actionLabel: AppStrings.eventJoin,
-                              onAction: () =>
-                                  context.go('${AppRoutes.events}/${e.id}'),
+                              builder: (context, status) => EventCard(
+                                event: e,
+                                status: status,
+                                actionLabel: AppStrings.eventJoin,
+                                onOpen: () =>
+                                    context.go(AppRoutes.eventDetailPath(e.id)),
+                              ),
                             ),
                         ],
                       ),

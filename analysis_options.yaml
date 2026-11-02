@@ -12,6 +12,7 @@ analyzer:
     - android/**
     - ios/**
     - web/**
+    - "**/node_modules/**"
 
 linter:
   rules:

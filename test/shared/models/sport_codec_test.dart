@@ -8,9 +8,35 @@ void main() {
       expect(Sport.tryParse('tenisDeMesa'), Sport.tenisDeMesa);
     });
 
+    test('nomes da issue 30 voltam a ser o enum', () {
+      const gravados = <String, Sport>{
+        'handebol': Sport.handebol,
+        'tenis': Sport.tenis,
+        'padel': Sport.padel,
+        'futebolDeAreia': Sport.futebolDeAreia,
+        'voleiDePraia': Sport.voleiDePraia,
+        'futevolei': Sport.futevolei,
+        'beachTennis': Sport.beachTennis,
+        'skate': Sport.skate,
+      };
+      gravados.forEach((nome, esporte) {
+        expect(Sport.tryParse(nome), esporte, reason: nome);
+        expect(esporte.storageName, nome, reason: 'o nome gravado não muda');
+      });
+    });
+
     test('nome desconhecido devolve null em vez de estourar', () {
       expect(Sport.tryParse('parkour'), isNull);
       expect(Sport.tryParse(''), isNull);
+      // Natação ficou fora da issue 30.
+      expect(Sport.tryParse('natacao'), isNull);
+    });
+
+    test('nome parecido com um real não casa por aproximação', () {
+      // `tenis` e `tenisDeMesa` são esportes diferentes; caixa e acento contam.
+      expect(Sport.tryParse('Tenis'), isNull);
+      expect(Sport.tryParse('beach_tennis'), isNull);
+      expect(Sport.tryParse('futevôlei'), isNull);
     });
 
     test('valor que não é string devolve null', () {
@@ -37,6 +63,13 @@ void main() {
       expect(
         Sport.parseList(<Object?>['futebol', 'parkour', 'corrida']),
         <Sport>[Sport.futebol, Sport.corrida],
+      );
+    });
+
+    test('favoritos com esportes novos e um desconhecido no meio', () {
+      expect(
+        Sport.parseList(<Object?>['beachTennis', 'natacao', 'skate']),
+        <Sport>[Sport.beachTennis, Sport.skate],
       );
     });
 

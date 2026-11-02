@@ -18,6 +18,10 @@ void main() {
   test('texto sobre as cores do tema atinge WCAG AA (4,5:1)', () {
     final pairs = <String, (Color, Color)>{
       'onPrimary/primary': (scheme.onPrimary, scheme.primary),
+      'onPrimaryContainer/primaryContainer': (
+        scheme.onPrimaryContainer,
+        scheme.primaryContainer,
+      ),
       'onSecondary/secondary': (scheme.onSecondary, scheme.secondary),
       'onSecondaryContainer/secondaryContainer': (
         scheme.onSecondaryContainer,

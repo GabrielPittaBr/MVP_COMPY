@@ -7,11 +7,13 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/constants/admin_sports.dart';
 import '../../../core/shell/admin_shell.dart';
 import '../../../core/theme/admin_colors.dart';
 import '../../../core/widgets/admin_status_pill.dart';
 import '../data/admin_place_model.dart';
 import '../data/admin_places_repository.dart';
+import 'admin_osm_map.dart';
 
 typedef AdminPlaceMapPickerBuilder = Widget Function(
   BuildContext context,
@@ -678,7 +680,7 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
                                     children: adminPlaceSports.map((sport) {
                                       final selected = _sports.contains(sport);
                                       return FilterChip(
-                                        label: Text(_sportLabel(sport)),
+                                        label: Text(adminSportLabel(sport)),
                                         selected: selected,
                                         onSelected: _submitting
                                             ? null
@@ -737,7 +739,7 @@ class _AdminPlaceEditorState extends State<_AdminPlaceEditor> {
                                       .map(
                                         (sport) => DropdownMenuItem<String>(
                                           value: sport,
-                                          child: Text(_sportLabel(sport)),
+                                          child: Text(adminSportLabel(sport)),
                                         ),
                                       )
                                       .toList(),
@@ -1203,10 +1205,7 @@ class _AdminPlaceMapPickerState extends State<AdminPlaceMapPicker> {
             onTap: (_, point) => widget.onSelected(point),
           ),
           children: <Widget>[
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'br.com.compy.admin',
-            ),
+            adminOsmTileLayer(),
             MarkerLayer(
               markers: <Marker>[
                 Marker(
@@ -1224,19 +1223,7 @@ class _AdminPlaceMapPickerState extends State<AdminPlaceMapPicker> {
             ),
           ],
         ),
-        const Positioned(
-          right: 8,
-          bottom: 8,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: Colors.white70),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                child: Text('© OpenStreetMap contributors'),
-              ),
-            ),
-          ),
-        ),
+        const AdminOsmAttribution(),
       ],
     ),
   );
@@ -1584,18 +1571,6 @@ class _PlaceLoadFailure extends StatelessWidget {
     ),
   );
 }
-
-String _sportLabel(String sport) => switch (sport) {
-  'futebol' => 'Futebol',
-  'basquete' => 'Basquete',
-  'volei' => 'Vôlei',
-  'tenisDeMesa' => 'Tênis de mesa',
-  'futsal' => 'Futsal',
-  'corrida' => 'Corrida',
-  'ciclismo' => 'Ciclismo',
-  'caminhada' => 'Caminhada',
-  _ => sport,
-};
 
 String _formatCoordinate(double value) => value.toStringAsFixed(6);
 

@@ -185,6 +185,9 @@ sequência expand–contract nem os critérios do ticket 18.
   `index.html`.
 - As três Callable Functions administrativas usam `enforceAppCheck: true`.
   App Check complementa Auth, custom claim e Firestore Rules.
+- A callable `submitEventRatings`, do app mobile (tarefa 14), usa
+  `enforceAppCheck: false`; veja a seção "Functions do ciclo de vida do
+  evento" abaixo.
 - Não habilite enforcement global do Firestore nem replay protection beta como
   parte deste MVP.
 - Service accounts, chave secreta reCAPTCHA, token App Check de debug e arquivos
@@ -304,6 +307,54 @@ expand–contract da spec.
   Firebase Auth, custom claims ou validações das Rules como contingência.
 - Não apague `places/parque_do_trabalhador`, operações administrativas ou
   índices durante rollback.
+- **Functions do ciclo de vida do evento (tarefa 14):** remova só as três
+  novas, sem tocar nas do painel:
+
+  ```powershell
+  firebase functions:delete autoEndOverdueEvents onEventEnded submitEventRatings --region southamerica-east1 --project compy-tcc
+  ```
+
+  Em seguida, publique as regras anteriores à tarefa 14
+  (`git show 39bc256:firestore.rules`, a `develop` de antes do merge). Sem as Functions, ninguém consegue avaliar e os eventos esquecidos
+  ficam abertos, mas o app continua funcionando.
+
+## Functions do ciclo de vida do evento (tarefa 14)
+
+Três Functions novas entraram na codebase `administrative`, cada uma com a
+região `southamerica-east1` explícita. Elas não ganharam codebase própria
+porque renomear a codebase faria o CLI apagar e recriar as Functions do painel.
+A decisão de usar Functions está na
+[ADR 0002](../adr/0002-ciclo-de-vida-e-avaliacoes-com-cloud-functions.md).
+
+| Function | Tipo | O que faz |
+|---|---|---|
+| `autoEndOverdueEvents` | Agendada, a cada 10 min (`America/Sao_Paulo`) | Encerra os eventos que passaram 1h do fim previsto sem o Organizador encerrar (`endedAt`, `endedAutomatically = true`). |
+| `onEventEnded` | Gatilho `onDocumentUpdated('events/{eventId}')` | Na passagem de "sem `endedAt`" para "com `endedAt`", cria `users/{uid}/notifications/eventEnded_{eventId}` para cada participante. O id fixo torna a criação idempotente. |
+| `submitEventRatings` | Callable | Valida e grava, numa transação, as avaliações, as médias em `ratingSummaries`, o `ratedBy` do evento e o "Avaliado" da notificação. |
+
+**Por que `enforceAppCheck: false` na callable:** o Firestore está sem
+imposição de App Check neste MVP, a versão web do app não ativa App Check e o
+build debug do Android usa token de debug, que precisaria de registro. Com
+imposição, o teste no navegador e o debug quebrariam. A callable continua
+exigindo login e valida tudo no servidor.
+
+**Ordem do deploy:** os índices não mudaram na tarefa 14. Publique as
+Functions **antes** das regras, a partir da `develop` já com o merge e com
+todas as suítes verdes:
+
+```powershell
+firebase deploy --only functions:administrative --project compy-tcc
+firebase deploy --only firestore:rules --project compy-tcc
+firebase functions:list --project compy-tcc
+firebase functions:log --only autoEndOverdueEvents --project compy-tcc
+```
+
+- O primeiro deploy de um gatilho Firestore gen2 pode falhar enquanto a
+  permissão do Eventarc se propaga. Espere alguns minutos e repita.
+- O CLI ativa o Cloud Scheduler e o Eventarc sozinho.
+- As regras novas funcionam com o app v0.1.0 já instalado, que não grava os
+  campos novos, não avalia e não encerra eventos. O APK novo precisa ser
+  gerado e distribuído à parte.
 
 ## Revalidação do App Check e smoke público em 2026-10-09
 
@@ -478,3 +529,91 @@ expand–contract da spec.
 - O visual novo entrou na `develop` (`0eaa211`), então o aviso da seção anterior não vale mais: um deploy feito a partir da `develop` mantém o visual novo.
 - O Flutter 3.47.7 (Dart 3.13.5) voltou a ser o instalado e atende o `sdk: ^3.13.3` do Admin; o build rodou sem rebaixar a restrição de SDK.
 - Build de release via `admin/tool/build_web.ps1` com a mesma site key pública reCAPTCHA v3 do bundle anterior, sem token de debug no ambiente: exit code 0. Deploy `hosting:admin` concluído (só 2 dos 47 arquivos mudaram em relação à release anterior). O `main.dart.js` servido confere byte a byte com o build; `/`, `/login`, `/dashboard`, `/places` e `/users` respondem HTTP 200.
+
+## Tarefa 14 publicada a partir da develop — 2026-10-22
+
+- Publicado a partir da `develop` com o merge `bc4aec5` (`merge: feature/ciclo-vida-evento em develop`), depois de todas as suítes verdes: mobile 343/343 e `dart analyze` só com os 10 avisos informativos de sempre; Functions com lint limpo e 81/81; regras 167/167 no emulador.
+- Os índices não mudaram, então não houve deploy de `firestore:indexes`.
+- `firebase deploy --only functions:administrative`: criou `autoEndOverdueEvents` e `submitEventRatings` e atualizou as três do painel. O CLI ativou a API do Cloud Scheduler sozinho. O `onEventEnded` falhou na primeira vez com "Permission denied while using the Eventarc Service Agent", o caso previsto do primeiro gatilho gen2. Quatro minutos depois, `firebase deploy --only functions:administrative:onEventEnded` concluiu.
+- Só então, `firebase deploy --only firestore:rules`: compilou e publicou.
+- `firebase functions:list` mostra as seis Functions em v2, `southamerica-east1`, `nodejs22`: `autoEndOverdueEvents` (scheduled), `onEventEnded` (`google.cloud.firestore.document.v1.updated`), `submitEventRatings`, `getAdminUserAuthDetails`, `getAdminUsersAuthStatus` e `setUserSuspension` (callable).
+- O log da `autoEndOverdueEvents` mostra a instância subindo às 20:16 UTC e a primeira execução agendada às 20:27 UTC, sem nenhuma linha de erro. O `firebase functions:log` às vezes falha com "Failed to retrieve log entries from Google Cloud"; repetir o comando resolve.
+- O app v0.1.0 instalado continua compatível. O APK novo, com a tarefa 14, ainda precisa ser gerado e distribuído pelo responsável.
+
+## Regras juntas: tarefa 14, locais e foto de perfil — 2026-10-22
+
+- O deploy das regras da tarefa 14, mais cedo, saiu da `develop` local, que ainda não tinha os PRs #17 (acesso e galeria dos locais) e #20 (foto de perfil). Se as regras do #17 estavam publicadas, aquele deploy as desfez, e o painel deixou de conseguir salvar locais com `images`, `accessType` e `contactPhone`.
+- A `develop` foi juntada com a remota (`db47ad0`, já no GitHub). Suítes verdes nessa árvore: app 376/376, `dart analyze` com os 10 avisos de sempre, admin 63/63, Functions com lint limpo e 81/81, regras do Firestore e do Storage 190/190.
+- `firebase deploy --only storage,firestore:rules`: as duas compilaram e foram publicadas. As regras do Firestore no ar agora têm as três mudanças, e as do Storage (fotos de perfil) entraram pela primeira vez, o que confirmou que o bucket `compy-tcc.firebasestorage.app` está ativo.
+- A regra nova do `avatarUrl` aceita só `http(s)`. O app v0.1.0 instalado grava a imagem de inicial do `placehold.co` (https), então continua compatível.
+- Falta o CORS do bucket, que precisa do `gcloud` (ver `docs/checklist-publicacao.md`, item 4). As Functions não mudaram nesta junção, então não foram publicadas de novo.
+
+## Eventos e exclusões no painel — 2026-10-23
+
+A branch `feature/admin-eventos-e-exclusao` trouxe a seção de Eventos do
+painel e as exclusões de evento e de conta
+([ADR-0003](../adr/0003-exclusoes-administrativas-por-callables.md)). As
+regras não mudaram.
+
+| Function | Tipo | O que faz |
+|---|---|---|
+| `deleteEvent` | Callable do painel (`enforceAppCheck: true`) | Apaga as Notificações de fim de evento dos participantes, as avaliações e a média do próprio evento e, por último, o evento. |
+| `deleteUserAccount` | Callable do painel (`enforceAppCheck: true`) | Desabilita a conta, apaga as fotos em `users/{uid}/` no Storage, a reserva em `usernames`, o perfil com as subcoleções e, por último, a conta do Auth. |
+
+**Ordem do deploy**, a partir da `develop` com o merge e as suítes verdes:
+
+```powershell
+firebase deploy --only firestore:indexes --project compy-tcc
+# esperar os três índices novos de `events` ficarem READY no console
+firebase deploy --only functions:administrative --project compy-tcc
+firebase functions:list --project compy-tcc
+# build de release como em "Build e deploy manual", depois:
+firebase deploy --only hosting:admin --project compy-tcc
+```
+
+- Sem os índices, a lista de eventos falha ao filtrar por modalidade e a seção
+  "Eventos organizados" do detalhe do Usuário mostra erro. A lista sem filtro
+  e a busca só por título funcionam com os índices automáticos.
+- `deleteUserAccount` apaga arquivos do bucket padrão
+  (`compy-tcc.firebasestorage.app`). A conta de serviço padrão das Functions
+  já tem acesso a ele; se o log mostrar `403` do Storage, confira o papel dela
+  no bucket.
+- Smoke test sugerido: um evento de teste com participante e notificação, e
+  uma conta criada só para o teste. Confira o registro em `adminOperations`
+  pelo console, e confira que o app mostra "Evento não encontrado" e que a
+  conta não entra mais.
+
+**Publicação em 2026-10-23.** O responsável publicou os índices e as Functions.
+`firebase functions:list` mostra `deleteEvent` e `deleteUserAccount` em v2,
+`southamerica-east1`, `nodejs22`, e `firebase firestore:indexes` lista os três
+índices novos de `events`. O estado `READY` não foi conferido por aqui.
+
+- **O Hosting está com a branch `feature/admin-eventos-e-exclusao`, que ainda
+  não entrou na `develop`.** Até o merge, um deploy feito a partir da
+  `develop` volta o painel sem a seção de Eventos e sem as exclusões. As
+  Functions novas continuam no ar e não atrapalham o painel antigo.
+- Build de release via `admin/tool/build_web.ps1`, com a mesma site key
+  pública reCAPTCHA v3 do bundle que estava no ar e sem token de debug no
+  ambiente: exit code 0. Antes, admin `flutter analyze` sem issues e 89/89
+  testes; Functions com lint limpo e 95/95.
+- `firebase deploy --only hosting:admin` concluído (4 dos 47 arquivos
+  mudaram). O `main.dart.js` servido confere byte a byte com o build, release
+  `7a15c093b254`. `/`, `/login`, `/dashboard`, `/events`, `/events/<id>`,
+  `/places` e `/users` respondem HTTP 200.
+- Falta o smoke test com sessão Admin: abrir a lista e o detalhe de eventos,
+  filtrar por modalidade e testar as duas exclusões com dados de teste.
+
+## Novas modalidades no painel — 2026-11-01
+
+- `feature/novas-modalidades` (issue #30, 8 → 16 esportes) entrou em `develop`
+  depois do teste manual do responsável. As regras do Firestore já tinham sido
+  publicadas em 31/10.
+- Antes do build: admin `flutter analyze --no-pub` sem issues e 97/97 testes;
+  app 483/483.
+- Build de release via `admin/tool/build_web.ps1`, com a mesma site key
+  pública reCAPTCHA v3 do bundle que estava no ar e sem token de debug no
+  ambiente: exit code 0.
+- `firebase deploy --only hosting:admin` concluído. O `main.dart.js` servido
+  confere com o build, release `f9a4f3c6aff6`. `/`, `/login`, `/dashboard`,
+  `/places`, `/users` e a imagem do Parque respondem HTTP 200.
+- Falta incluir os esportes novos nos locais já cadastrados, pelo painel.

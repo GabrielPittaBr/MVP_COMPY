@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,10 +9,11 @@ import 'package:mvp_compy/core/constants/app_strings.dart';
 import 'package:mvp_compy/features/auth/domain/entities/auth_user.dart';
 import 'package:mvp_compy/features/auth/domain/repositories/auth_repository.dart';
 import 'package:mvp_compy/features/auth/presentation/providers/auth_providers.dart';
-import 'package:mvp_compy/features/profile/domain/entities/rating_summary.dart';
 import 'package:mvp_compy/features/profile/domain/entities/user_profile.dart';
+import 'package:mvp_compy/features/profile/domain/repositories/profile_repository.dart';
 import 'package:mvp_compy/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:mvp_compy/features/profile/presentation/providers/profile_providers.dart';
+import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
 
 /// Só os dois métodos que esta tela usa têm corpo; o resto estoura de
@@ -50,6 +54,7 @@ class _FakeAuthRepository implements AuthRepository {
     required String username,
     required String email,
     required String password,
+    Uint8List? photo,
   }) =>
       throw UnimplementedError();
 
@@ -66,6 +71,8 @@ class _FakeAuthRepository implements AuthRepository {
     required String username,
     required String name,
     required String email,
+    Uint8List? photo,
+    String? photoUrl,
   }) =>
       throw UnimplementedError();
 
@@ -73,26 +80,94 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> signOut() => throw UnimplementedError();
 }
 
+/// Só a troca de foto tem corpo, pelo mesmo motivo do [_FakeAuthRepository].
+class _FakeProfileRepository implements ProfileRepository {
+  _FakeProfileRepository({this.errorOnAvatar, this.errorOnDetails});
+
+  final Object? errorOnAvatar;
+  Object? errorOnDetails;
+  Completer<void>? detailsGate;
+  final List<(String, String, Uint8List?)> avatarCalls =
+      <(String, String, Uint8List?)>[];
+  final List<(String, String, String, bool)> detailCalls = [];
+
+  @override
+  Future<void> updateDetails(String uid,
+      {required String name,
+      required String bio,
+      required bool nameChanged}) async {
+    detailCalls.add((uid, name, bio, nameChanged));
+    await detailsGate?.future;
+    if (errorOnDetails != null) throw errorOnDetails!;
+  }
+
+  @override
+  Future<void> updateAvatar(
+    String uid, {
+    required String name,
+    Uint8List? jpeg,
+  }) async {
+    avatarCalls.add((uid, name, jpeg));
+    if (errorOnAvatar != null) throw errorOnAvatar!;
+  }
+
+  @override
+  Future<UserProfile> getCurrentProfile(String uid) =>
+      throw UnimplementedError();
+
+  @override
+  Future<UserProfile?> getPublicProfile(String uid) =>
+      throw UnimplementedError();
+
+  @override
+  Stream<UserSummary?> watchPublicSummary(String uid) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> updateFavoriteSports(String uid, List<Sport> sports) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<UserSummary>> searchByHandle(
+    String handlePrefix, {
+    String? excludeUid,
+    int limit = 20,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<UserSummary>> searchByName(
+    String namePrefix, {
+    String? excludeUid,
+    int limit = 20,
+  }) =>
+      throw UnimplementedError();
+}
+
+UserProfile perfilCom({required String avatarUrl}) => UserProfile(
+      summary: UserSummary(
+        id: 'u_gabriel',
+        name: 'Gabriel',
+        handle: '@gabriel',
+        avatarUrl: avatarUrl,
+      ),
+      bio: '',
+      favoriteSports: const <Never>[],
+      badges: const <Never>[],
+      friends: const <Never>[],
+      gallery: const <String>[],
+    );
+
 void main() {
-  const UserProfile perfil = UserProfile(
-    summary: UserSummary(
-      id: 'u_gabriel',
-      name: 'Gabriel',
-      handle: '@gabriel',
-      avatarUrl: '',
-    ),
-    bio: '',
-    favoriteSports: <Never>[],
-    badges: <Never>[],
-    friends: <Never>[],
-    rating: RatingSummary(average: 0, count: 0, breakdown: <int, double>{}),
-    gallery: <String>[],
-  );
+  final UserProfile perfil = perfilCom(avatarUrl: '');
 
   Future<_FakeAuthRepository> pumpPage(
     WidgetTester tester, {
     bool needsPassword = false,
     Object? errorOnDelete,
+    UserProfile? profile,
+    ProfileRepository? profileRepository,
+    Stream<AuthUser?>? authStream,
   }) async {
     final repo = _FakeAuthRepository(
       needsPassword: needsPassword,
@@ -103,7 +178,18 @@ void main() {
       ProviderScope(
         overrides: <Override>[
           authRepositoryProvider.overrideWith((_) => repo),
-          currentProfileProvider.overrideWith((_) async => perfil),
+          authStateProvider.overrideWith((_) =>
+              authStream ??
+              Stream.value(const AuthUser(
+                uid: 'u_gabriel',
+                email: 'gabriel@example.com',
+                displayName: 'Gabriel',
+                hasUsername: true,
+                hasFavoriteSports: true,
+              ))),
+          currentProfileProvider.overrideWith((_) async => profile ?? perfil),
+          if (profileRepository != null)
+            profileRepositoryProvider.overrideWith((_) => profileRepository),
         ],
         child: const MaterialApp(home: EditProfilePage()),
       ),
@@ -112,7 +198,67 @@ void main() {
     return repo;
   }
 
+  /// A foto é carregada por rede, e no ambiente de teste isso sempre falha.
+  /// Como em `greeting_header_test`, só a biblioteca de imagem é silenciada.
+  void ignoreImageErrors() {
+    final void Function(FlutterErrorDetails)? previous = FlutterError.onError;
+    FlutterError.onError = (FlutterErrorDetails details) {
+      if (details.library == 'image resource service') return;
+      previous?.call(details);
+    };
+    addTearDown(() => FlutterError.onError = previous);
+  }
+
+  group('EditProfilePage — foto', () {
+    const String fotoReal =
+        'https://firebasestorage.googleapis.com/v0/b/compy/o/a.jpg';
+
+    testWidgets('sem foto mostra a inicial e oferece adicionar',
+        (tester) async {
+      await pumpPage(tester);
+
+      expect(find.text('G'), findsOneWidget);
+      expect(find.text(AppStrings.photoAdd), findsOneWidget);
+      expect(find.text(AppStrings.photoRemove), findsNothing);
+    });
+
+    testWidgets('remover grava na hora, sem foto nova', (tester) async {
+      ignoreImageErrors();
+      final profileRepo = _FakeProfileRepository();
+      await pumpPage(
+        tester,
+        profile: perfilCom(avatarUrl: fotoReal),
+        profileRepository: profileRepo,
+      );
+
+      await tester.tap(find.text(AppStrings.photoRemove));
+      await tester.pumpAndSettle();
+
+      expect(profileRepo.avatarCalls, <(String, String, Uint8List?)>[
+        ('u_gabriel', 'Gabriel', null),
+      ]);
+      expect(find.text(AppStrings.photoSaveError), findsNothing);
+    });
+
+    testWidgets('falha ao gravar vira mensagem na tela', (tester) async {
+      ignoreImageErrors();
+      await pumpPage(
+        tester,
+        profile: perfilCom(avatarUrl: fotoReal),
+        profileRepository:
+            _FakeProfileRepository(errorOnAvatar: Exception('sem rede')),
+      );
+
+      await tester.tap(find.text(AppStrings.photoRemove));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppStrings.photoSaveError), findsOneWidget);
+    });
+  });
+
   Future<void> abrirDialogo(WidgetTester tester) async {
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(AppStrings.profileDeleteAccount));
     await tester.pumpAndSettle();
   }
@@ -120,17 +266,379 @@ void main() {
   group('EditProfilePage — username', () {
     testWidgets('mostra o handle atual, mas não deixa editar', (tester) async {
       await pumpPage(tester);
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.pumpAndSettle();
 
       expect(find.text('@gabriel'), findsOneWidget);
       expect(
-        tester.widget<TextField>(find.byType(TextField)).readOnly,
+        tester
+            .widget<TextField>(
+                find.widgetWithText(TextField, AppStrings.authUsernameField))
+            .readOnly,
         isTrue,
       );
     });
 
     testWidgets('explica por que o campo está apagado', (tester) async {
       await pumpPage(tester);
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.pumpAndSettle();
       expect(find.text(AppStrings.profileUsernameLocked), findsOneWidget);
+    });
+  });
+
+  group('EditProfilePage — nome e biografia', () {
+    testWidgets(
+        'nova sessao com nome divergente no Auth permite concluir sincronizacao',
+        (tester) async {
+      final repo = _FakeProfileRepository();
+      await pumpPage(tester,
+          profileRepository: repo,
+          profile: const UserProfile(
+            summary: UserSummary(
+                id: 'u_gabriel',
+                name: 'Gabriel Silva',
+                handle: '@gabriel',
+                avatarUrl: ''),
+            bio: 'Bio ja gravada',
+            favoriteSports: [],
+            badges: [],
+            friends: [],
+            gallery: [],
+          ));
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNotNull);
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls,
+          [('u_gabriel', 'Gabriel Silva', 'Bio ja gravada', true)]);
+      expect(find.text(AppStrings.profileSaveSuccess), findsOneWidget);
+    });
+
+    testWidgets('sessao ausente ou de outra conta preserva texto e nao grava',
+        (tester) async {
+      final repo = _FakeProfileRepository();
+      for (final user in <AuthUser?>[
+        null,
+        const AuthUser(
+            uid: 'outra-conta',
+            email: '',
+            displayName: 'Outra',
+            hasUsername: true,
+            hasFavoriteSports: true),
+      ]) {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpPage(tester,
+            profileRepository: repo, authStream: Stream.value(user));
+        await tester.enterText(
+            find.widgetWithText(TextField, AppStrings.profileBioHint),
+            'Texto preservado');
+        await tester.pump();
+        await tester.tap(find.text(AppStrings.profileSaveChanges));
+        await tester.pumpAndSettle();
+        expect(repo.detailCalls, isEmpty);
+        expect(find.text('Texto preservado'), findsOneWidget);
+        expect(find.text(AppStrings.profileSaveError), findsOneWidget);
+      }
+    });
+
+    testWidgets(
+        'apos falha parcial voltar ao texto original ainda permite salvar e sincroniza',
+        (tester) async {
+      final repo = _FakeProfileRepository(
+        errorOnDetails: ProfileAuthSyncException(
+            FirebaseAuthException(code: 'network-request-failed')),
+      );
+      await pumpPage(tester, profileRepository: repo);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          'Gabriel Silva');
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint),
+          'Bio gravada');
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.profileSavePartial), findsOneWidget);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          'Gabriel');
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint), '');
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNotNull);
+      repo.errorOnDetails = null;
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls.last, ('u_gabriel', 'Gabriel', '', true));
+      expect(find.text(AppStrings.profileSaveSuccess), findsOneWidget);
+    });
+
+    testWidgets('carrega os dados e nao grava sem alteracao', (tester) async {
+      final repo = _FakeProfileRepository();
+      await pumpPage(tester, profileRepository: repo);
+      expect(find.text('Gabriel'), findsWidgets);
+      expect(find.text(AppStrings.profileSaveChanges), findsOneWidget);
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNull);
+      expect(repo.detailCalls, isEmpty);
+    });
+
+    testWidgets('limpa espacos do nome e grava biografia', (tester) async {
+      final repo = _FakeProfileRepository();
+      await pumpPage(tester, profileRepository: repo);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          '  Gabriel Silva  ');
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint),
+          'Volei em Taquara');
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls,
+          [('u_gabriel', 'Gabriel Silva', 'Volei em Taquara', true)]);
+      expect(find.text(AppStrings.profileSaveSuccess), findsOneWidget);
+    });
+
+    testWidgets('salva somente a biografia sem sincronizar nome',
+        (tester) async {
+      final repo = _FakeProfileRepository();
+      await pumpPage(tester, profileRepository: repo);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint),
+          'Nova bio');
+      await tester.pump();
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls, [('u_gabriel', 'Gabriel', 'Nova bio', false)]);
+      expect(find.text(AppStrings.profileSaveSuccess), findsOneWidget);
+    });
+
+    testWidgets('espacos legados no nome nao tornam bio dependente do Auth',
+        (tester) async {
+      final repo = _FakeProfileRepository();
+      await pumpPage(tester,
+          profile: const UserProfile(
+            summary: UserSummary(
+                id: 'u_gabriel',
+                name: ' Gabriel ',
+                handle: '@gabriel',
+                avatarUrl: ''),
+            bio: '',
+            favoriteSports: [],
+            badges: [],
+            friends: [],
+            gallery: [],
+          ),
+          profileRepository: repo);
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNull);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint),
+          'Nova bio');
+      await tester.pump();
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls, [('u_gabriel', 'Gabriel', 'Nova bio', false)]);
+    });
+
+    testWidgets('salva somente o nome', (tester) async {
+      final repo = _FakeProfileRepository();
+      await pumpPage(tester, profileRepository: repo);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          'Gabriel Silva');
+      await tester.pump();
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls, [('u_gabriel', 'Gabriel Silva', '', true)]);
+      expect(find.text(AppStrings.profileSaveSuccess), findsOneWidget);
+    });
+
+    testWidgets('bloqueia novo envio e edicao enquanto salva', (tester) async {
+      final repo = _FakeProfileRepository()..detailsGate = Completer<void>();
+      await pumpPage(tester, profileRepository: repo);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint),
+          'Bio em andamento');
+      await tester.pump();
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pump();
+      expect(repo.detailCalls, hasLength(1));
+      expect(
+          tester
+              .widget<TextField>(
+                  find.widgetWithText(TextField, AppStrings.profileBioHint))
+              .readOnly,
+          isTrue);
+      expect(
+          tester
+              .widget<FilledButton>(
+                  find.widgetWithText(FilledButton, AppStrings.authLoading))
+              .onPressed,
+          isNull);
+      repo.detailsGate!.complete();
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls, hasLength(1));
+    });
+
+    testWidgets('nome vazio e recusado', (tester) async {
+      final repo = _FakeProfileRepository();
+      await pumpPage(tester, profileRepository: repo);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel), '   ');
+      await tester.pump();
+      expect(find.text(AppStrings.profileNameRequired), findsOneWidget);
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNull);
+      expect(repo.detailCalls, isEmpty);
+    });
+
+    testWidgets('limita nome e bio e mostra contador', (tester) async {
+      await pumpPage(tester);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          'a' * 61);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint), 'b' * 161);
+      await tester.pump();
+      expect(
+          tester
+              .widget<TextField>(
+                  find.widgetWithText(TextField, AppStrings.profileNameLabel))
+              .controller!
+              .text
+              .length,
+          60);
+      expect(
+          tester
+              .widget<TextField>(
+                  find.widgetWithText(TextField, AppStrings.profileBioHint))
+              .controller!
+              .text
+              .length,
+          160);
+      expect(find.text('160/160'), findsOneWidget);
+    });
+
+    testWidgets('voltar com alteracoes pede para descartar', (tester) async {
+      await pumpPage(tester);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          'Outro nome');
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.profileDiscardTitle), findsOneWidget);
+      await tester.tap(find.text(AppStrings.profileContinueEditing));
+      await tester.pumpAndSettle();
+      expect(find.text('Outro nome'), findsOneWidget);
+    });
+
+    testWidgets('bio pode ser apagada, falha preserva texto para repetir',
+        (tester) async {
+      final repo = _FakeProfileRepository(errorOnDetails: StateError('rede'));
+      await pumpPage(tester,
+          profile: UserProfile(
+            summary: perfil.summary,
+            bio: 'Bio anterior',
+            favoriteSports: const [],
+            badges: const [],
+            friends: const [],
+            gallery: const [],
+          ),
+          profileRepository: repo);
+      expect(
+          tester
+              .widget<TextField>(
+                  find.widgetWithText(TextField, AppStrings.profileBioHint))
+              .controller!
+              .text,
+          'Bio anterior');
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint), '');
+      await tester.pump();
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNotNull);
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls, [('u_gabriel', 'Gabriel', '', false)]);
+      expect(find.text(AppStrings.profileSaveError), findsOneWidget);
+      expect(
+          tester
+              .widget<FilledButton>(find.widgetWithText(
+                  FilledButton, AppStrings.profileSaveChanges))
+              .onPressed,
+          isNotNull);
+      repo.errorOnDetails = null;
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls, [
+        ('u_gabriel', 'Gabriel', '', false),
+        ('u_gabriel', 'Gabriel', '', false),
+      ]);
+      expect(find.text(AppStrings.profileSaveSuccess), findsOneWidget);
+    });
+
+    testWidgets(
+        'falha parcial informa que perfil foi gravado e permite repetir',
+        (tester) async {
+      final repo = _FakeProfileRepository(
+          errorOnDetails: ProfileAuthSyncException(StateError('auth')));
+      await pumpPage(tester, profileRepository: repo);
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileNameLabel),
+          'Gabriel Silva');
+      await tester.enterText(
+          find.widgetWithText(TextField, AppStrings.profileBioHint),
+          'Nova bio');
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.profileSavePartial), findsOneWidget);
+      expect(
+          tester
+              .widget<TextField>(
+                  find.widgetWithText(TextField, AppStrings.profileBioHint))
+              .controller!
+              .text,
+          'Nova bio');
+      repo.errorOnDetails = null;
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(AppStrings.profileSaveChanges));
+      await tester.pumpAndSettle();
+      expect(repo.detailCalls, [
+        ('u_gabriel', 'Gabriel Silva', 'Nova bio', true),
+        ('u_gabriel', 'Gabriel Silva', 'Nova bio', true),
+      ]);
+      expect(find.text(AppStrings.profileSaveSuccess), findsOneWidget);
     });
   });
 
@@ -177,7 +685,8 @@ void main() {
       await abrirDialogo(tester);
 
       await tester.enterText(
-        find.widgetWithText(TextField, AppStrings.profileDeleteAccountPasswordHint),
+        find.widgetWithText(
+            TextField, AppStrings.profileDeleteAccountPasswordHint),
         'segredo123',
       );
       await tester.tap(find.text(AppStrings.profileDeleteAccountConfirm));
@@ -212,7 +721,8 @@ void main() {
       await abrirDialogo(tester);
 
       await tester.enterText(
-        find.widgetWithText(TextField, AppStrings.profileDeleteAccountPasswordHint),
+        find.widgetWithText(
+            TextField, AppStrings.profileDeleteAccountPasswordHint),
         'errada',
       );
       await tester.tap(find.text(AppStrings.profileDeleteAccountConfirm));

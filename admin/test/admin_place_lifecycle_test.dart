@@ -205,6 +205,7 @@ void main() {
       await _pumpEditor(tester, repository);
 
       final deactivate = find.widgetWithText(OutlinedButton, 'Desativar local');
+      await tester.ensureVisible(deactivate);
       await tester.tap(deactivate);
       await tester.pumpAndSettle();
       expect(
@@ -245,6 +246,10 @@ void main() {
         ),
       );
       final submit = find.widgetWithText(FilledButton, 'Cadastrar inativo');
+      // Com 16 modalidades (issue 30) os chips quebram em mais linhas e o
+      // botão passa da altura da tela de teste.
+      await tester.ensureVisible(submit);
+      await tester.pumpAndSettle();
       await tester.tap(submit);
       await tester.pumpAndSettle();
 
@@ -448,7 +453,9 @@ void main() {
         tester.widget<PopScope<Object?>>(find.byType(PopScope<Object?>)).canPop,
         isFalse,
       );
-      await tester.tap(find.text('Cancelar'));
+      final cancel = find.text('Cancelar');
+      await tester.ensureVisible(cancel);
+      await tester.tap(cancel);
       await tester.pumpAndSettle();
 
       expect(find.text('Descartar alterações?'), findsOneWidget);
@@ -593,7 +600,7 @@ Future<void> _pumpEditor(
   WidgetTester tester,
   _FakePlacesRepository repository,
 ) async {
-  tester.view.physicalSize = const Size(800, 2600);
+  tester.view.physicalSize = const Size(800, 4000);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   final router = GoRouter(
@@ -644,6 +651,10 @@ class _FakePlacesRepository implements AdminPlacesRepository {
     AdminPlacesFilters filters, {
     AdminPlaceCursor? after,
   }) => const Stream<AdminPlacesPageSnapshot>.empty();
+
+  @override
+  Stream<AdminPlacesCollectionSnapshot> watchAll(AdminPlacesFilters filters) =>
+      const Stream<AdminPlacesCollectionSnapshot>.empty();
 
   @override
   Stream<AdminPlaceRecord?> watchPlace(String id) => placeChanges.stream;

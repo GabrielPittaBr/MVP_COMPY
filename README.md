@@ -20,9 +20,9 @@ Aplicativo móvel que conecta praticantes de esporte em **Taquara/RS**.
 [![OpenStreetMap](https://img.shields.io/badge/OpenStreetMap-flutter__map%207-7EBC6F?style=for-the-badge&logo=openstreetmap&logoColor=white)](https://openstreetmap.org)
 [![Android](https://img.shields.io/badge/Android-br.com.compy.app-3DDC84?style=for-the-badge&logo=android&logoColor=white)](android/app/build.gradle.kts)
 
-![Versão](https://img.shields.io/badge/Vers%C3%A3o-v0.1.0-1F3A8A?style=for-the-badge)
-![Testes](https://img.shields.io/badge/Testes-208%20passando-10B981?style=for-the-badge)
-![Regras](https://img.shields.io/badge/Regras%20do%20Firestore-132%20casos-F59E0B?style=for-the-badge)
+[![Versão](https://img.shields.io/badge/Vers%C3%A3o-v1.0.0-1F3A8A?style=for-the-badge)](https://github.com/GabrielPittaBr/MVP_COMPY/releases/latest)
+![Testes](https://img.shields.io/badge/Testes-376%20passando-10B981?style=for-the-badge)
+![Regras](https://img.shields.io/badge/Regras%20do%20Firestore%20e%20Storage-190%20casos-F59E0B?style=for-the-badge)
 ![Licença](https://img.shields.io/badge/Uso-acad%C3%AAmico-6B7280?style=for-the-badge)
 
 </div>
@@ -39,16 +39,16 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 
 | | Tela | Recursos |
 |:--:|---|---|
-| 🏠 | **Início** | Saudação com o nome de quem entrou, categorias por modalidade, prévia do mapa e os **eventos próximos** — busca real por raio de 10 km a partir da sua localização. Campo de busca por nome do evento ou modalidade. |
-| 🗺️ | **Mapa** | Locais esportivos da cidade em um mapa OpenStreetMap, com ficha do local (modalidades aceitas e atalho para criar um evento ali). |
-| 📅 | **Eventos** | Lista em três seções — *Criados por mim*, *Participando* e *Todos os eventos* — com filtros de modalidade, nível de habilidade e data. O detalhe traz local, horário, duração, vagas restantes e a lista de participantes. |
+| 🏠 | **Início** | Saudação com o nome de quem entrou, categorias por modalidade, prévia do mapa e os **eventos próximos** — busca real por raio de 10 km a partir da sua localização. Campo de busca por nome do evento ou modalidade. O sino ao lado da engrenagem abre a **central de notificações**, que avisa quando um evento termina e convida a avaliar. |
+| 🗺️ | **Mapa** | Locais esportivos da cidade em um mapa OpenStreetMap, com ficha do local (modalidades aceitas, média das avaliações e atalho para criar um evento ali). |
+| 📅 | **Eventos** | Lista em três seções — *Criados por mim*, *Participando* e *Todos os eventos* — com filtros de modalidade, nível de habilidade e data. O detalhe traz local, horário, duração, vagas restantes e a lista de participantes. Durante o evento, o selo *Acontecendo agora* e o card ao vivo levam à tela do evento em andamento, com mensagem direta para cada participante; o organizador encerra o evento, e um evento esquecido encerra sozinho 1h depois do fim previsto. Depois do fim, os participantes avaliam o evento, o local e quem jogou. |
 | ➕ | **Criar** | Título, modalidade, local, data, horário, duração, nível de habilidade, número de participantes e descrição. |
 | 💬 | **Chat** | Conversas em tempo real entre os participantes, direto sobre os streams do Firestore, com envio do local do evento como cartão na conversa. |
-| 👤 | **Perfil** | Avatar, esportes favoritos, insígnias, amigos, avaliações e galeria; troca de nome de usuário e exclusão da conta. |
+| 👤 | **Perfil** | Avatar, esportes favoritos, insígnias, amigos, média das avaliações recebidas e galeria; troca de nome de usuário e exclusão da conta. |
 
 **Entrada no app:** cadastro e login por e-mail/senha ou **conta Google**, escolha de um nome de usuário único e onboarding de esportes favoritos — tudo protegido por um guard de rotas que leva cada pessoa exatamente ao degrau que falta.
 
-**Modalidades:** futebol · futsal · vôlei · basquete · tênis de mesa · corrida · ciclismo · caminhada
+**Modalidades:** futebol · futsal · basquete · vôlei · handebol · tênis · tênis de mesa · padel · futebol de areia · vôlei de praia · futevôlei · beach tennis · corrida · ciclismo · caminhada · skate
 
 ---
 
@@ -66,6 +66,16 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 
 ---
 
+## Baixar
+
+O APK de Android (7.0 ou superior) fica sempre no mesmo endereço, que aponta para a versão mais recente:
+
+**[compy-release.apk](https://github.com/GabrielPittaBr/MVP_COMPY/releases/latest/download/compy-release.apk)**
+
+Como o app não vem da Play Store, o Android pede autorização para instalar de fora dela na primeira vez. As notas de cada versão ficam em [Releases](https://github.com/GabrielPittaBr/MVP_COMPY/releases).
+
+---
+
 ## Tecnologias
 
 | Camada | Ferramenta | Papel no app |
@@ -75,6 +85,7 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 | Navegação | **GoRouter 14.2** | `StatefulShellRoute.indexedStack` com as 5 abas e o guard de autenticação |
 | Autenticação | **Firebase Auth** + **google_sign_in** | E-mail/senha e conta Google |
 | Banco | **Cloud Firestore** (`compy-tcc`, `southamerica-east1`) | Perfis, eventos, conversas e mensagens, em tempo real |
+| Backend | **Cloud Functions** (TypeScript, Node 22) | Encerramento automático, notificações de fim de evento e gravação das avaliações e médias |
 | Proteção | **Firebase App Check** + `firestore.rules` | Regras por papel: dono do perfil, criador do evento, membro da conversa |
 | Mapa | **flutter_map 7** + **OpenStreetMap** | Mapa e pins sem nenhuma chave de API |
 | Localização | **geolocator** | Raio real dos eventos próximos |
@@ -142,15 +153,22 @@ flutter run
 ## Testes e qualidade
 
 ```bash
-flutter test     # 208 testes de unidade e de widget
+flutter test     # 376 testes de unidade e de widget
 dart analyze     # analisador estático — sem erros (só sugestões de estilo)
 ```
 
-As regras do Firestore têm suíte própria, em Node, porque não há como testá-las a partir do Dart. Ela roda contra o emulador e **nunca toca o projeto real** — precisa de JDK 21+ no PATH:
+As regras do Firestore e do Storage têm suíte própria, em Node, porque não há como testá-las a partir do Dart. Ela roda contra o emulador e **nunca toca o projeto real** — precisa de JDK 21+ no PATH:
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 132 casos
+npm test --prefix tools/firestore-rules-tests      # 206 casos
+```
+
+As Cloud Functions também têm lint e testes próprios:
+
+```bash
+npm run lint --prefix functions
+npm test --prefix functions                        # 81 testes
 ```
 
 ---
@@ -162,11 +180,14 @@ npm test --prefix tools/firestore-rules-tests      # 132 casos
 | `lib/` | Código do aplicativo |
 | `test/` | Testes de unidade e de widget |
 | `assets/images/` | Logo e ícone do app |
+| `assets/fonts/` | Fonte de ícones das modalidades que não existem nos Material Icons |
 | `firestore.rules` · `firestore.indexes.json` | Regras de segurança e índices do Firestore |
+| `storage.rules` | Regras do Cloud Storage (fotos de perfil) |
 | `tools/firestore-rules-tests/` | Suíte Node que exercita as regras no emulador |
 | `admin/` | Painel administrativo (Flutter Web) para locais esportivos e contas — ver [`docs/admin/painel-administrativo.md`](docs/admin/painel-administrativo.md) |
-| `functions/` | Cloud Functions do painel (TypeScript) |
+| `functions/` | Cloud Functions (TypeScript): as do painel e as do ciclo de vida do evento (encerramento automático, notificações e avaliações) |
 | `tools/firebase-admin/` | Scripts locais com Admin SDK (bootstrap do administrador, migrações) |
+| `tools/sport-icons/` | Gerador (Python) da fonte de ícones das modalidades e dos SVGs de cada ícone |
 | `docs/` | Roadmap, checklist de publicação, decisões de produto e notas de depuração |
 
 ---
@@ -179,14 +200,12 @@ O repositório segue **Gitflow**:
 main  ←  develop  ←  feature/… · fix/… · refactor/… · chore/… · style/…
 ```
 
-`main` guarda o que está estável e versionado; `develop` recebe as branches de trabalho; releases sobem de `develop` para `main`. A v0.1.0 já saiu assinada, com pacote definitivo `br.com.compy.app`.
+`main` guarda o que está estável e versionado; `develop` recebe as branches de trabalho; releases sobem de `develop` para `main`. A v0.1.0 já saiu assinada, com pacote definitivo `br.com.compy.app`; a v1.0.0 mantém a mesma chave e passou a usar um link de download fixo — o passo a passo está em [`docs/checklist-publicacao.md`](docs/checklist-publicacao.md#5-distribuição-pelo-github-releases).
 
 ---
 
 ## Próximos passos
 
-- Avaliação pós-evento de participantes, evento e local — as regras do Firestore já preveem a coleção
-- Encerramento do evento e o card de "evento em andamento"
 - Upload de foto de perfil
 - Ampliação do catálogo de locais esportivos da cidade
 - Telas de configurações e de insígnias, hoje em construção

@@ -1,16 +1,17 @@
-# Testes das regras do Firestore
+# Testes das regras do Firestore e do Storage
 
-Exercita `firestore.rules` contra o emulador do Firestore. Não toca o projeto
-real (`compy-tcc`) — o emulador roda sob o projeto fictício `demo-compy`.
+Exercita `firestore.rules` e `storage.rules` contra os emuladores. Não toca o
+projeto real (`compy-tcc`) — os emuladores rodam sob o projeto fictício
+`demo-compy`.
 
 Isto **não** faz parte do app Flutter: é a única forma de testar regras de
-segurança do Firestore, que não têm equivalente em Dart.
+segurança do Firebase, que não têm equivalente em Dart.
 
 ## Rodar
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests
+npm test --prefix tools/firestore-rules-tests      # 206 casos
 ```
 
 ## Pré-requisitos
@@ -31,6 +32,16 @@ outros no meio do teste.
 
 ## O que está coberto
 
+**Salvamento de perfil** (`profile-save.test.js`): usa Auth e Firestore locais
+com uma conta nova, reproduz `permission-denied` com o recorte literal das
+regras publicadas em 22/10/2026 e repete a edição com as regras atuais.
+Exercita somente nome, somente bio, ambos, bio vazia, limites, sincronização
+de `displayName` e leitura por outro usuário. A fixture em
+`fixtures/users-before-bio.rules` é histórica e nunca deve ser publicada.
+`users.test.js` também cobre perfis legados sem `nameLower`, perfil ausente,
+sessão ausente e tentativas de terceiros. O comando inicia Auth, Firestore
+e Storage no projeto fictício `demo-compy`.
+
 **`conversations`** e a subcoleção `messages`, nos dois papéis que importam:
 membro e não-membro. Leitura, criação, atualização do rodapé, imutabilidade
 de `members` e `memberSummaries`, assinatura da mensagem pelo próprio uid, e
@@ -41,7 +52,9 @@ Um caso merece destaque porque restringe o código do app: **`memberSummaries`
 precisam ser gravados no momento em que ela nasce — não há como corrigi-los
 depois sem afrouxar a regra.
 
-**`users` e `usernames`**, replicando o batch do login com Google.
+**`users` e `usernames`**, replicando o batch do login com Google, e a forma
+do `avatarUrl`: texto de até 2048 caracteres começando por `http(s)://` (o
+`http` é o emulador do Storage).
 
 **`events`** (tarefa 12), com foco no `participantIds` — o array de uids que a
 seção "Participando" consulta. A regra do join exige que ele cresça **junto**
@@ -59,6 +72,29 @@ Dois casos restringem o código do app:
   os participantes antigos desses documentos não aparecem na consulta de
   "Participando". Ver a nota de migração abaixo.
 
+**`events`, encerramento** (tarefa 14). Só o Organizador encerra, uma vez só,
+depois do início e até 1h após o fim previsto, gravando o horário do servidor e
+`endedAutomatically = false`. O `true` é exclusivo da Function
+`autoEndOverdueEvents`, e o `ratedBy`, da callable da avaliação; nenhum evento
+nasce com esses campos. Depois do encerramento, ninguém mais entra no evento e
+o Organizador não o edita.
+
+**`ratings` e `ratingSummaries`** (tarefa 14). `ratings` é fechada ao
+cliente: nem o autor lê a própria avaliação (D13), e só a callable
+`submitEventRatings` grava. `ratingSummaries` é só leitura para quem está
+logado.
+
+**`users/{uid}/notifications`** (tarefa 14). Só o dono lê. O cliente não cria
+notificação (quem cria é o gatilho `onEventEnded`), só marca como lida, uma
+vez e com o horário do servidor, e apaga as próprias na exclusão de conta.
+
+**Storage** (`storage.test.js`): fotos de perfil em
+`users/{uid}/avatar_<millis>.jpg`. Só o dono envia, só JPEG abaixo de 1 MB,
+só com esse padrão de nome, e nunca por cima de um arquivo existente — no
+Storage sobrescrever conta como `create`, então a regra exige
+`resource == null`. Qualquer autenticado lê; só o dono lista e apaga (é o que
+a exclusão de conta usa).
+
 ## Migração de `participantIds`
 
 Eventos gravados antes da tarefa 12 não têm o campo e **não aparecem** em
@@ -69,7 +105,7 @@ eventos de teste no console antes de publicar.
 ## Antes de publicar em produção
 
 ```bash
-firebase deploy --only firestore:rules,firestore:indexes
+firebase deploy --only firestore:rules,firestore:indexes,storage
 ```
 
 Publicar as regras **quebra o envio de mensagem** em qualquer versão do app

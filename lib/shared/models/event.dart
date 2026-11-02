@@ -33,6 +33,9 @@ class Event extends Equatable {
     this.durationMinutes = defaultDurationMinutes,
     this.description = '',
     this.participants = const <UserSummary>[],
+    this.endedAt,
+    this.endedAutomatically = false,
+    this.ratedBy = const <String>[],
   });
 
   /// Duração assumida quando o criador não informou nada — vale tanto
@@ -63,6 +66,22 @@ class Event extends Equatable {
   final int durationMinutes;
   final String description;
   final List<UserSummary> participants;
+
+  // ── Ciclo de vida (tarefa 14) ───────────────────────────────────
+  // Os três campos ficam ausentes no documento enquanto o evento está
+  // aberto e só o servidor os grava: o criador ao encerrar, a Function do
+  // encerramento automático e a callable da avaliação. Por isso o [toMap]
+  // nunca os escreve — a regra de create nega um evento que já nasça com
+  // eles.
+
+  /// Fim real do evento. Nulo enquanto ninguém encerrou.
+  final DateTime? endedAt;
+
+  /// `true` quando quem encerrou foi a Function, 1h depois do fim previsto.
+  final bool endedAutomatically;
+
+  /// Uids de quem já enviou a avaliação (só quem, nunca o quê).
+  final List<String> ratedBy;
 
   /// RN-05: evento sem vagas restantes deve ser ocultado / impedido de receber inscrições.
   bool get isFull => remainingSpots <= 0;
@@ -163,6 +182,11 @@ class Event extends Equatable {
       participants: (data['participants'] as List<dynamic>? ?? <dynamic>[])
           .map((p) => UserSummary.fromMap(p))
           .toList(),
+      endedAt: (data['endedAt'] as Timestamp?)?.toDate(),
+      endedAutomatically: (data['endedAutomatically'] as bool?) ?? false,
+      ratedBy: (data['ratedBy'] as List<dynamic>? ?? <dynamic>[])
+          .whereType<String>()
+          .toList(),
     );
   }
 
@@ -177,6 +201,9 @@ class Event extends Equatable {
     List<UserSummary>? participants,
     String? placeId,
     EventPlaceSnapshot? placeSnapshot,
+    DateTime? endedAt,
+    bool? endedAutomatically,
+    List<String>? ratedBy,
   }) {
     return Event(
       id: id ?? this.id,
@@ -195,6 +222,9 @@ class Event extends Equatable {
       placeSnapshot: placeSnapshot ?? this.placeSnapshot,
       description: description,
       participants: participants ?? this.participants,
+      endedAt: endedAt ?? this.endedAt,
+      endedAutomatically: endedAutomatically ?? this.endedAutomatically,
+      ratedBy: ratedBy ?? this.ratedBy,
     );
   }
 
@@ -216,5 +246,8 @@ class Event extends Equatable {
         placeSnapshot,
         description,
         participants,
+        endedAt,
+        endedAutomatically,
+        ratedBy,
       ];
 }

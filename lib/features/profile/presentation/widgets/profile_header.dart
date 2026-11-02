@@ -1,10 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/secondary_button.dart';
+import '../../../../shared/widgets/user_avatar.dart';
 
 class ProfileHeader extends StatelessWidget {
   const ProfileHeader({
@@ -22,11 +22,7 @@ class ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
-        CircleAvatar(
-          radius: 56,
-          backgroundColor: AppColors.surfaceMuted,
-          backgroundImage: CachedNetworkImageProvider(summary.avatarUrl),
-        ),
+        UserAvatar(user: summary, radius: 56),
         const SizedBox(height: 12),
         Text(
           summary.name,

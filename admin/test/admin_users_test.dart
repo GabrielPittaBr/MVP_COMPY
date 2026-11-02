@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:compy_admin/features/events/data/admin_events_repository.dart';
 import 'package:compy_admin/features/users/data/admin_users_repository.dart';
 import 'package:compy_admin/features/users/presentation/admin_users_controller.dart';
 import 'package:compy_admin/features/users/presentation/admin_users_pages.dart';
@@ -120,6 +121,40 @@ void main() {
       });
       expect(result.disabled, isTrue);
       expect(result.completedAt, DateTime.utc(2026, 10, 3, 12));
+    });
+
+    test('exclusão envia somente o contrato idempotente aprovado', () async {
+      final calls = <(String, Map<String, Object?>)>[];
+      final client = AdminUsersCallableClient(
+        invoker: (name, payload) async {
+          calls.add((name, Map<String, Object?>.from(payload)));
+          return <String, Object?>{
+            'uid': 'target-uid',
+            'completedAt': '2026-10-23T12:00:00.000Z',
+          };
+        },
+      );
+
+      final result = await client.deleteUserAccount(
+        uid: 'target-uid',
+        reason: '  Perfil   falso denunciado  ',
+        operationId: 'a04988af-ccba-4c4e-a0d2-df5c56be31d6',
+      );
+
+      expect(calls.single.$1, 'deleteUserAccount');
+      expect(calls.single.$2, <String, Object?>{
+        'uid': 'target-uid',
+        'reason': 'Perfil falso denunciado',
+        'operationId': 'a04988af-ccba-4c4e-a0d2-df5c56be31d6',
+      });
+      expect(result.uid, 'target-uid');
+      expect(result.completedAt, DateTime.utc(2026, 10, 23, 12));
+      expect(
+        () => AdminUserDeletionResult.fromCallable(<String, Object?>{
+          'uid': 'target-uid',
+        }),
+        throwsFormatException,
+      );
     });
   });
 
@@ -294,7 +329,7 @@ void main() {
   );
 
   testWidgets(
-    'perfil sem Conta Auth é identificado sem oferecer ação de conta',
+    'perfil sem Conta Auth só oferece a exclusão do registro órfão',
     (tester) async {
       final details = AdminUserDetailsResult(
         uid: 'profile-only',
@@ -330,8 +365,212 @@ void main() {
       expect(find.textContaining('Futebol'), findsOneWidget);
       expect(find.textContaining('Reativar'), findsNothing);
       expect(find.textContaining('Suspender'), findsNothing);
+      expect(
+        find.widgetWithText(OutlinedButton, 'Excluir conta'),
+        findsOneWidget,
+      );
     },
   );
+
+  group('exclusão definitiva da conta', () {
+    testWidgets('valida o motivo antes da confirmação ou chamada', (
+      tester,
+    ) async {
+      final repo = _FakeUsersRepository()
+        ..detailResult = _details('target-uid');
+      await _pumpDetails(tester, repo);
+
+      await tester.enterText(find.byType(TextField), 'curto');
+      await _tapDeleteAccount(tester);
+
+      expect(find.textContaining('10 a 500 caracteres'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(repo.deletionCalls, isEmpty);
+    });
+
+    testWidgets(
+      'confirmação exige reconhecer que é definitiva e encerra a página',
+      (tester) async {
+        final repo = _FakeUsersRepository()
+          ..detailResult = _details('target-uid');
+        await _pumpDetails(tester, repo);
+        await tester.enterText(
+          find.byType(TextField),
+          'Perfil falso denunciado por vários usuários.',
+        );
+        await _tapDeleteAccount(tester);
+
+        expect(find.text('Excluir conta?'), findsOneWidget);
+        expect(find.text('UID: target-uid'), findsWidgets);
+        expect(find.textContaining('não pode ser desfeita'), findsWidgets);
+        final confirm = find.widgetWithText(FilledButton, 'Excluir conta');
+        expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+
+        await tester.tap(find.byType(CheckboxListTile));
+        await tester.pumpAndSettle();
+        await tester.tap(confirm);
+        await tester.pumpAndSettle();
+
+        expect(repo.deletionCalls, hasLength(1));
+        expect(repo.deletionCalls.single.uid, 'target-uid');
+        expect(
+          repo.deletionCalls.single.reason,
+          'Perfil falso denunciado por vários usuários.',
+        );
+        expect(
+          repo.deletionCalls.single.operationId,
+          matches(
+            RegExp(
+              r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+            ),
+          ),
+        );
+        expect(find.text('Conta excluída.'), findsWidgets);
+        expect(find.text('Voltar para Usuários'), findsOneWidget);
+        expect(find.text('Ações administrativas da conta'), findsNothing);
+      },
+    );
+
+    testWidgets('cancelar não chama o servidor', (tester) async {
+      final repo = _FakeUsersRepository()
+        ..detailResult = _details('target-uid');
+      await _pumpDetails(tester, repo);
+      await tester.enterText(
+        find.byType(TextField),
+        'Perfil falso denunciado por vários usuários.',
+      );
+      await _tapDeleteAccount(tester);
+      await tester.tap(find.widgetWithText(TextButton, 'Cancelar'));
+      await tester.pumpAndSettle();
+
+      expect(repo.deletionCalls, isEmpty);
+      expect(find.text('Ações administrativas da conta'), findsOneWidget);
+    });
+
+    testWidgets(
+      'resultado incerto reaproveita o mesmo operationId na repetição',
+      (tester) async {
+        var attempts = 0;
+        final repo = _FakeUsersRepository()
+          ..detailResult = _details('target-uid')
+          ..deletionHandler = (uid, reason, operationId) async {
+            attempts++;
+            if (attempts == 1) throw StateError('transporte interrompido');
+            return AdminUserDeletionResult(
+              uid: uid,
+              completedAt: DateTime.utc(2026, 10, 23),
+            );
+          };
+        await _pumpDetails(tester, repo);
+        await tester.enterText(
+          find.byType(TextField),
+          'Perfil falso denunciado por vários usuários.',
+        );
+
+        await _confirmAccountDeletion(tester);
+        expect(find.textContaining('tente novamente'), findsOneWidget);
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).enabled,
+          isFalse,
+        );
+
+        await _confirmAccountDeletion(tester);
+        expect(repo.deletionCalls, hasLength(2));
+        expect(
+          repo.deletionCalls.last.operationId,
+          repo.deletionCalls.first.operationId,
+        );
+        expect(find.text('Voltar para Usuários'), findsOneWidget);
+      },
+    );
+
+    testWidgets('recusa do servidor bloqueia as ações sem vazar detalhes', (
+      tester,
+    ) async {
+      final repo = _FakeUsersRepository()
+        ..detailResult = _details('admin-target')
+        ..deletionHandler = (_, _, _) async {
+          throw FirebaseFunctionsException(
+            code: 'permission-denied',
+            message: 'private details must not be shown',
+          );
+        };
+      await _pumpDetails(tester, repo);
+      await tester.enterText(
+        find.byType(TextField),
+        'Perfil falso denunciado por vários usuários.',
+      );
+      await _confirmAccountDeletion(tester);
+
+      expect(
+        find.text('Esta conta não pode ser excluída pelo painel.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('private details'), findsNothing);
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Excluir conta'),
+            )
+            .onPressed,
+        isNull,
+      );
+    });
+
+    testWidgets('conta que já não existe encerra a página', (tester) async {
+      final repo = _FakeUsersRepository()
+        ..detailResult = _details('target-uid')
+        ..deletionHandler = (_, _, _) async {
+          throw FirebaseFunctionsException(code: 'not-found', message: 'x');
+        };
+      await _pumpDetails(tester, repo);
+      await tester.enterText(
+        find.byType(TextField),
+        'Perfil falso denunciado por vários usuários.',
+      );
+      await _confirmAccountDeletion(tester);
+
+      expect(find.text('A conta e o perfil já não existem.'), findsOneWidget);
+      expect(find.text('Voltar para Usuários'), findsOneWidget);
+    });
+  });
+
+  testWidgets('detalhe lista os eventos organizados pela pessoa', (
+    tester,
+  ) async {
+    final events = _FakeOrganizedEvents(<AdminEventRecord>[
+      AdminEventRecord.fromDocument('evt-1', <String, dynamic>{
+        'title': 'Pelada de quinta',
+        'sport': 'futebol',
+        'creator': <String, Object?>{'id': 'target-uid', 'name': 'Júlia'},
+        'totalSpots': 10,
+        'remainingSpots': 4,
+      }),
+    ]);
+    tester.view.physicalSize = const Size(1100, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdminUserDetailsPage(
+            uid: 'target-uid',
+            repository: _FakeUsersRepository(),
+            eventsRepository: events,
+            initialDetails: _details('target-uid'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(events.organizerCalls, <String>['target-uid']);
+    expect(find.text('Eventos organizados'), findsOneWidget);
+    expect(find.text('Pelada de quinta'), findsOneWidget);
+    expect(find.textContaining('6 de 10 vagas preenchidas'), findsOneWidget);
+    expect(find.textContaining('Organizado por'), findsNothing);
+  });
 
   group('ações administrativas de suspensão', () {
     testWidgets('valida motivo antes da confirmação ou chamada', (
@@ -601,6 +840,22 @@ Future<void> _pumpDetails(
   await tester.pumpAndSettle();
 }
 
+Future<void> _tapDeleteAccount(WidgetTester tester) async {
+  final button = find.widgetWithText(OutlinedButton, 'Excluir conta');
+  await tester.ensureVisible(button);
+  await tester.pumpAndSettle();
+  await tester.tap(button);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _confirmAccountDeletion(WidgetTester tester) async {
+  await _tapDeleteAccount(tester);
+  await tester.tap(find.byType(CheckboxListTile));
+  await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(FilledButton, 'Excluir conta'));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _confirmSuspension(WidgetTester tester) async {
   await tester.ensureVisible(
     find.widgetWithText(FilledButton, 'Suspender conta'),
@@ -674,6 +929,13 @@ class _FakeUsersRepository implements AdminUsersRepository {
   AdminUserDetailsResult? exactResult;
   AdminUserDetailsResult? detailResult;
   final List<_SuspensionCall> suspensionCalls = <_SuspensionCall>[];
+  final List<_DeletionCall> deletionCalls = <_DeletionCall>[];
+  Future<AdminUserDeletionResult> Function(
+    String uid,
+    String reason,
+    String operationId,
+  )?
+  deletionHandler;
   Future<AdminUserSuspensionResult> Function(
     String uid,
     AdminUserSuspensionAction action,
@@ -715,6 +977,20 @@ class _FakeUsersRepository implements AdminUsersRepository {
   }
 
   @override
+  Future<AdminUserDeletionResult> deleteUserAccount({
+    required String uid,
+    required String reason,
+    required String operationId,
+  }) {
+    deletionCalls.add(_DeletionCall(uid, reason, operationId));
+    final handler = deletionHandler;
+    if (handler != null) return handler(uid, reason, operationId);
+    return Future<AdminUserDeletionResult>.value(
+      AdminUserDeletionResult(uid: uid, completedAt: DateTime.utc(2026, 10, 23)),
+    );
+  }
+
+  @override
   Future<AdminUsersPageSnapshot> searchProfiles(
     AdminUserSearchType type,
     String query, {
@@ -738,4 +1014,30 @@ class _SuspensionCall {
   final AdminUserSuspensionAction action;
   final String reason;
   final String operationId;
+}
+
+class _DeletionCall {
+  const _DeletionCall(this.uid, this.reason, this.operationId);
+  final String uid;
+  final String reason;
+  final String operationId;
+}
+
+class _FakeOrganizedEvents implements AdminEventsRepository {
+  _FakeOrganizedEvents(this.events);
+
+  final List<AdminEventRecord> events;
+  final List<String> organizerCalls = <String>[];
+
+  @override
+  Future<List<AdminEventRecord>> loadOrganizedBy(
+    String uid, {
+    int limit = AdminEventsQueryPlan.pageSize,
+  }) async {
+    organizerCalls.add(uid);
+    return events;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
