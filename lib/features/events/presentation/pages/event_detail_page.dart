@@ -15,7 +15,7 @@ import '../../../../shared/models/event_status.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/custom_sport_marker.dart';
 import '../../../../shared/widgets/event_status_chip.dart';
-import '../../../../shared/widgets/event_skill_level_chip.dart';
+import '../../../../shared/widgets/event_info_row.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/star_rating.dart';
 import '../../../../shared/widgets/user_avatar.dart';
@@ -121,24 +121,21 @@ class _Body extends ConsumerWidget {
                     const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
-              _IconRow(
+              EventInfoRow(
                 icon: event.sport.icon,
                 iconColor: event.sport.color,
                 label: event.sport.label,
               ),
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: EventSkillLevelChip(level: event.skillLevel),
-              ),
+              EventInfoRow.skillLevel(level: event.skillLevel),
               const SizedBox(height: 8),
-              _IconRow(
+              EventInfoRow(
                 icon: Icons.calendar_today_outlined,
                 label: '${_capitalize(dayFormat.format(event.dateTime))}, '
                     '${DurationFormat.timeRange(event.dateTime, event.durationMinutes)}',
               ),
               const SizedBox(height: 8),
-              _IconRow(
+              EventInfoRow(
                 icon: Icons.schedule,
                 label: '${AppStrings.eventDuration}: '
                     '${DurationFormat.short(event.durationMinutes)}',
@@ -470,29 +467,6 @@ class _StatusPill extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _IconRow extends StatelessWidget {
-  const _IconRow({
-    required this.icon,
-    required this.label,
-    this.iconColor = AppColors.onSurface,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color iconColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Icon(icon, color: iconColor),
-        const SizedBox(width: 12),
-        Text(label, style: const TextStyle(fontSize: 14)),
-      ],
     );
   }
 }
