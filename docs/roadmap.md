@@ -72,6 +72,8 @@
 
 ---
 
+**Informações dos eventos (29/10/2026):** o nível de habilidade nos detalhes e no evento em andamento passou a usar uma linha de ícone e texto, sem o fundo cinza. `EventInfoRow` reaproveita o padrão das linhas de modalidade, data e duração, com texto que pode quebrar linha; “Todos os níveis” e o contexto para leitores de tela permanecem. Os cards mantêm seus chips compactos, e a barra de progresso, ações e estados do evento não mudaram. Validamos cada nível, alinhamento, espaçamento, ausência de chip e responsividade das novas linhas até 280 px com fonte a 200%; as telas foram verificadas com fonte a 120% em 320 px (detalhe) e 360 px (andamento). Um ensaio em 280 px com fonte a 150% revelou overflows nos componentes preexistentes `PrimaryButton` e `EventStatusChip`, fora das linhas informativas; eles permanecem fora desta alteração visual localizada.
+
 ## Funcionalidade concluída — perfis públicos de outros usuários
 
 **Branch:** `feature/perfil-publico-usuarios` · **Status:** ✅ Concluída em 2026-10-22.
