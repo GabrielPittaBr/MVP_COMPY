@@ -11,7 +11,7 @@ segurança do Firebase, que não têm equivalente em Dart.
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 200 casos
+npm test --prefix tools/firestore-rules-tests      # 206 casos
 ```
 
 ## Pré-requisitos

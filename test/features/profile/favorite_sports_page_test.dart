@@ -34,7 +34,7 @@ void main() {
         gallery: const [],
       );
 
-  /// A tela tem 8 ladrilhos e dois botões — precisa de altura para caber sem
+  /// A tela tem 16 ladrilhos e dois botões — precisa de altura para caber sem
   /// rolar, senão o "pular" nem chega a ser construído.
   void useTallViewport(WidgetTester tester) {
     tester.view.physicalSize = const Size(1200, 2400);
@@ -273,10 +273,58 @@ void main() {
         // deixa o motivo da falha legível.
         expect(tester.takeException(), isNull);
 
-        // E as 8 modalidades continuam todas na tela.
+        // E todas as modalidades continuam na tela.
         for (final sport in Sport.values) {
           expect(find.text(sport.label), findsOneWidget, reason: sport.label);
         }
+      });
+    }
+
+    // Issue 30: com 16 modalidades a grade não cabe inteira num aparelho
+    // pequeno (360x640 lógicos). Ela rola por dentro, e os botões ficam
+    // fixos embaixo — o último esporte precisa continuar alcançável.
+    for (final double escala in <double>[1, 1.3]) {
+      testWidgets(
+          'em tela pequena com fonte ${escala}x a grade rola até o último '
+          'esporte, sem overflow', (tester) async {
+        tester.view.physicalSize = const Size(720, 1280);
+        tester.view.devicePixelRatio = 2;
+        addTearDown(tester.view.reset);
+
+        await pumpRouter(
+          tester,
+          GoRouter(
+            initialLocation: AppRoutes.onboardingSports,
+            routes: <RouteBase>[
+              GoRoute(
+                path: AppRoutes.onboardingSports,
+                builder: (_, __) => const FavoriteSportsPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.home,
+                builder: (_, __) => const Scaffold(body: Text('home')),
+              ),
+            ],
+          ),
+          tallViewport: false,
+          textScale: escala,
+        );
+        expect(tester.takeException(), isNull);
+
+        final Sport ultimo = Sport.values.last;
+        await tester.ensureVisible(tileFor(ultimo));
+        await tester.pumpAndSettle();
+        await tester.tap(tileFor(ultimo));
+        await tester.pump();
+
+        expect(tester.takeException(), isNull);
+        expect(
+          tester
+              .widget<FilledButton>(find.byType(FilledButton))
+              .onPressed,
+          isNotNull,
+          reason: 'marcar o último esporte liga o "Continuar"',
+        );
       });
     }
   });

@@ -339,6 +339,76 @@ void main() {
     });
   });
 
+  // Issue 30: com 16 modalidades, prefixos parecidos casam mais de um
+  // esporte. Trazer todos é o esperado — quem digita "vôl" pode estar
+  // procurando qualquer um dos dois vôleis. Ids próprios para não cruzar com
+  // os outros grupos, que também escrevem no store singleton.
+  group('EventsRepositoryImpl.search — modalidades de prefixo parecido', () {
+    final store = InMemoryEventsStore.instance;
+    const uid = 'u_busca_issue30';
+
+    setUpAll(() {
+      for (final sport in <Sport>[
+        Sport.futebol,
+        Sport.futsal,
+        Sport.futebolDeAreia,
+        Sport.futevolei,
+        Sport.volei,
+        Sport.voleiDePraia,
+        Sport.tenis,
+        Sport.tenisDeMesa,
+        Sport.beachTennis,
+      ]) {
+        // Id numérico: o título do evento repete o id, e a busca também
+        // casa pelo título — "evt_i30_futevolei" acharia o Futevôlei por "vol".
+        store.add(
+          _evento(id: 'evt_i30_${sport.index}', criador: uid, sport: sport),
+        );
+      }
+    });
+
+    Future<Set<Sport>> esportesDaBusca(String termo) async => <Sport>{
+          for (final e in await repo.search(termo))
+            if (e.id.startsWith('evt_i30_')) e.sport,
+        };
+
+    test('"vôl" traz Vôlei e Vôlei de praia', () async {
+      expect(
+        await esportesDaBusca('vôl'),
+        <Sport>{Sport.volei, Sport.voleiDePraia},
+      );
+    });
+
+    test('"fut" traz os quatro futebóis', () async {
+      expect(
+        await esportesDaBusca('fut'),
+        <Sport>{
+          Sport.futebol,
+          Sport.futsal,
+          Sport.futebolDeAreia,
+          Sport.futevolei,
+        },
+      );
+    });
+
+    test('"tênis" traz Tênis e Tênis de mesa, mas não Beach tennis', () async {
+      // A busca casa pelo começo do rótulo: "Beach tennis" começa com "beach".
+      expect(
+        await esportesDaBusca('tênis'),
+        <Sport>{Sport.tenis, Sport.tenisDeMesa},
+      );
+      expect(await esportesDaBusca('beach'), <Sport>{Sport.beachTennis});
+    });
+
+    test('o nome completo separa os parecidos', () async {
+      expect(
+        await esportesDaBusca('futebol de'),
+        <Sport>{Sport.futebolDeAreia},
+      );
+      expect(await esportesDaBusca('futev'), <Sport>{Sport.futevolei});
+    });
+  });
+
   group('EventsRepositoryImpl.endEvent (mock)', () {
     test('encerra com o horário do relógio e endedAutomatically = false',
         () async {

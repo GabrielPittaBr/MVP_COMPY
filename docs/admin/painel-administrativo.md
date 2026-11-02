@@ -122,9 +122,16 @@ para eventos, novo local, locais inativos e busca de usuário.
 - **`address`:** `street`, `city`, `cityLower` e `state` (UF) são obrigatórios;
   `number`, `complement`, `neighborhood` e `postalCode` (8 dígitos) são
   opcionais. Um campo opcional vazio é omitido.
-- **Modalidades:** `sports` tem de 1 a 8 entre `futebol`, `basquete`, `volei`,
-  `tenisDeMesa`, `futsal`, `corrida`, `ciclismo` e `caminhada`, e
-  `primarySport` precisa estar em `sports`.
+- **Modalidades:** `sports` tem de 1 a 16 entre `futebol`, `futsal`,
+  `basquete`, `volei`, `handebol`, `tenis`, `tenisDeMesa`, `padel`,
+  `futebolDeAreia`, `voleiDePraia`, `futevolei`, `beachTennis`, `corrida`,
+  `ciclismo`, `caminhada` e `skate`, e `primarySport` precisa estar em
+  `sports`. A lista existe em quatro lugares — o enum `Sport` do app,
+  `validSports()` nas regras, `adminSportLabels`
+  (`admin/lib/core/constants/admin_sports.dart`, de onde o painel tira os
+  rótulos do filtro, do formulário e das listas de eventos e usuários) e
+  `supportedSports` no Admin SDK. `test/shared/models/sport_contract_sync_test.dart`
+  falha se uma cópia ficar diferente do enum.
 - **Resto:** `coordinates` (GeoPoint), `imageUrl` (HTTPS), `status`
   (`active`/`inactive`), e `createdAt`/`updatedAt` com hora do servidor.
 

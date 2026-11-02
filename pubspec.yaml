@@ -1,7 +1,7 @@
 name: mvp_compy
 description: COMPY — App para conectar praticantes de esportes em Taquara/RS.
 publish_to: "none"
-version: 0.1.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -74,3 +74,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+  fonts:
+    # Ícones das modalidades que não existem nos Material Icons. Gerada por
+    # tools/sport-icons/build_font.py; ver lib/core/theme/compy_sport_icons.dart.
+    - family: CompySportIcons
+      fonts:
+        - asset: assets/fonts/CompySportIcons.otf

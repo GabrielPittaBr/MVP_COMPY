@@ -1,0 +1,3 @@
+Taquara, 1 de Novembro de 2026
+
+- Hoje, depois do teste manual das novas modalidades, juntamos a branch `feature/novas-modalidades` na `develop` e publicamos o painel admin de novo no Hosting, que ainda estava com a lista antiga de 8 esportes. Antes do build rodamos as suítes do painel (97 testes, analyze sem avisos) e do app (483), todas passando. O build de release usou a mesma site key pública do reCAPTCHA que já estava no ar, e conferimos que o arquivo servido pelo Hosting é igual ao do build e que as rotas principais respondem. Agora o painel já aceita cadastrar e editar locais com os 16 esportes; falta incluir os esportes novos nos locais que já existem.

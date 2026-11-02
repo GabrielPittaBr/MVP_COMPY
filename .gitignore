@@ -74,3 +74,7 @@ coverage/
 
 # graphify (grafo de conhecimento gerado localmente)
 graphify-out/
+
+# Gerador da fonte de ícones (tools/sport-icons): ambiente Python local
+.venv-icons/
+__pycache__/

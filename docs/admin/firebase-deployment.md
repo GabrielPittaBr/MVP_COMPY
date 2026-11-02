@@ -602,3 +602,18 @@ firebase deploy --only hosting:admin --project compy-tcc
   `/places` e `/users` respondem HTTP 200.
 - Falta o smoke test com sessão Admin: abrir a lista e o detalhe de eventos,
   filtrar por modalidade e testar as duas exclusões com dados de teste.
+
+## Novas modalidades no painel — 2026-11-01
+
+- `feature/novas-modalidades` (issue #30, 8 → 16 esportes) entrou em `develop`
+  depois do teste manual do responsável. As regras do Firestore já tinham sido
+  publicadas em 31/10.
+- Antes do build: admin `flutter analyze --no-pub` sem issues e 97/97 testes;
+  app 483/483.
+- Build de release via `admin/tool/build_web.ps1`, com a mesma site key
+  pública reCAPTCHA v3 do bundle que estava no ar e sem token de debug no
+  ambiente: exit code 0.
+- `firebase deploy --only hosting:admin` concluído. O `main.dart.js` servido
+  confere com o build, release `f9a4f3c6aff6`. `/`, `/login`, `/dashboard`,
+  `/places`, `/users` e a imagem do Parque respondem HTTP 200.
+- Falta incluir os esportes novos nos locais já cadastrados, pelo painel.
