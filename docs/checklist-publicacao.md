@@ -18,7 +18,7 @@ metade não está em lugar nenhum do código.
 |---|---|---|
 | 0 | Keystore de release | ✅ criado e ligado ao Gradle |
 | 1 | Pacote definitivo | ✅ `br.com.compy.app` |
-| 2 | `google-services.json` com OAuth | ✅ 3 `oauth_client` para o pacote novo |
+| 2 | `google-services.json` com OAuth | ✅ `oauth_client` do pacote novo para release e para o debug de três máquinas |
 | 3 | Regras e índices no Firestore | ✅ publicados e conferidos; regras republicadas em 22/10/2026 com a tarefa 14, os locais e o avatar |
 | 4 | Storage: bucket, regras e CORS | 🟡 bucket ativo e regras publicadas; falta o CORS — ver [item 4](#4-storage-fotos-de-perfil) |
 | 5 | Distribuição com link fixo | ✅ GitHub Releases, desde a v1.0.0 — ver [item 5](#5-distribuição-pelo-github-releases) |
@@ -80,7 +80,7 @@ clientes ficaria verde com o app apontando para o pacote errado.
 |---|---|
 | Projeto | `compy-tcc` |
 | App ID | `1:260166625635:android:d3a540c67965084979cb56` |
-| SHAs cadastradas | 4 — SHA-1 e SHA-256 de **release** e de **debug** |
+| SHAs cadastradas | 8 — SHA-1 e SHA-256 de **release** e do **debug** de três máquinas |
 
 As SHAs entraram **antes** do download do `google-services.json`, que é a ordem
 que faz o arquivo vir com `oauth_client` preenchido. Fora dessa ordem ele volta
@@ -100,6 +100,10 @@ antigo antes.
 
 Ao trocar de máquina de desenvolvimento, cadastre a SHA-1 do `debug.keystore`
 **daquela** máquina — ela é gerada localmente e é diferente por instalação.
+E cadastre no app `br.com.compy.app`: em 03/11/2026 a SHA-1 de debug
+`92:33:F9:CE:B8:C1:BE:6F:F6:06:06:66:47:EE:89:19:05:3D:3B:B8` estava só no app
+antigo `com.example.mvp_compy`, e o login com Google falhava com
+`ApiException: 10` em todo APK compilado naquela máquina (issue #33).
 
 ## 3. Regras e índices do Firestore
 
