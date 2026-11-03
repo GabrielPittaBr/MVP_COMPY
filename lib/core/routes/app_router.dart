@@ -26,6 +26,7 @@ import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/public_profile_page.dart';
 import '../../features/ratings/presentation/pages/event_rating_page.dart';
 import '../../shared/pages/under_construction_page.dart';
+import '../../features/friends/presentation/pages/friends_page.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 import '../constants/app_strings.dart';
 
@@ -60,6 +61,7 @@ abstract final class AppRoutes {
   static const String chatRoom = '/chat/:conversationId';
   static const String chatNew = '/chat/nova';
   static const String profile = '/profile';
+  static const String friends = '/profile/amigos';
   static const String publicProfile = '/profile/usuarios/:uid';
 
   static String publicProfileFor(String uid) =>
@@ -361,6 +363,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'esportes',
                     builder: (context, state) => const FavoriteSportsPage(
                       mode: FavoriteSportsMode.edit,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'amigos',
+                    builder: (context, state) => FriendsPage(
+                      initialTab: int.tryParse(
+                              state.uri.queryParameters['tab'] ?? '') ??
+                          0,
                     ),
                   ),
                   GoRoute(

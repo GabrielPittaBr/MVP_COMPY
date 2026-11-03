@@ -1,5 +1,17 @@
 # Checklist de publicação
 
+> **Auditoria de 02/11/2026:** as regras publicadas em 31/10 já aceitam `bio` e
+> 16 modalidades; os 16 índices estão READY e Storage coincide com o local.
+> O código integrado de amizades ainda exige publicar suas Rules e a Function
+> nova. O build Android local passou, mas usa a chave de debug porque a chave
+> oficial não existe nesta máquina. Não distribuir esse artefato como atualização
+> da v1.0.0. Ver [evidências, comandos e validação presencial](validacao-feintec-2026.md).
+>
+> **03/11/2026:** as Rules com `friendships` e a Function
+> `onProfileDeletedFriendships` foram publicadas — ver [amizades](amizades.md).
+> A v1.0.1 saiu assinada com a chave de debug da máquina do build, e não com
+> a oficial — ver [A chave da v1.0.1 em diante](#a-chave-da-v101-em-diante).
+
 Os bloqueios que este repositório conhecia foram resolvidos em 10/08/2026, na
 preparação da **v0.1.0**. O documento deixa de ser lista de pendências e passa
 a registrar *o que foi feito* — porque metade disso é irreversível e a outra
@@ -9,10 +21,10 @@ metade não está em lugar nenhum do código.
 
 | # | Item | Situação |
 |---|---|---|
-| 0 | Keystore de release | ✅ criado e ligado ao Gradle |
+| 0 | Keystore de release | 🟡 desde a v1.0.1 o APK sai com o `debug.keystore` de uma máquina, porque o oficial não estava nela — ver [item 0](#0-assinatura-de-release) |
 | 1 | Pacote definitivo | ✅ `br.com.compy.app` |
-| 2 | `google-services.json` com OAuth | ✅ 3 `oauth_client` para o pacote novo |
-| 3 | Regras e índices no Firestore | ✅ publicados e conferidos; regras republicadas em 22/10/2026 com a tarefa 14, os locais e o avatar |
+| 2 | `google-services.json` com OAuth | ✅ `oauth_client` do pacote novo para release e para o debug de três máquinas |
+| 3 | Regras e índices no Firestore | ✅ publicados e conferidos; regras republicadas em 22/10/2026 com a tarefa 14, os locais e o avatar, e em 03/11/2026 com as amizades |
 | 4 | Storage: bucket, regras e CORS | 🟡 bucket ativo e regras publicadas; falta o CORS — ver [item 4](#4-storage-fotos-de-perfil) |
 | 5 | Distribuição com link fixo | ✅ GitHub Releases, desde a v1.0.0 — ver [item 5](#5-distribuição-pelo-github-releases) |
 
@@ -41,6 +53,31 @@ publica.
 > **Perder o par (`.jks` + senhas) significa não conseguir mais atualizar o app
 > na loja** — só republicar com outro pacote, do zero. Faça backup dos dois
 > fora desta máquina antes de qualquer outra coisa.
+
+### A chave da v1.0.1 em diante
+
+Em 03/11/2026 o `compy-release.jks` e o `key.properties` não estavam na
+máquina do build, e a v1.0.1 foi publicada com o que o Gradle usa no lugar
+deles: o `debug.keystore` daquela máquina. Foi uma decisão consciente, para
+não segurar a versão das amizades.
+
+| | |
+|---|---|
+| Arquivo | `C:/Users/gabri/.android/debug.keystore` — **fora do repositório** |
+| Alias / senhas | `androiddebugkey`, senha `android` (o padrão do Android) |
+| SHA-1 | `92:33:F9:CE:B8:C1:BE:6F:F6:06:06:66:47:EE:89:19:05:3D:3B:B8` |
+| SHA-256 | `CF:4F:2C:CD:67:24:47:83:57:52:AB:8E:0D:A4:A1:81:E8:3C:15:E1:16:E2:AF:6D:00:F0:2A:1A:F6:67:9B:77` |
+
+O preço foi que quem tinha a v1.0.0 precisou desinstalar antes de instalar a
+v1.0.1. Para não repetir isso, **as próximas versões saem assinadas com este
+mesmo arquivo**. Ele é gerado sozinho pelo Android Studio quando falta, com uma
+chave nova, então apagá-lo sem backup significa forçar outra desinstalação.
+Copie-o para fora da máquina, ao lado do `.jks` antigo.
+
+A Play Store recusa artefatos assinados com certificado de debug. No dia em que
+o destino for a loja, será preciso criar uma chave de upload; com o Play App
+Signing, a SHA da chave do Google também entra no Firebase (ver o fim deste
+documento).
 
 O `build.gradle.kts` lê o `key.properties` e **cai na chave de debug quando ele
 não existe**. Isso é intencional: um clone limpo continua compilando release
@@ -73,7 +110,7 @@ clientes ficaria verde com o app apontando para o pacote errado.
 |---|---|
 | Projeto | `compy-tcc` |
 | App ID | `1:260166625635:android:d3a540c67965084979cb56` |
-| SHAs cadastradas | 4 — SHA-1 e SHA-256 de **release** e de **debug** |
+| SHAs cadastradas | 8 — SHA-1 e SHA-256 de **release** e do **debug** de três máquinas |
 
 As SHAs entraram **antes** do download do `google-services.json`, que é a ordem
 que faz o arquivo vir com `oauth_client` preenchido. Fora dessa ordem ele volta
@@ -93,6 +130,10 @@ antigo antes.
 
 Ao trocar de máquina de desenvolvimento, cadastre a SHA-1 do `debug.keystore`
 **daquela** máquina — ela é gerada localmente e é diferente por instalação.
+E cadastre no app `br.com.compy.app`: em 03/11/2026 a SHA-1 de debug
+`92:33:F9:CE:B8:C1:BE:6F:F6:06:06:66:47:EE:89:19:05:3D:3B:B8` estava só no app
+antigo `com.example.mvp_compy`, e o login com Google falhava com
+`ApiException: 10` em todo APK compilado naquela máquina (issue #33).
 
 ## 3. Regras e índices do Firestore
 
@@ -159,11 +200,13 @@ regras forem seguidas a cada versão:
 2. **A release sai como _latest_**, sem `--prerelease` nem `--draft`.
 3. **O build number sobe** (`version: X.Y.Z+N` no `pubspec.yaml`, que o Gradle
    usa como `versionCode`). O Android recusa instalar por cima um APK com
-   `versionCode` menor ou igual ao instalado. A v0.1.0 foi o `+1`, a v1.0.0 é
-   o `+2`.
-4. **A chave é a mesma** do [item 0](#0-assinatura-de-release). APK assinado
-   com outra chave não atualiza o app instalado; o Android exige desinstalar
-   antes, e o usuário perde a sessão.
+   `versionCode` menor ou igual ao instalado. A v0.1.0 foi o `+1`, a v1.0.0 o
+   `+2` e a v1.0.1 é o `+3`.
+4. **A chave é a mesma da versão anterior.** Desde a v1.0.1 é o
+   `debug.keystore` descrito em [A chave da v1.0.1 em diante](#a-chave-da-v101-em-diante)
+   (SHA-1 `92:33:…:3B:B8`); a v0.1.0 e a v1.0.0 usaram o `compy-release.jks`.
+   APK assinado com outra chave não atualiza o app instalado; o Android exige
+   desinstalar antes, e o usuário perde a sessão.
 
 O ritual, a partir de `main` já com o merge de `develop`:
 

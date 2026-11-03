@@ -4,7 +4,7 @@ import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_colors.dart';
 import '../models/skill_level.dart';
 
-/// Mesmo rótulo de nível nos cards, detalhes e evento em andamento.
+/// Nível de habilidade nos cards; os detalhes usam uma linha informativa.
 class EventSkillLevelChip extends StatelessWidget {
   const EventSkillLevelChip({
     required this.level,

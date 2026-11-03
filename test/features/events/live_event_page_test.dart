@@ -16,6 +16,7 @@ import 'package:mvp_compy/shared/models/skill_level.dart';
 import 'package:mvp_compy/shared/models/sport.dart';
 import 'package:mvp_compy/shared/models/user_summary.dart';
 import 'package:mvp_compy/shared/widgets/event_skill_level_chip.dart';
+import 'package:mvp_compy/shared/widgets/event_info_row.dart';
 
 final _agora = DateTime(2026, 10, 21, 19, 30);
 
@@ -85,10 +86,12 @@ Future<void> _abrir(
   WidgetTester tester,
   UserSummary quem, {
   _Repositorio? repositorio,
+  Size size = const Size(420, 1400),
+  double textScale = 1,
 }) async {
   // Tela alta o bastante para a lista inteira: o ListView só constrói o que
   // aparece.
-  await tester.binding.setSurfaceSize(const Size(420, 1400));
+  await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
   final router = GoRouter(
     initialLocation: '/events/evt_ao_vivo/ao-vivo',
@@ -118,7 +121,14 @@ Future<void> _abrir(
       currentUserSummaryProvider.overrideWith((ref) async => quem),
       eventsRepositoryProvider.overrideWithValue(repositorio ?? _Repositorio()),
     ],
-    child: MaterialApp.router(routerConfig: router),
+    child: MaterialApp.router(
+      routerConfig: router,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+    ),
   ));
   await tester.pumpAndSettle();
 }
@@ -127,20 +137,55 @@ Finder _mensagemPara(UserSummary pessoa) =>
     find.byTooltip(AppStrings.eventLiveMessage(pessoa.name));
 
 void main() {
-  testWidgets('evento em andamento mostra o nível salvo', (tester) async {
-    final advanced = Event.fromMap('evt_ao_vivo',
-        _evento.toMap()..['skillLevel'] = SkillLevel.avancado.name);
+  for (final level in SkillLevel.values) {
+    testWidgets('evento em andamento mostra ${level.label} sem chip',
+        (tester) async {
+      final event = Event.fromMap(
+          'evt_ao_vivo', _evento.toMap()..['skillLevel'] = level.name);
+      await _abrir(tester, _participante,
+          repositorio: _Repositorio(evento: Stream.value(event)));
+      final label = level == SkillLevel.todos
+          ? AppStrings.eventAllSkillLevels
+          : level.label;
+      expect(find.text(label), findsOneWidget);
+      expect(find.byType(EventSkillLevelChip), findsNothing);
+      final skill =
+          find.widgetWithIcon(EventInfoRow, Icons.trending_up_outlined);
+      final sport = find.widgetWithIcon(EventInfoRow, event.sport.icon);
+      expect(tester.getTopLeft(find.text(label)).dx,
+          tester.getTopLeft(find.text(event.sport.label)).dx);
+      expect(tester.widget<Text>(find.text(label)).style,
+          tester.widget<Text>(find.text(event.sport.label)).style);
+      expect(tester.getTopLeft(skill).dy - tester.getBottomLeft(sport).dy, 8);
+      expect(find.descendant(of: skill, matching: find.byType(DecoratedBox)),
+          findsNothing);
+      expect(find.text(AppStrings.eventLiveSchedule('19:10', '20:10')),
+          findsOneWidget);
+      expect(
+          tester
+              .widget<LinearProgressIndicator>(
+                  find.byType(LinearProgressIndicator))
+              .value,
+          closeTo(1 / 3, 0.001));
+    });
+  }
+
+  testWidgets(
+      'evento em andamento comporta título longo e texto ampliado em tela estreita',
+      (tester) async {
+    final event = Event.fromMap(
+        'evt_ao_vivo',
+        _evento.toMap()
+          ..['title'] =
+              'Treino de tênis de mesa para todos os moradores do bairro'
+          ..['sport'] = Sport.tenisDeMesa.name);
     await _abrir(tester, _participante,
-        repositorio: _Repositorio(evento: Stream<Event?>.value(advanced)));
-    expect(
-        find.text('${AppStrings.eventSkillLevel}: '
-            '${SkillLevel.avancado.label}'),
-        findsOneWidget);
-    expect(
-        tester
-            .widget<EventSkillLevelChip>(find.byType(EventSkillLevelChip))
-            .level,
-        SkillLevel.avancado);
+        repositorio: _Repositorio(evento: Stream.value(event)),
+        size: const Size(360, 1400),
+        textScale: 1.2);
+    expect(find.text(AppStrings.eventAllSkillLevels), findsOneWidget);
+    expect(find.text(Sport.tenisDeMesa.label), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(

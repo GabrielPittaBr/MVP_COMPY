@@ -72,6 +72,8 @@
 
 ---
 
+**Informações dos eventos (29/10/2026):** o nível de habilidade nos detalhes e no evento em andamento passou a usar uma linha de ícone e texto, sem o fundo cinza. `EventInfoRow` reaproveita o padrão das linhas de modalidade, data e duração, com texto que pode quebrar linha; “Todos os níveis” e o contexto para leitores de tela permanecem. Os cards mantêm seus chips compactos, e a barra de progresso, ações e estados do evento não mudaram. Validamos cada nível, alinhamento, espaçamento, ausência de chip e responsividade das novas linhas até 280 px com fonte a 200%; as telas foram verificadas com fonte a 120% em 320 px (detalhe) e 360 px (andamento). Um ensaio em 280 px com fonte a 150% revelou overflows nos componentes preexistentes `PrimaryButton` e `EventStatusChip`, fora das linhas informativas; eles permanecem fora desta alteração visual localizada.
+
 ## Funcionalidade concluída — perfis públicos de outros usuários
 
 **Branch:** `feature/perfil-publico-usuarios` · **Status:** ✅ Concluída em 2026-10-22.
@@ -79,6 +81,10 @@
 Usuários autenticados podem abrir `users/{uid}` pelo organizador ou pelos participantes de um evento, pelo cabeçalho de uma conversa e pelo resultado da busca de usuários. A tela mostra apenas nome, handle, avatar, biografia existente e esportes favoritos. O botão "Mensagem" usa o fluxo 1:1 existente. Perfis ausentes e falhas de leitura têm estados próprios; o UID do próprio usuário mostra a tela proprietária. A lista rolável do evento mantém todos os participantes identificáveis. As regras do Firestore não precisaram mudar.
 
 ---
+
+## Sistema de amizades — implementação local em 02/11/2026
+
+Implementado em `feature/sistema-amizades`, com publicação pendente. O perfil público mantém Mensagem e permite enviar, cancelar e responder solicitações, além de desfazer uma amizade com confirmação. O perfil próprio mostra contagem e prévia de amigos reais, Ver todos e pendências recebidas. A tela de amizades separa Amigos, Recebidas e Enviadas, usa os perfis públicos atuais e mantém a interface estável se um perfil sumir. Uma relação privada por par de UIDs no Firestore garante a simetria, sem campos novos nos perfis ou exigência de amizade para conversar. As regras, os fluxos e as consultas passaram nos emuladores; a Function de limpeza após exclusão de perfil tem testes de lotes e repetição. Passaram 500 testes Flutter, 219 das regras e 98 de Functions. É necessário publicar as regras e o novo gatilho antes de distribuir o app; não houve deploy ou homologação no Android físico. Schema, permissões, custo da assinatura compartilhada, limpeza e roteiro de publicação estão em [amizades.md](amizades.md).
 
 ## Backlog — prioridade média e baixa
 
@@ -101,7 +107,7 @@ A `EditProfilePage` (`/profile/editar`) edita nome completo (até 60 caracteres)
 
 `validProfile()` aceita apenas `bio` opcional do tipo texto e com até 160 caracteres, sem mudar o acesso privado. Nomes e fotos copiados para eventos e conversas antigos continuam como snapshots históricos; a apresentação dos participantes nos detalhes do evento consulta os perfis atuais quando visíveis. A pendência de CORS para avatar no Chrome e o comando de configuração do bucket estão em [`checklist-publicacao.md`](checklist-publicacao.md); nenhuma configuração foi aplicada ao bucket nesta tarefa.
 
-**Pendência de publicação confirmada em 28/10:** a release ativa ainda usa o ruleset de 22/10, sem `bio` na lista de campos permitidos. Reproduzimos `permission-denied` com esse contrato no emulador e validamos as regras locais com biografia preenchida e vazia, inclusive para perfis legados e novos. A correção preserva a tentativa após falha parcial, inclusive ao reabrir o editor na mesma sessão, e registra etapa e código técnico sem dados pessoais. Publicar as regras locais continua sendo um passo manual autorizado; nenhum deploy foi feito. Ver [evidências e validação](correcao-salvamento-perfil.md).
+**Pendência histórica de publicação confirmada em 28/10, resolvida em 31/10:** o ruleset de 22/10 rejeitava `bio`; reproduzimos `permission-denied` no emulador e validamos as regras locais com biografia preenchida e vazia, inclusive para perfis legados e novos. A consulta somente leitura de 02/11 confirmou que o ruleset publicado em 31/10 já aceita `bio` e as 16 modalidades. A correção preserva a tentativa após falha parcial, inclusive ao reabrir o editor na mesma sessão, e registra etapa e código técnico sem dados pessoais. Ver [evidências históricas](correcao-salvamento-perfil.md) e [auditoria atual, integração e preparação Android](validacao-feintec-2026.md). A publicação de amizades continua pendente; não fizemos deploy nesta auditoria.
 
 ### C · Tela de configurações
 

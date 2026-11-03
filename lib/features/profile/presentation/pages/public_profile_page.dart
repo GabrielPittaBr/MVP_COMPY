@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/user_avatar.dart';
 import '../../../chat/presentation/providers/chat_providers.dart';
+import '../../../friends/presentation/widgets/friendship_actions.dart';
 import '../../domain/entities/user_profile.dart';
 import '../providers/profile_providers.dart';
 import '../widgets/favorite_sports_chips.dart';
@@ -94,6 +95,10 @@ class _PublicProfilePageState extends ConsumerState<PublicProfilePage> {
                 onPressed: _opening ? null : () => _message(value),
               ),
               if (_opening) const LinearProgressIndicator(minHeight: 2),
+              if (ref.watch(currentUserIdProvider) != null) ...<Widget>[
+                const SizedBox(height: 12),
+                FriendshipActions(peerId: value.summary.id),
+              ],
               if (value.bio.trim().isNotEmpty) ...<Widget>[
                 const SizedBox(height: 24),
                 Text(value.bio.trim()),
