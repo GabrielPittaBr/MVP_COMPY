@@ -147,25 +147,30 @@ objective_c em caminhos Windows com espaços. Para os emuladores, usamos JDK
 21 local e JAVA_TOOL_OPTIONS com diretório temporário de socket, somente no
 processo de teste, sem alterar configurações permanentes.
 
-## Publicação pendente — não executada
+## Publicação — 03/11/2026
 
-Antes de distribuir o app com esta feature:
+Até esta data as regras no ar eram as de 31/10, sem `friendships`: toda
+leitura e escrita de amizade voltava `PERMISSION_DENIED` e a UI mostrava o
+erro de carregamento (issue #34). Publicamos a partir da `develop`, depois de
+passarem as regras (219), as Functions (98, com lint) e o `flutter test` (509):
 
-1. Revisar e publicar o `firestore.rules` versionado. Com as regras anteriores,
-   as consultas à coleção nova são negadas e a UI mostra erro, sem inventar amigos.
-2. Publicar **somente a Function nova** `onProfileDeletedFriendships`, no
-   codebase `administrative`, região southamerica-east1. Confirmar gatilho de
-   exclusão de `users/{uid}`, permissões de execução e política de retry.
-   Não é necessário alterar callables administrativas existentes.
-3. Preservar o índice automático de array de members. Não há índice novo a
-   publicar neste commit.
-4. Gerar um APK contendo esta branch em etapa própria e validar com duas contas
-   no Android: enviar/cancelar, aceitar/recusar, desfazer, encerrar/reabrir app,
-   troca de conta, falha de conexão e atualização de nome/foto.
-5. Validar também a execução end-to-end do gatilho após exclusão pelo app e
-   pelo painel, incluindo retry. Aqui o handler foi testado com gateway local;
-   o fluxo Auth/Firestore real usou emuladores, sem emular o gatilho de Functions.
+```powershell
+firebase deploy --project compy-tcc --only firestore:rules
+firebase deploy --project compy-tcc --only functions:administrative:onProfileDeletedFriendships --force
+```
 
-A validação local não equivale à publicação nem à homologação no aparelho.
-Main, assinatura, Google Sign-In, configuração Firebase e produção não foram
-alterados. Não houve push, merge ou deploy.
+- **Regras:** ruleset `7631a13b-f7df-48e2-9f24-79ce620874c2`, de
+  `2026-11-03T12:53:15Z`, idêntico ao `firestore.rules` versionado. Em relação
+  ao anterior, só mudaram o bloco `friendships` e o comentário inicial.
+- **Function:** `onProfileDeletedFriendships` `ACTIVE`, 2ª geração, em
+  southamerica-east1, com gatilho `document.v1.deleted` em `users/{uid}` e
+  `RETRY_POLICY_RETRY`. O `--force` só confirma o aviso de retry, que o CLI
+  exige fora do modo interativo; o filtro `--only` deixa as outras Functions
+  fora do deploy.
+- **Índices:** nada a publicar; a consulta usa o índice automático de `members`.
+
+A v1.0.0 não tem a feature, que chega a quem baixa pelo link na versão
+seguinte. Continua pendente a validação no aparelho: duas contas em dois
+Androids para enviar/cancelar, aceitar/recusar, desfazer, reabrir o app e
+trocar de conta, e a limpeza das relações depois de excluir uma conta pelo app
+e pelo painel.

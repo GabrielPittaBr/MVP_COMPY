@@ -6,6 +6,9 @@
 > nova. O build Android local passou, mas usa a chave de debug porque a chave
 > oficial não existe nesta máquina. Não distribuir esse artefato como atualização
 > da v1.0.0. Ver [evidências, comandos e validação presencial](validacao-feintec-2026.md).
+>
+> **03/11/2026:** as Rules com `friendships` e a Function
+> `onProfileDeletedFriendships` foram publicadas — ver [amizades](amizades.md).
 
 Os bloqueios que este repositório conhecia foram resolvidos em 10/08/2026, na
 preparação da **v0.1.0**. O documento deixa de ser lista de pendências e passa
@@ -19,7 +22,7 @@ metade não está em lugar nenhum do código.
 | 0 | Keystore de release | ✅ criado e ligado ao Gradle |
 | 1 | Pacote definitivo | ✅ `br.com.compy.app` |
 | 2 | `google-services.json` com OAuth | ✅ `oauth_client` do pacote novo para release e para o debug de três máquinas |
-| 3 | Regras e índices no Firestore | ✅ publicados e conferidos; regras republicadas em 22/10/2026 com a tarefa 14, os locais e o avatar |
+| 3 | Regras e índices no Firestore | ✅ publicados e conferidos; regras republicadas em 22/10/2026 com a tarefa 14, os locais e o avatar, e em 03/11/2026 com as amizades |
 | 4 | Storage: bucket, regras e CORS | 🟡 bucket ativo e regras publicadas; falta o CORS — ver [item 4](#4-storage-fotos-de-perfil) |
 | 5 | Distribuição com link fixo | ✅ GitHub Releases, desde a v1.0.0 — ver [item 5](#5-distribuição-pelo-github-releases) |
 
