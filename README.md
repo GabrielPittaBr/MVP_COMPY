@@ -20,9 +20,9 @@ Aplicativo móvel que conecta praticantes de esporte em **Taquara/RS**.
 [![OpenStreetMap](https://img.shields.io/badge/OpenStreetMap-flutter__map%207-7EBC6F?style=for-the-badge&logo=openstreetmap&logoColor=white)](https://openstreetmap.org)
 [![Android](https://img.shields.io/badge/Android-br.com.compy.app-3DDC84?style=for-the-badge&logo=android&logoColor=white)](android/app/build.gradle.kts)
 
-[![Versão](https://img.shields.io/badge/Vers%C3%A3o-v1.0.0-1F3A8A?style=for-the-badge)](https://github.com/GabrielPittaBr/MVP_COMPY/releases/latest)
-![Testes](https://img.shields.io/badge/Testes-483%20passando-10B981?style=for-the-badge)
-![Regras](https://img.shields.io/badge/Regras%20do%20Firestore%20e%20Storage-206%20casos-F59E0B?style=for-the-badge)
+[![Versão](https://img.shields.io/badge/Vers%C3%A3o-v1.0.1-1F3A8A?style=for-the-badge)](https://github.com/GabrielPittaBr/MVP_COMPY/releases/latest)
+![Testes](https://img.shields.io/badge/Testes-509%20passando-10B981?style=for-the-badge)
+![Regras](https://img.shields.io/badge/Regras%20do%20Firestore%20e%20Storage-219%20casos-F59E0B?style=for-the-badge)
 
 </div>
 
@@ -45,7 +45,7 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 | 📅 | **Eventos** | Lista em três seções, *Criados por mim*, *Participando* e *Todos os eventos*, com filtros de modalidade, nível de habilidade e data. Os cards mostram o nível do evento e abrem os detalhes com um toque, mesmo quando as vagas acabaram. O detalhe traz local, horário, duração, nível, vagas restantes e os participantes, com o organizador em destaque e a lista completa em *Ver todos*, onde cada pessoa leva ao seu perfil. Durante o evento, o selo *Acontecendo agora* e o card ao vivo levam à tela do evento em andamento, com mensagem direta para cada participante; o organizador encerra o evento, e um evento esquecido encerra sozinho 1h depois do fim previsto. Depois do fim, os participantes avaliam o evento, o local e quem jogou, e o organizador avalia o local e os participantes. |
 | ➕ | **Criar** | Título, modalidade, local, data, horário, duração, nível de habilidade, número de participantes e descrição. |
 | 💬 | **Chat** | Conversas em tempo real, direto sobre os streams do Firestore. A lista mostra o horário ou a data da última mensagem e destaca as não lidas, e o nome e a foto de cada pessoa acompanham o perfil atual dela. Dá para começar uma conversa pelo nome de usuário e enviar o local de um evento como cartão na conversa. |
-| 👤 | **Perfil** | Foto, nome, biografia, esportes favoritos, insígnias, amigos, média das avaliações recebidas e galeria. A foto vem da galeria ou da câmera e passa por um recorte antes do envio; nome, biografia e foto se editam no próprio app, e a exclusão da conta apaga também as fotos. O perfil de outras pessoas abre pelo evento, pela conversa ou pela busca de usuários, só com os dados públicos e um botão de mensagem. |
+| 👤 | **Perfil** | Foto, nome, biografia, esportes favoritos, insígnias, amigos, média das avaliações recebidas e galeria. A foto vem da galeria ou da câmera e passa por um recorte antes do envio; nome, biografia e foto se editam no próprio app, e a exclusão da conta apaga também as fotos. O perfil de outras pessoas abre pelo evento, pela conversa ou pela busca de usuários, só com os dados públicos e os botões de mensagem e de **amizade**: dá para enviar uma solicitação, que a outra pessoa aceita ou recusa, cancelar a que ainda não foi respondida e desfazer uma amizade. A seção de amigos mostra a contagem e os avatares, e a tela de amigos separa amigos, solicitações recebidas e enviadas. |
 
 **Entrada no app:** cadastro e login por e-mail/senha ou **conta Google**, foto de perfil opcional já no cadastro (quem entra com o Google recebe a foto da conta como sugestão), escolha de um nome de usuário único e onboarding de esportes favoritos, tudo protegido por um guard de rotas que leva cada pessoa exatamente ao degrau que falta.
 
@@ -76,11 +76,11 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 
 ## Baixar
 
-A versão atual é a **v1.0.0**, publicada em 2 de novembro de 2026. O APK de Android (7.0 ou superior) fica sempre no mesmo endereço, que aponta para a versão mais recente:
+A versão atual é a **v1.0.1**, publicada em 3 de novembro de 2026. O APK de Android (7.0 ou superior) fica sempre no mesmo endereço, que aponta para a versão mais recente:
 
 **[compy-release.apk](https://github.com/GabrielPittaBr/MVP_COMPY/releases/latest/download/compy-release.apk)**
 
-Como o app não vem da Play Store, o Android pede autorização para instalar de fora dela na primeira vez. Quem já tem uma versão anterior só atualiza por cima, sem desinstalar. As notas de cada versão ficam em [Releases](https://github.com/GabrielPittaBr/MVP_COMPY/releases).
+Como o app não vem da Play Store, o Android pede autorização para instalar de fora dela na primeira vez. A v1.0.1 foi assinada com uma chave diferente da v1.0.0, então quem tem a v1.0.0 precisa desinstalá-la antes de instalar a nova; perfil, eventos e conversas ficam no servidor e voltam ao entrar de novo. A partir da v1.0.1, as versões novas atualizam por cima, sem desinstalar. As notas de cada versão ficam em [Releases](https://github.com/GabrielPittaBr/MVP_COMPY/releases).
 
 ---
 
@@ -237,7 +237,7 @@ O repositório segue **Gitflow**:
 main  ←  develop  ←  feature/… · fix/… · refactor/… · chore/… · style/…
 ```
 
-`main` guarda o que está estável e versionado, `develop` recebe as branches de trabalho e as releases sobem de `develop` para `main`. A v0.1.0 já saiu assinada, com pacote definitivo `br.com.compy.app`. A v1.0.0 mantém a mesma chave e passou a usar um link de download fixo, com o passo a passo em [`docs/checklist-publicacao.md`](docs/checklist-publicacao.md#5-distribuição-pelo-github-releases).
+`main` guarda o que está estável e versionado, `develop` recebe as branches de trabalho e as releases sobem de `develop` para `main`. A v0.1.0 já saiu assinada, com pacote definitivo `br.com.compy.app`. A v1.0.0 manteve a mesma chave e passou a usar um link de download fixo. A v1.0.1 trocou de chave, porque a original não estava na máquina do build, e o link continuou o mesmo. O passo a passo está em [`docs/checklist-publicacao.md`](docs/checklist-publicacao.md#5-distribuição-pelo-github-releases).
 
 ---
 
