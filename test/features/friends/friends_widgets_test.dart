@@ -5,6 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mvp_compy/core/constants/app_strings.dart';
 import 'package:mvp_compy/core/routes/app_router.dart';
+import 'package:mvp_compy/features/chat/domain/entities/conversation.dart';
+import 'package:mvp_compy/features/chat/domain/repositories/chat_repository.dart';
+import 'package:mvp_compy/features/chat/presentation/pages/new_conversation_page.dart';
 import 'package:mvp_compy/features/chat/presentation/providers/chat_providers.dart';
 import 'package:mvp_compy/features/friends/data/datasources/in_memory_friendships.dart';
 import 'package:mvp_compy/features/friends/domain/entities/friendship.dart';
@@ -92,13 +95,35 @@ class _Relations implements FriendshipsRepository {
   }
 }
 
-ProviderContainer _client(
-    String uid, _Relations relations, _Profiles profiles) {
+class _Chat implements ChatRepository {
+  final opened = <String>[];
+  @override
+  Future<String> openConversationWith(
+      {required UserSummary me, required UserSummary peer}) async {
+    opened.add(peer.id);
+    return Conversation.idBetween(me.id, peer.id);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+ProviderContainer _client(String uid, _Relations relations, _Profiles profiles,
+    {_Chat? chat}) {
   final container = ProviderContainer(overrides: [
     currentUserIdProvider.overrideWithValue(uid),
     currentUserSummaryProvider.overrideWith((ref) async => uid == 'a' ? a : b),
     friendshipsRepositoryProvider.overrideWithValue(relations),
     profileRepositoryProvider.overrideWithValue(profiles),
+    if (chat != null) chatRepositoryProvider.overrideWithValue(chat),
+    // Mesma busca por @ do chat; aqui sem Firestore nem debounce.
+    userSearchProvider.overrideWith((ref, query) async =>
+        query.replaceFirst('@', '').length < 2
+            ? const <UserSummary>[]
+            : [a, b]
+                .where((u) =>
+                    u.handle.startsWith('@${query.replaceFirst('@', '')}'))
+                .toList()),
   ]);
   addTearDown(container.dispose);
   return container;
@@ -121,8 +146,19 @@ Future<GoRouter> open(
             initialTab:
                 int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0)),
     GoRoute(
+        path: AppRoutes.friendsSearch,
+        builder: (_, __) =>
+            const NewConversationPage(title: AppStrings.friendsFind)),
+    GoRoute(
+        path: '${AppRoutes.chat}/:id',
+        builder: (_, state) =>
+            Scaffold(body: Text('sala ${state.pathParameters['id']}'))),
+    GoRoute(
         path: '/preview',
-        builder: (_, __) => const Scaffold(body: FriendsSection())),
+        // Rolável como o ProfilePage, onde a seção vive.
+        builder: (_, __) => const Scaffold(
+            body: SingleChildScrollView(
+                padding: EdgeInsets.all(20), child: FriendsSection()))),
   ]);
   addTearDown(router.dispose);
   await tester.pumpWidget(UncontrolledProviderScope(
@@ -143,6 +179,24 @@ Future<void> tap(WidgetTester tester, String text) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> tapTooltip(WidgetTester tester, String tooltip) async {
+  await tester.tap(find.byTooltip(tooltip).last);
+  await tester.pumpAndSettle();
+}
+
+/// Botão (de qualquer estilo) que contém [label].
+Finder button(String label) => find.ancestor(
+    of: find.text(label),
+    matching: find.byWidgetPredicate((w) => w is ButtonStyleButton));
+
+Future<void> _befriend(_Relations relations, String from, String to) async {
+  await relations.store.send(from, to);
+  await relations.store.act(
+      to,
+      relations.store.relations[Friendship.pairId(from, to)]!,
+      FriendshipAction.accept);
+}
+
 void main() {
   late _Profiles profiles;
   late _Relations relations;
@@ -155,9 +209,7 @@ void main() {
   testWidgets(
       'controles não aparecem para o próprio UID e aba oculta libera assinaturas',
       (tester) async {
-    await relations.store.send('a', 'b');
-    await relations.store.act(
-        'b', relations.store.relations.values.single, FriendshipAction.accept);
+    await _befriend(relations, 'a', 'b');
     final container = _client('a', relations, profiles);
     final visible = ValueNotifier(true);
     addTearDown(visible.dispose);
@@ -169,12 +221,13 @@ void main() {
                     valueListenable: visible,
                     builder: (_, active, __) => TickerMode(
                         enabled: active,
-                        child: const Column(children: [
-                          FriendshipActions(peerId: 'a'),
-                          FriendsSection()
+                        child: Column(children: [
+                          FriendshipActions(peerId: 'a', onMessage: () {}),
+                          const FriendsSection()
                         ])))))));
     await tester.pumpAndSettle();
     expect(find.text(AppStrings.friendsAdd), findsNothing);
+    expect(find.text(AppStrings.profileMessage), findsNothing);
     expect(relations.watches, 1);
     expect(profiles.listens, 1);
     visible.value = false;
@@ -188,11 +241,7 @@ void main() {
       final uid = 'peer$i';
       profiles.users[uid] = UserSummary(
           id: uid, name: 'Pessoa $i', handle: '@p$i', avatarUrl: '');
-      await relations.store.send('a', uid);
-      await relations.store.act(
-          uid,
-          relations.store.relations[Friendship.pairId('a', uid)]!,
-          FriendshipAction.accept);
+      await _befriend(relations, 'a', uid);
     }
     await open(tester, _client('a', relations, profiles), AppRoutes.friends);
     expect(find.text('Amigos (30)'), findsOneWidget);
@@ -217,27 +266,31 @@ void main() {
     await open(tester, ca, AppRoutes.publicProfileFor('b'));
     expect(find.text(AppStrings.profileMessage), findsOneWidget);
     await tap(tester, AppStrings.friendsAdd);
-    expect(find.text(AppStrings.friendsSentState), findsOneWidget);
+    expect(find.text(AppStrings.friendsRequested), findsOneWidget);
     expect(relations.store.relations.values.single.status,
         FriendshipStatus.pending);
     await open(tester, cb, '${AppRoutes.friends}?tab=1');
     expect(find.text('@ana'), findsOneWidget);
-    expect(find.text(AppStrings.friendsRespond), findsOneWidget);
     await tap(tester, AppStrings.friendsAccept);
     expect(find.text('@ana'), findsNothing);
+    expect(find.text(AppStrings.friendsEmptyReceivedTitle), findsOneWidget);
     expect(ca.read(friendshipsProvider).valueOrNull!.single.status,
         FriendshipStatus.accepted);
     expect(cb.read(friendshipsProvider).valueOrNull!.single.status,
         FriendshipStatus.accepted);
+    expect(find.text('Recebidas (0)'), findsOneWidget);
     await tap(tester, 'Amigos (1)');
     expect(find.text('@ana'), findsOneWidget);
+    await tapTooltip(tester, AppStrings.friendsMoreOptions);
     await tap(tester, AppStrings.friendsRemove);
     await tap(tester, AppStrings.commonCancel);
     expect(relations.store.relations, hasLength(1));
+    await tapTooltip(tester, AppStrings.friendsMoreOptions);
     await tap(tester, AppStrings.friendsRemove);
     await tap(tester, AppStrings.friendsRemove);
     expect(relations.store.relations, isEmpty);
     expect(ca.read(friendshipsProvider).valueOrNull, isEmpty);
+    expect(find.text('Amigos (0)'), findsOneWidget);
     expect(relations.watches, 2);
     sa.close();
     sb.close();
@@ -254,18 +307,59 @@ void main() {
     await relations.store.send('b', 'a');
     await tester.pumpAndSettle();
     await tap(tester, 'Enviadas (1)');
-    expect(find.text(AppStrings.friendsSentState), findsOneWidget);
+    expect(find.text(AppStrings.friendsPending), findsOneWidget);
+    await tapTooltip(tester, AppStrings.friendsCancel);
+    expect(relations.store.relations, isEmpty);
+    expect(find.text(AppStrings.friendsEmptySentTitle), findsOneWidget);
+  });
+  testWidgets('perfil: solicitado cancela pela folha e destaca a mensagem',
+      (tester) async {
+    await open(tester, _client('a', relations, profiles),
+        AppRoutes.publicProfileFor('b'));
+    // Sem amizade, adicionar é a ação principal e a mensagem é secundária.
+    expect(button(AppStrings.friendsAdd).evaluate().single.widget,
+        isA<FilledButton>());
+    expect(button(AppStrings.profileMessage).evaluate().single.widget,
+        isA<OutlinedButton>());
+    await tap(tester, AppStrings.friendsAdd);
+    expect(find.text(AppStrings.friendsAdd), findsNothing);
+    expect(button(AppStrings.profileMessage).evaluate().single.widget,
+        isA<FilledButton>());
+    await tap(tester, AppStrings.friendsRequested);
     await tap(tester, AppStrings.friendsCancel);
     expect(relations.store.relations, isEmpty);
+    expect(find.text(AppStrings.friendsAdd), findsOneWidget);
   });
-  testWidgets('solicitação recebida no perfil oferece aceitar e recusar',
+  testWidgets('perfil: aceitar vira "Amigos" e desfazer pede confirmação',
       (tester) async {
     await relations.store.send('b', 'a');
     await open(tester, _client('a', relations, profiles),
         AppRoutes.publicProfileFor('b'));
-    expect(find.text(AppStrings.friendsRespond), findsOneWidget);
+    expect(find.text(AppStrings.friendsDeclineRequest), findsOneWidget);
+    await tap(tester, AppStrings.friendsAccept);
+    expect(find.text(AppStrings.friendsDeclineRequest), findsNothing);
+    expect(relations.store.relations.values.single.status,
+        FriendshipStatus.accepted);
+    expect(button(AppStrings.profileMessage).evaluate().single.widget,
+        isA<FilledButton>());
+    await tap(tester, AppStrings.friendsConfirmed);
+    await tap(tester, AppStrings.friendsRemove);
+    await tap(tester, AppStrings.commonCancel);
+    expect(relations.store.relations, hasLength(1));
+    expect(find.text(AppStrings.friendsConfirmed), findsOneWidget);
+    await tap(tester, AppStrings.friendsConfirmed);
+    await tap(tester, AppStrings.friendsRemove);
+    await tap(tester, AppStrings.friendsRemove);
+    expect(relations.store.relations, isEmpty);
+    expect(find.text(AppStrings.friendsAdd), findsOneWidget);
+  });
+  testWidgets('solicitação recebida no perfil pode ser recusada',
+      (tester) async {
+    await relations.store.send('b', 'a');
+    await open(tester, _client('a', relations, profiles),
+        AppRoutes.publicProfileFor('b'));
     expect(find.text(AppStrings.friendsAccept), findsOneWidget);
-    await tap(tester, AppStrings.friendsDecline);
+    await tap(tester, AppStrings.friendsDeclineRequest);
     expect(find.text(AppStrings.friendsAdd), findsOneWidget);
     expect(relations.store.relations, isEmpty);
   });
@@ -282,19 +376,64 @@ void main() {
     relations.gate = Completer<void>();
     await tester.tap(find.text(AppStrings.friendsAdd));
     await tester.pump();
-    final button = tester.widget<FilledButton>(
+    final pending = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, AppStrings.friendsAdd));
-    expect(button.onPressed, isNull);
+    expect(pending.onPressed, isNull);
+    await tester.tap(find.text(AppStrings.friendsAdd), warnIfMissed: false);
+    await tester.pump();
     expect(relations.sends, 2);
+    // A mensagem segue disponível enquanto a amizade grava.
+    expect(
+        tester
+            .widget<OutlinedButton>(
+                find.widgetWithText(OutlinedButton, AppStrings.profileMessage))
+            .onPressed,
+        isNotNull);
     relations.gate!.complete();
     await tester.pumpAndSettle();
     expect(relations.store.relations, hasLength(1));
+    expect(find.text(AppStrings.friendsRequested), findsOneWidget);
+  });
+  testWidgets('perfil: botões lado a lado com 48 dp e empilhados com fonte 2x',
+      (tester) async {
+    final container = _client('a', relations, profiles);
+    await open(tester, container, AppRoutes.publicProfileFor('b'));
+    final add = button(AppStrings.friendsAdd);
+    final message = button(AppStrings.profileMessage);
+    expect(tester.getSize(add).height, greaterThanOrEqualTo(48));
+    expect(tester.getSize(add), tester.getSize(message));
+    expect(tester.getCenter(add).dy, tester.getCenter(message).dy);
+    expect(tester.getCenter(add).dx, lessThan(tester.getCenter(message).dx));
+
+    await open(tester, container, AppRoutes.publicProfileFor('b'), scale: 2);
+    expect(tester.takeException(), isNull);
+    expect(tester.getCenter(button(AppStrings.friendsAdd)).dy,
+        lessThan(tester.getCenter(button(AppStrings.profileMessage)).dy));
+
+    await relations.store.send('b', 'a');
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.friendsDeclineRequest), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await open(tester, container, '${AppRoutes.friends}?tab=1', scale: 2);
+    expect(find.text(AppStrings.friendsDecline), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await relations.store.send('a', 'peer');
+    profiles.users['peer'] = const UserSummary(
+        id: 'peer', name: 'Pessoa', handle: '@pessoa', avatarUrl: '');
+    await _befriend(relations, 'a', 'c');
+    profiles.users['c'] = const UserSummary(
+        id: 'c', name: 'Carla', handle: '@carla', avatarUrl: '');
+    await open(tester, container, '${AppRoutes.friends}?tab=2', scale: 2);
+    expect(find.text(AppStrings.friendsPending), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await open(tester, container, AppRoutes.friends, scale: 2);
+    expect(find.byTooltip(AppStrings.friendsMoreOptions), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
   testWidgets('lista usa perfil atual e permanece estável quando perfil some',
       (tester) async {
-    await relations.store.send('a', 'b');
-    await relations.store.act(
-        'b', relations.store.relations.values.single, FriendshipAction.accept);
+    await _befriend(relations, 'a', 'b');
     final container = _client('a', relations, profiles);
     final router = await open(tester, container, AppRoutes.friends, scale: 1.5);
     profiles.users['b'] = const UserSummary(
@@ -320,9 +459,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(AppStrings.friendsMissingProfile), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tapTooltip(tester, AppStrings.friendsMoreOptions);
     await tap(tester, AppStrings.friendsRemove);
     await tap(tester, AppStrings.friendsRemove);
     expect(relations.store.relations, isEmpty);
+  });
+  testWidgets('atalho de mensagem da lista abre a conversa com o amigo',
+      (tester) async {
+    await _befriend(relations, 'a', 'b');
+    final chat = _Chat();
+    await open(tester, _client('a', relations, profiles, chat: chat),
+        AppRoutes.friends);
+    await tapTooltip(tester, AppStrings.profileMessage);
+    expect(chat.opened, ['b']);
+    expect(
+        find.text('sala ${Conversation.idBetween('a', 'b')}'), findsOneWidget);
+  });
+  testWidgets('busca por @ na tela Amizades leva ao perfil para adicionar',
+      (tester) async {
+    await open(tester, _client('a', relations, profiles), AppRoutes.friends);
+    expect(find.text(AppStrings.friendsEmptyFriendsTitle), findsOneWidget);
+    await tapTooltip(tester, AppStrings.friendsFind);
+    expect(find.text(AppStrings.friendsFind), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'br');
+    await tester.pumpAndSettle();
+    await tap(tester, 'Bruno');
+    await tap(tester, AppStrings.friendsAdd);
+    expect(find.text(AppStrings.friendsRequested), findsOneWidget);
+    expect(relations.store.relations.values.single.senderId, 'a');
   });
   testWidgets(
       'vazio, erro e repetição da lista; perfil ausente não oferece amizade',
@@ -333,27 +497,62 @@ void main() {
     expect(find.text(AppStrings.friendsLoadError), findsOneWidget);
     relations.failRead = false;
     await tap(tester, AppStrings.commonRetry);
-    expect(find.text(AppStrings.friendsEmptyList), findsWidgets);
+    expect(find.text(AppStrings.friendsEmptyFriendsTitle), findsOneWidget);
+    await tap(tester, 'Recebidas (0)');
+    expect(find.text(AppStrings.friendsEmptyReceivedTitle), findsOneWidget);
     router.go(AppRoutes.publicProfileFor('missing'));
     await tester.pumpAndSettle();
     expect(find.text(AppStrings.profilePublicNotFound), findsOneWidget);
     expect(find.byType(FriendshipActions), findsNothing);
   });
+  testWidgets('erro ao ler amizades no perfil mantém a mensagem disponível',
+      (tester) async {
+    relations.failRead = true;
+    await open(tester, _client('a', relations, profiles),
+        AppRoutes.publicProfileFor('b'));
+    expect(find.text(AppStrings.friendsLoadError), findsOneWidget);
+    expect(find.text(AppStrings.profileMessage), findsOneWidget);
+    relations.failRead = false;
+    await tap(tester, AppStrings.friendsReload);
+    expect(find.text(AppStrings.friendsAdd), findsOneWidget);
+  });
+  testWidgets('seção do perfil não estoura com fonte 2x', (tester) async {
+    final container = _client('a', relations, profiles);
+    await open(tester, container, '/preview', scale: 2);
+    expect(find.text(AppStrings.friendsFindPeople), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await relations.store.send('b', 'a');
+    profiles.users['c'] = const UserSummary(
+        id: 'c', name: 'Carla Souza', handle: '@carla', avatarUrl: '');
+    await _befriend(relations, 'a', 'c');
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.friendsRequestsCount(1)), findsOneWidget);
+    expect(find.text('Carla'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('prévia exibe contagem e pendências, sem amigos fictícios',
       (tester) async {
     final container = _client('a', relations, profiles);
-    await open(tester, container, '/preview');
+    final router = await open(tester, container, '/preview');
     expect(find.text(AppStrings.friendsEmpty), findsOneWidget);
     expect(find.byType(UserAvatar), findsNothing);
     await relations.store.send('b', 'a');
     await tester.pumpAndSettle();
     expect(find.text(AppStrings.friendsRequestsCount(1)), findsOneWidget);
-    await relations.store.act(
-        'a', relations.store.relations.values.single, FriendshipAction.accept);
+    await tap(tester, AppStrings.friendsRequestsCount(1));
+    expect(find.text('@bruno'), findsOneWidget);
+    await tap(tester, AppStrings.friendsAccept);
+    router.go('/preview');
     await tester.pumpAndSettle();
     expect(find.byType(UserAvatar), findsOneWidget);
-    expect(find.text('Amigos (1)'), findsOneWidget);
+    expect(find.text('Amigos  1', findRichText: true), findsOneWidget);
     expect(find.text(AppStrings.friendsRequestsCount(1)), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('friend-preview-b')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<PublicProfilePage>(find.byType(PublicProfilePage)).uid,
+        'b');
+    router.go('/preview');
+    await tester.pumpAndSettle();
     await tap(tester, AppStrings.friendsSeeAll);
     expect(find.byType(FriendsPage), findsOneWidget);
   });

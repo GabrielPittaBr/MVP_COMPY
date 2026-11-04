@@ -62,6 +62,10 @@ abstract final class AppRoutes {
   static const String chatNew = '/chat/nova';
   static const String profile = '/profile';
   static const String friends = '/profile/amigos';
+
+  /// Busca por @ para adicionar amigos: a mesma tela e a mesma consulta da
+  /// "Nova conversa", dentro do branch do Perfil.
+  static const String friendsSearch = '/profile/amigos/buscar';
   static const String publicProfile = '/profile/usuarios/:uid';
 
   static String publicProfileFor(String uid) =>
@@ -372,6 +376,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                               state.uri.queryParameters['tab'] ?? '') ??
                           0,
                     ),
+                    routes: <RouteBase>[
+                      GoRoute(
+                        path: 'buscar',
+                        builder: (context, state) => const NewConversationPage(
+                          title: AppStrings.friendsFind,
+                        ),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'insignias',

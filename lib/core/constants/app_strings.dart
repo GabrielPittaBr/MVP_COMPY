@@ -6,23 +6,36 @@
 abstract final class AppStrings {
   // Amizades: relações privadas, sem alterar a permissão de conversar.
   static const friendsTitle = 'Amizades';
-  static const friendsAdd = 'Adicionar amigo';
+  static const friendsAdd = 'Adicionar';
+  static const friendsRequested = 'Solicitado';
   static const friendsConfirmed = 'Amigos';
-  static const friendsSentState = 'Solicitação enviada';
-  static const friendsRespond = 'Responder solicitação';
+  static const friendsPending = 'Solicitação pendente';
   static const friendsAccept = 'Aceitar';
   static const friendsDecline = 'Recusar';
+  static const friendsDeclineRequest = 'Recusar solicitação';
   static const friendsCancel = 'Cancelar solicitação';
   static const friendsRemove = 'Desfazer amizade';
   static const friendsRemoveTitle = 'Desfazer amizade?';
   static const friendsRemoveBody =
       'Vocês deixarão de aparecer na lista de amigos um do outro.';
+  static const friendsMoreOptions = 'Mais opções';
+  static const friendsLoadingState = 'Carregando…';
+  static const friendsReload = 'Recarregar';
   static const friendsReceived = 'Recebidas';
   static const friendsSent = 'Enviadas';
   static const friendsSeeAll = 'Ver todos';
-  static const friendsEmpty =
-      'Você ainda não tem amigos adicionados. Visite um perfil para enviar uma solicitação.';
-  static const friendsEmptyList = 'Nenhuma amizade ou solicitação nesta lista.';
+  static const friendsFind = 'Adicionar amigo';
+  static const friendsFindPeople = 'Encontrar pessoas';
+  static const friendsEmpty = 'Você ainda não adicionou amigos.';
+  static const friendsEmptyFriendsTitle = 'Nenhum amigo ainda';
+  static const friendsEmptyFriendsHint =
+      'Busque alguém pelo @ e envie uma solicitação de amizade.';
+  static const friendsEmptyReceivedTitle = 'Nenhuma solicitação recebida';
+  static const friendsEmptyReceivedHint =
+      'Quando alguém quiser ser seu amigo, o pedido aparece aqui.';
+  static const friendsEmptySentTitle = 'Nenhuma solicitação enviada';
+  static const friendsEmptySentHint =
+      'Os pedidos que você enviar ficam aqui até serem respondidos.';
   static const friendsLoadingProfile = 'Carregando perfil…';
   static const friendsMissingProfile = 'Perfil indisponível';
   static const friendsLoadError = 'Não foi possível carregar as amizades.';
@@ -30,8 +43,9 @@ abstract final class AppStrings {
       'Não foi possível concluir. Confira sua conexão e tente novamente.';
   static const friendsLoadMore = 'Ver mais';
   static String friendsTab(String label, int count) => '$label ($count)';
-  static String friendsRequestsCount(int count) =>
-      'Solicitações recebidas ($count)';
+  static String friendsRequestsCount(int count) => count == 1
+      ? '1 solicitação de amizade'
+      : '$count solicitações de amizade';
   static String friendshipSuccess(String action) => switch (action) {
         'send' => 'Solicitação enviada.',
         'accept' => 'Amizade confirmada.',
