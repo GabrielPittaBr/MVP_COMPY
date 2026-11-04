@@ -92,9 +92,11 @@ class _ChatRoomBody extends ConsumerStatefulWidget {
 }
 
 class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
-  /// Quantas mensagens já foram marcadas como lidas. Serve para não gravar a
-  /// cada emissão do stream — só quando chega mensagem nova de fato.
-  int _readUpTo = -1;
+  /// Id da última mensagem já tratada como lida. Serve para não gravar a cada
+  /// emissão do stream — só quando chega mensagem nova de fato. Por id, e não
+  /// pela contagem: a janela ao vivo não cresce quando chega mensagem (a mais
+  /// antiga sai dela) e a página antiga cresce a lista sem mensagem nova.
+  String? _readUpToId;
 
   @override
   void initState() {
@@ -119,34 +121,59 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final conversation = widget.conversation;
     final currentUserId = ref.watch(currentUserIdProvider);
 
+    final provider = paginatedMessagesProvider(conversation.id);
+
     // Mensagem que chega com a sala aberta já nasce lida.
-    ref.listen(conversationMessagesProvider(conversation.id), (_, next) {
-      final messages = next.valueOrNull;
-      if (messages == null || messages.length <= _readUpTo) return;
-      _readUpTo = messages.length;
-      if (messages.isNotEmpty && messages.last.senderId != currentUserId) {
-        _markAsRead();
-      }
+    ref.listen(provider, (_, next) {
+      final last = next.valueOrNull?.lastOrNull;
+      if (last == null || last.id == _readUpToId) return;
+      _readUpToId = last.id;
+      if (last.senderId != currentUserId) _markAsRead();
     });
 
     return Column(
       children: <Widget>[
         Expanded(
-          child: ref.watch(conversationMessagesProvider(conversation.id)).when(
+          child: ref.watch(provider).when(
                 data: (messages) {
+                  final controller = ref.read(provider.notifier);
                   final items = buildChatTimeline(messages);
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    itemCount: items.length,
-                    itemBuilder: (context, i) => switch (items[i]) {
-                      ChatDaySeparator(:final day) =>
-                        _DateChip(text: DayLabel.of(day)),
-                      ChatMessageItem(:final message) => MessageBubble(
-                          message: message,
-                          isMine: message.senderId == currentUserId,
-                          peer: widget.peer,
-                        ),
+                  final hasMore = controller.hasMore;
+                  // Invertida: a sala abre no fim da conversa e as páginas
+                  // antigas entram no topo sem a tela pular. O fim do scroll
+                  // é o topo da tela.
+                  return NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      if (!controller.loadMoreFailed &&
+                          notification.metrics.pixels >=
+                              notification.metrics.maxScrollExtent - 200) {
+                        controller.loadMore();
+                      }
+                      return false;
                     },
+                    child: ListView.builder(
+                      reverse: true,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      // +1 para o indicador de "carregando anteriores".
+                      itemCount: items.length + (hasMore ? 1 : 0),
+                      itemBuilder: (context, i) {
+                        if (i == items.length) {
+                          return _OlderMessagesStatus(
+                            failed: controller.loadMoreFailed,
+                            onRetry: controller.loadMore,
+                          );
+                        }
+                        return switch (items[items.length - 1 - i]) {
+                          ChatDaySeparator(:final day) =>
+                            _DateChip(text: DayLabel.of(day)),
+                          ChatMessageItem(:final message) => MessageBubble(
+                              message: message,
+                              isMine: message.senderId == currentUserId,
+                              peer: widget.peer,
+                            ),
+                        };
+                      },
+                    ),
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -164,6 +191,39 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               ),
         ),
       ],
+    );
+  }
+}
+
+/// Topo da sala enquanto há mensagens anteriores: spinner durante a busca,
+/// ou o "tentar de novo" quando ela falhou.
+class _OlderMessagesStatus extends StatelessWidget {
+  const _OlderMessagesStatus({required this.failed, required this.onRetry});
+
+  final bool failed;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: failed
+          ? Column(
+              children: <Widget>[
+                const Text(AppStrings.chatLoadOlderError),
+                TextButton(
+                  onPressed: onRetry,
+                  child: const Text(AppStrings.commonRetry),
+                ),
+              ],
+            )
+          : const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
     );
   }
 }

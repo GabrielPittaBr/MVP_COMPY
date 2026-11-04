@@ -33,114 +33,122 @@ class HomePage extends ConsumerWidget {
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              GreetingHeader(
-                userName: userName,
-                avatarUrl: avatarUrl,
-                // `go`, e não `push`: o avatar troca de aba. Mesmo caminho do
-                // carrossel de categorias logo abaixo, que leva a Eventos.
-                onAvatarTap: () => context.go(AppRoutes.profile),
-                onSettingsTap: () => context.push(AppRoutes.settings),
-                unreadNotifications:
-                    ref.watch(unreadNotificationsCountProvider),
-                onNotificationsTap: () => context.push(AppRoutes.notifications),
-              ),
-              const SizedBox(height: 16),
-              const SearchField(),
-              const SizedBox(height: 24),
-              const _SectionTitle(AppStrings.homeCategories),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 96,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  // +1 para o "Ver mais" no fim da fileira.
-                  itemCount: categories.length + 1,
-                  separatorBuilder: (_, __) => const SizedBox(width: 16),
-                  itemBuilder: (context, i) {
-                    if (i == categories.length) {
-                      return MoreCategoriesCircle(
-                        onTap: () => showEventsFilterSheet(
-                          context,
-                          navigateToEventsOnApply: true,
-                        ),
+        // Os eventos são lidos uma vez, sem listener: puxar para baixo é o
+        // jeito de ver vagas e eventos novos sem sair da Home.
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(nearbyEventsProvider.future),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                GreetingHeader(
+                  userName: userName,
+                  avatarUrl: avatarUrl,
+                  // `go`, e não `push`: o avatar troca de aba. Mesmo caminho do
+                  // carrossel de categorias logo abaixo, que leva a Eventos.
+                  onAvatarTap: () => context.go(AppRoutes.profile),
+                  onSettingsTap: () => context.push(AppRoutes.settings),
+                  unreadNotifications:
+                      ref.watch(unreadNotificationsCountProvider),
+                  onNotificationsTap: () =>
+                      context.push(AppRoutes.notifications),
+                ),
+                const SizedBox(height: 16),
+                const SearchField(),
+                const SizedBox(height: 24),
+                const _SectionTitle(AppStrings.homeCategories),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 96,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    // +1 para o "Ver mais" no fim da fileira.
+                    itemCount: categories.length + 1,
+                    separatorBuilder: (_, __) => const SizedBox(width: 16),
+                    itemBuilder: (context, i) {
+                      if (i == categories.length) {
+                        return MoreCategoriesCircle(
+                          onTap: () => showEventsFilterSheet(
+                            context,
+                            navigateToEventsOnApply: true,
+                          ),
+                        );
+                      }
+                      return CategoryCircle(
+                        category: categories[i],
+                        // Seta o filtro antes de trocar de aba: o
+                        // PaginatedEventsController observa esse provider e
+                        // já reconstrói a lista filtrada.
+                        onTap: () {
+                          ref.read(eventsFilterProvider.notifier).state =
+                              const EventsFilter()
+                                  .withSport(categories[i].sport);
+                          context.go(AppRoutes.events);
+                        },
                       );
-                    }
-                    return CategoryCircle(
-                      category: categories[i],
-                      // Seta o filtro antes de trocar de aba: o
-                      // PaginatedEventsController observa esse provider e
-                      // já reconstrói a lista filtrada.
-                      onTap: () {
-                        ref.read(eventsFilterProvider.notifier).state =
-                            const EventsFilter().withSport(categories[i].sport);
-                        context.go(AppRoutes.events);
-                      },
-                    );
-                  },
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              const _SectionTitle(AppStrings.homeExplore),
-              const SizedBox(height: 12),
-              ExploreMapCard(onTap: () => context.go(AppRoutes.maps)),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  children: <Widget>[
-                    const _SectionTitle(AppStrings.homeNearbyEvents),
-                    TextButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.calendar_today_outlined,
-                        size: 16,
-                        color: AppColors.onSurfaceMuted,
-                      ),
-                      label: const Text(
-                        AppStrings.homeFilterByDate,
-                        style: TextStyle(
+                const SizedBox(height: 24),
+                const _SectionTitle(AppStrings.homeExplore),
+                const SizedBox(height: 12),
+                ExploreMapCard(onTap: () => context.go(AppRoutes.maps)),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    children: <Widget>[
+                      const _SectionTitle(AppStrings.homeNearbyEvents),
+                      TextButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(
+                          Icons.calendar_today_outlined,
+                          size: 16,
                           color: AppColors.onSurfaceMuted,
-                          fontSize: 13,
+                        ),
+                        label: const Text(
+                          AppStrings.homeFilterByDate,
+                          style: TextStyle(
+                            color: AppColors.onSurfaceMuted,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              eventsAsync.when(
-                data: (events) => events.isEmpty
-                    ? const _NearbyMessage(AppStrings.homeNearbyEmpty)
-                    : Column(
-                        children: <Widget>[
-                          for (final e in events)
-                            EventStatusBuilder(
-                              event: e,
-                              builder: (context, status) => EventCard(
+                eventsAsync.when(
+                  data: (events) => events.isEmpty
+                      ? const _NearbyMessage(AppStrings.homeNearbyEmpty)
+                      : Column(
+                          children: <Widget>[
+                            for (final e in events)
+                              EventStatusBuilder(
                                 event: e,
-                                status: status,
-                                actionLabel: AppStrings.eventJoin,
-                                onOpen: () =>
-                                    context.go(AppRoutes.eventDetailPath(e.id)),
+                                builder: (context, status) => EventCard(
+                                  event: e,
+                                  status: status,
+                                  actionLabel: AppStrings.eventJoin,
+                                  onOpen: () => context
+                                      .go(AppRoutes.eventDetailPath(e.id)),
+                                ),
                               ),
-                            ),
-                        ],
-                      ),
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
+                          ],
+                        ),
+                  loading: () => const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (_, __) =>
+                      const _NearbyMessage(AppStrings.homeNearbyError),
                 ),
-                error: (_, __) =>
-                    const _NearbyMessage(AppStrings.homeNearbyError),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

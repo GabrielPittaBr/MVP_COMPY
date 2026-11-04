@@ -18,7 +18,9 @@ import '../../domain/usecases/get_nearby_events.dart';
 /// Providers da feature Home. Toda a árvore de DI parte daqui — substituir
 /// o `homeRepositoryProvider` em testes mocka todo o fluxo.
 final homeRemoteDataSourceProvider = Provider<HomeRemoteDataSource?>(
-  (ref) => kUseFirebaseRepos ? HomeRemoteDataSource(FirebaseFirestore.instance) : null,
+  (ref) => kUseFirebaseRepos
+      ? HomeRemoteDataSource(FirebaseFirestore.instance)
+      : null,
 );
 
 final homeRepositoryProvider = Provider<HomeRepository>(
@@ -52,18 +54,19 @@ final categoriesProvider = Provider<List<SportCategory>>((ref) {
 
 /// Eventos próximos à posição real do usuário (RF03). Aguarda a
 /// resolução da localização (com fallback para o centro de Taquara —
-/// ver [userPositionProvider]) e então observa a consulta geográfica.
+/// ver [userPositionProvider]) e então lê a consulta geográfica uma vez.
+/// Recarrega ao puxar a Home e pelo `invalidateEventLists`.
 ///
 /// O uid só está aqui para refazer a consulta quando o usuário troca: no
-/// logout as regras do Firestore derrubam o stream com `permission-denied`,
+/// logout as regras do Firestore recusam a leitura com `permission-denied`,
 /// e sem isto quem entrava de novo via a Home presa no erro até reabrir o app.
-final nearbyEventsProvider = StreamProvider<List<Event>>((ref) async* {
+final nearbyEventsProvider = FutureProvider<List<Event>>((ref) async {
   ref.watch(authStateProvider.select((auth) => auth.valueOrNull?.uid));
   // Antes do await: se o uid mudar enquanto a localização resolve, um
   // `watch` depois dele dispara a asserção de dependência desatualizada.
   final getNearbyEvents = ref.watch(getNearbyEventsProvider);
   final position = await ref.watch(userPositionProvider.future);
-  yield* getNearbyEvents(position);
+  return getNearbyEvents(position);
 });
 
 /// Nome de exibição do usuário logado, vindo do AuthUser autenticado.

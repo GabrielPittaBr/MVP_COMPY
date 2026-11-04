@@ -6,6 +6,7 @@ import '../../../../core/providers/clock_providers.dart';
 import '../../../../shared/models/event.dart';
 import '../../../../shared/models/event_status.dart';
 import '../../../../shared/models/paged_result.dart';
+import '../../../home/presentation/providers/home_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/events_remote_datasource.dart';
 import '../../data/repositories/events_repository_impl.dart';
@@ -198,19 +199,26 @@ final liveEventsProvider = Provider<List<Event>>((ref) {
   ];
 });
 
-/// Recarrega as três seções da aba Eventos.
+/// Recarrega as três seções da aba Eventos e os eventos da Home.
 ///
-/// Sempre as três juntas: criar um evento mexe em "Criados por mim",
+/// Sempre todas juntas: criar um evento mexe em "Criados por mim",
 /// "Participando" (o criador já entra como participante) e "Todos os
-/// eventos" ao mesmo tempo. Invalidar só uma deixa a tela mentindo.
+/// eventos" ao mesmo tempo. Invalidar só uma deixa a tela mentindo. A Home
+/// entra porque lê os eventos uma vez só, sem listener.
 void invalidateEventLists(WidgetRef ref) {
   ref.invalidate(paginatedEventsProvider);
   ref.invalidate(myEventsProvider);
   ref.invalidate(joinedActiveEventsProvider);
+  ref.invalidate(nearbyEventsProvider);
 }
 
 /// Detalhe de um evento por id, em tempo real (tarefa 14): um join ou um
 /// encerramento aparece na tela sem invalidar nada.
-final eventDetailProvider = StreamProvider.family<Event?, String>((ref, id) {
+///
+/// `autoDispose`: sair da tela cancela o listener. Sem ele, cada evento
+/// aberto seguia gerando uma leitura a cada inscrição até o app fechar;
+/// reabrir o detalhe custa uma leitura só.
+final eventDetailProvider =
+    StreamProvider.autoDispose.family<Event?, String>((ref, id) {
   return ref.watch(watchEventDetailProvider).call(id);
 });
