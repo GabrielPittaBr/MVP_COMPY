@@ -9,8 +9,8 @@
 >
 > **03/11/2026:** as Rules com `friendships` e a Function
 > `onProfileDeletedFriendships` foram publicadas — ver [amizades](amizades.md).
-> A v1.0.1 saiu assinada com a chave de debug da máquina do build, e não com
-> a oficial — ver [A chave da v1.0.1 em diante](#a-chave-da-v101-em-diante).
+> A v1.0.1 saiu assinada com outra chave, que passou a ser a oficial — ver
+> [item 0](#0-assinatura-de-release).
 
 Os bloqueios que este repositório conhecia foram resolvidos em 10/08/2026, na
 preparação da **v0.1.0**. O documento deixa de ser lista de pendências e passa
@@ -21,7 +21,7 @@ metade não está em lugar nenhum do código.
 
 | # | Item | Situação |
 |---|---|---|
-| 0 | Keystore de release | 🟡 desde a v1.0.1 o APK sai com o `debug.keystore` de uma máquina, porque o oficial não estava nela — ver [item 0](#0-assinatura-de-release) |
+| 0 | Keystore de release | ✅ `compy-release-v2.jks` desde a v1.0.1, com senha própria e backup — ver [item 0](#0-assinatura-de-release) |
 | 1 | Pacote definitivo | ✅ `br.com.compy.app` |
 | 2 | `google-services.json` com OAuth | ✅ `oauth_client` do pacote novo para release e para o debug de três máquinas |
 | 3 | Regras e índices no Firestore | ✅ publicados e conferidos; regras republicadas em 22/10/2026 com a tarefa 14, os locais e o avatar, e em 03/11/2026 com as amizades |
@@ -37,52 +37,78 @@ Verificações que sustentam a tabela: `dart analyze` sem erros, `flutter test`
 
 ## 0. Assinatura de release
 
+Chave oficial desde a v1.0.1 (03/11/2026):
+
 | | |
 |---|---|
-| Arquivo | `C:/Users/gabri/keystores/compy-release.jks` — **fora do repositório** |
+| Arquivo | `C:/Users/gabri/keystores/compy-release-v2.jks` — **fora do repositório** |
 | Formato | PKCS12, RSA 2048 |
-| Alias | `compy` |
-| Validade | até 26/12/2053 |
-| SHA-1 | `A2:2C:C0:D8:03:1F:57:3F:BB:14:8C:9B:9B:9C:96:11:53:10:18:00` |
-| SHA-256 | `67:78:4D:7A:80:0D:8B:7E:10:06:67:D8:7D:5D:9E:37:E0:A3:81:1C:75:45:3F:F2:92:F0:20:F9:50:AA:3A:0A` |
-
-As senhas estão em `android/key.properties`, que é gitignored. O `.jks` mora
-fora do repositório de propósito: assim nem um `git add -f` distraído o
-publica.
-
-> **Perder o par (`.jks` + senhas) significa não conseguir mais atualizar o app
-> na loja** — só republicar com outro pacote, do zero. Faça backup dos dois
-> fora desta máquina antes de qualquer outra coisa.
-
-### A chave da v1.0.1 em diante
-
-Em 03/11/2026 o `compy-release.jks` e o `key.properties` não estavam na
-máquina do build, e a v1.0.1 foi publicada com o que o Gradle usa no lugar
-deles: o `debug.keystore` daquela máquina. Foi uma decisão consciente, para
-não segurar a versão das amizades.
-
-| | |
-|---|---|
-| Arquivo | `C:/Users/gabri/.android/debug.keystore` — **fora do repositório** |
-| Alias / senhas | `androiddebugkey`, senha `android` (o padrão do Android) |
+| Alias | `androiddebugkey` |
+| Validade | até 26/05/2056 |
 | SHA-1 | `92:33:F9:CE:B8:C1:BE:6F:F6:06:06:66:47:EE:89:19:05:3D:3B:B8` |
 | SHA-256 | `CF:4F:2C:CD:67:24:47:83:57:52:AB:8E:0D:A4:A1:81:E8:3C:15:E1:16:E2:AF:6D:00:F0:2A:1A:F6:67:9B:77` |
+| Backup | o `.jks` no Google Drive; a senha guardada em outro lugar |
 
-O preço foi que quem tinha a v1.0.0 precisou desinstalar antes de instalar a
-v1.0.1. Para não repetir isso, **as próximas versões saem assinadas com este
-mesmo arquivo**. Ele é gerado sozinho pelo Android Studio quando falta, com uma
-chave nova, então apagá-lo sem backup significa forçar outra desinstalação.
-Copie-o para fora da máquina, ao lado do `.jks` antigo.
+A senha está em `android/key.properties`, que é gitignored. Em PKCS12 a senha
+do arquivo e a da chave são uma só, então o arquivo se refaz à mão:
 
-A Play Store recusa artefatos assinados com certificado de debug. No dia em que
-o destino for a loja, será preciso criar uma chave de upload; com o Play App
-Signing, a SHA da chave do Google também entra no Firebase (ver o fim deste
-documento).
+```properties
+storeFile=C:/Users/gabri/keystores/compy-release-v2.jks
+storePassword=<senha>
+keyAlias=androiddebugkey
+keyPassword=<a mesma senha>
+```
+
+O `.jks` mora fora do repositório de propósito: assim nem um `git add -f`
+distraído o publica.
+
+> **Perder o par (`.jks` + senha) significa não conseguir mais atualizar o app
+> instalado** — cada pessoa teria que desinstalar e instalar de novo. Guarde
+> os dois fora desta máquina e **separados um do outro**: o arquivo sozinho não
+> assina nada, e o arquivo junto da senha assina para qualquer um.
+
+### De onde veio esta chave
+
+A v0.1.0 e a v1.0.0 saíram com o `compy-release.jks` original (alias `compy`,
+SHA-1 `A2:2C:C0:D8:03:1F:57:3F:BB:14:8C:9B:9B:9C:96:11:53:10:18:00`). Em
+03/11/2026 ele e o `key.properties` não estavam na máquina do build, e a v1.0.1
+foi publicada com o que o Gradle usa no lugar deles: o
+`C:/Users/gabri/.android/debug.keystore` daquela máquina. Quem tinha a v1.0.0
+precisou desinstalar antes de instalar a v1.0.1.
+
+No mesmo dia essa chave virou a oficial. Só que o `debug.keystore` usa a senha
+pública `android`, e com ele qualquer pessoa que tivesse o arquivo assinaria um
+APK que o celular aceita como atualização do Compy. Por isso o release usa uma
+cópia com senha própria:
+
+```bash
+keytool -importkeystore -srckeystore ~/.android/debug.keystore -srcstorepass android \
+  -destkeystore compy-release-v2.jks -deststoretype PKCS12 \
+  -deststorepass <senha> -destkeypass <senha>
+```
+
+O `keytool -storepasswd` não serve: em PKCS12 ele troca só a senha do arquivo,
+a chave continua com a antiga e o Gradle falha com `Given final block not
+properly padded`.
+
+O `debug.keystore` continua no lugar, com a senha padrão, assinando os builds
+de debug. Ele não é o backup: se sumir, o Android Studio gera outro e só o
+debug desta máquina muda de SHA. **Não volte para a chave antiga**, mesmo que o
+`.jks` original apareça: seria outra desinstalação para todo mundo. O cadastro
+dela no Firebase pode ficar, é inofensivo.
+
+A Play Store recusa artefatos assinados com certificado de debug
+(`CN=Android Debug`), e esta chave nasceu assim. No dia em que o destino for a
+loja, será preciso criar uma chave de upload; com o Play App Signing, a SHA da
+chave do Google também entra no Firebase (ver o fim deste documento).
+
+### O fallback do Gradle
 
 O `build.gradle.kts` lê o `key.properties` e **cai na chave de debug quando ele
 não existe**. Isso é intencional: um clone limpo continua compilando release
 para teste local. O preço é que o build não avisa quando está usando a chave
-errada — daí a conferência valer o comando:
+errada: em outra máquina, sem o `key.properties`, o APK sai com o debug dela e
+não atualiza o app instalado. Daí a conferência valer o comando:
 
 ```bash
 apksigner verify --print-certs build/app/outputs/flutter-apk/app-release.apk
@@ -201,10 +227,11 @@ regras forem seguidas a cada versão:
 3. **O build number sobe** (`version: X.Y.Z+N` no `pubspec.yaml`, que o Gradle
    usa como `versionCode`). O Android recusa instalar por cima um APK com
    `versionCode` menor ou igual ao instalado. A v0.1.0 foi o `+1`, a v1.0.0 o
-   `+2` e a v1.0.1 é o `+3`.
+   `+2`, a v1.0.1 o `+3` e a v1.0.2 é o `+4`.
 4. **A chave é a mesma da versão anterior.** Desde a v1.0.1 é o
-   `debug.keystore` descrito em [A chave da v1.0.1 em diante](#a-chave-da-v101-em-diante)
-   (SHA-1 `92:33:…:3B:B8`); a v0.1.0 e a v1.0.0 usaram o `compy-release.jks`.
+   `compy-release-v2.jks` do [item 0](#0-assinatura-de-release)
+   (SHA-1 `92:33:…:3B:B8`); a v0.1.0 e a v1.0.0 usaram o `compy-release.jks`
+   original.
    APK assinado com outra chave não atualiza o app instalado; o Android exige
    desinstalar antes, e o usuário perde a sessão.
 

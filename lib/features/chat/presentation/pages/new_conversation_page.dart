@@ -16,8 +16,14 @@ import '../providers/chat_providers.dart';
 ///
 /// Escolher alguém abre a conversa existente ou cria uma nova — o id é
 /// determinístico, então os dois caminhos terminam no mesmo documento.
+///
+/// A tela "Adicionar amigo" é esta mesma busca com outro [title]: tocar na
+/// linha abre o perfil, onde fica o botão de amizade.
 class NewConversationPage extends ConsumerStatefulWidget {
-  const NewConversationPage({super.key});
+  const NewConversationPage(
+      {this.title = AppStrings.chatNewConversation, super.key});
+
+  final String title;
 
   @override
   ConsumerState<NewConversationPage> createState() =>
@@ -65,7 +71,7 @@ class _NewConversationPageState extends ConsumerState<NewConversationPage> {
     final results = ref.watch(userSearchProvider(_query));
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.chatNewConversation)),
+      appBar: AppBar(title: Text(widget.title)),
       body: Column(
         children: <Widget>[
           Padding(
