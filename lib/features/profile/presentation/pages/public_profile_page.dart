@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/user_avatar.dart';
+import '../../../chat/presentation/open_conversation.dart';
 import '../../../chat/presentation/providers/chat_providers.dart';
 import '../../../friends/presentation/widgets/friendship_actions.dart';
 import '../../domain/entities/user_profile.dart';
@@ -29,25 +27,8 @@ class _PublicProfilePageState extends ConsumerState<PublicProfilePage> {
   Future<void> _message(UserProfile profile) async {
     if (_opening) return;
     setState(() => _opening = true);
-    try {
-      final me = await ref.read(currentUserSummaryProvider.future);
-      if (me.id == profile.summary.id) return;
-      final conversationId = await ref.read(openConversationProvider).call(
-            me: me,
-            peer: profile.summary,
-          );
-      ref.invalidate(paginatedConversationsProvider);
-      ref.invalidate(conversationProvider(conversationId));
-      if (!mounted) return;
-      context.push<void>('${AppRoutes.chat}/$conversationId');
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.chatOpenConversationError)),
-      );
-    } finally {
-      if (mounted) setState(() => _opening = false);
-    }
+    await pushConversationWith(context, ref, profile.summary);
+    if (mounted) setState(() => _opening = false);
   }
 
   @override
@@ -89,16 +70,11 @@ class _PublicProfilePageState extends ConsumerState<PublicProfilePage> {
                 style: const TextStyle(color: AppColors.onSurfaceMuted),
               ),
               const SizedBox(height: 20),
-              PrimaryButton(
-                label: AppStrings.profileMessage,
-                icon: Icons.chat_bubble_outline,
-                onPressed: _opening ? null : () => _message(value),
+              FriendshipActions(
+                peerId: value.summary.id,
+                onMessage: () => _message(value),
+                messageLoading: _opening,
               ),
-              if (_opening) const LinearProgressIndicator(minHeight: 2),
-              if (ref.watch(currentUserIdProvider) != null) ...<Widget>[
-                const SizedBox(height: 12),
-                FriendshipActions(peerId: value.summary.id),
-              ],
               if (value.bio.trim().isNotEmpty) ...<Widget>[
                 const SizedBox(height: 24),
                 Text(value.bio.trim()),
