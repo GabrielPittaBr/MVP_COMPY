@@ -1,3 +1,4 @@
+import '../../../../shared/models/paged_result.dart';
 import '../entities/conversation.dart';
 import '../repositories/chat_repository.dart';
 
@@ -9,6 +10,6 @@ class WatchConversations {
   const WatchConversations(this._repository);
   final ChatRepository _repository;
 
-  Stream<List<Conversation>> call(String userId, {int limit = 10}) =>
+  Stream<PagedResult<Conversation>> call(String userId, {int limit = 10}) =>
       _repository.watchConversationsFirstPage(userId, limit: limit);
 }

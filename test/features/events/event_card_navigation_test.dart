@@ -108,7 +108,7 @@ Future<(GoRouter, ProviderContainer, List<String>)> _open(
     greetingNameProvider.overrideWithValue(_user.name),
     categoriesProvider.overrideWithValue([]),
     unreadNotificationsCountProvider.overrideWithValue(0),
-    nearbyEventsProvider.overrideWith((ref) => Stream.value(events.items)),
+    nearbyEventsProvider.overrideWith((ref) async => events.items),
     eventsRepositoryProvider.overrideWithValue(events),
     eventsFilterProvider.overrideWith((ref) => _filter),
     searchQueryProvider.overrideWith((ref) => 'Treino'),

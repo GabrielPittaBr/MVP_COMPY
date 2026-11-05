@@ -115,9 +115,9 @@ class _Chat implements ChatRepository {
       PagedResult(items: [conversation], hasMore: false);
 
   @override
-  Stream<List<Conversation>> watchConversationsFirstPage(String userId,
+  Stream<PagedResult<Conversation>> watchConversationsFirstPage(String userId,
           {int limit = 10}) =>
-      Stream.value([conversation]);
+      Stream.value(PagedResult(items: [conversation], hasMore: false));
 
   @override
   Future<Conversation?> fetchConversation(
@@ -125,7 +125,9 @@ class _Chat implements ChatRepository {
       conversationId == conversation.id ? conversation : null;
 
   @override
-  Stream<List<Message>> watchMessages(String conversationId) => Stream.value([
+  Stream<PagedResult<Message>> watchRecentMessages(String conversationId,
+          {int limit = 20}) =>
+      Stream.value(PagedResult(hasMore: false, items: [
         Message(
           id: 'm1',
           conversationId: conversationId,
@@ -133,7 +135,7 @@ class _Chat implements ChatRepository {
           text: 'Mensagem preservada',
           sentAt: DateTime(2026, 10, 22),
         ),
-      ]);
+      ]));
 
   @override
   Future<void> markAsRead(String conversationId) async {}

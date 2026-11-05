@@ -109,7 +109,7 @@ class _OfflineChatRepository implements ChatRepository {
       throw UnimplementedError();
 
   @override
-  Stream<List<Conversation>> watchConversationsFirstPage(
+  Stream<PagedResult<Conversation>> watchConversationsFirstPage(
     String userId, {
     int limit = 10,
   }) =>
@@ -128,7 +128,18 @@ class _OfflineChatRepository implements ChatRepository {
       throw UnimplementedError();
 
   @override
-  Stream<List<Message>> watchMessages(String conversationId) =>
+  Stream<PagedResult<Message>> watchRecentMessages(
+    String conversationId, {
+    int limit = 20,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<PagedResult<Message>> fetchOlderMessages(
+    String conversationId, {
+    required Object cursor,
+    int pageSize = 20,
+  }) =>
       throw UnimplementedError();
 
   @override

@@ -13,8 +13,10 @@ abstract interface class ChatRepository {
   });
 
   /// Primeira página de conversas, ao vivo — o preview e o contador de
-  /// não-lidas mudam sozinhos quando chega mensagem nova.
-  Stream<List<Conversation>> watchConversationsFirstPage(
+  /// não-lidas mudam sozinhos quando chega mensagem nova. O `cursor` de cada
+  /// emissão busca a página seguinte em [fetchConversationsPage], então a
+  /// lista não precisa ler a primeira página de novo com `get`.
+  Stream<PagedResult<Conversation>> watchConversationsFirstPage(
     String userId, {
     int limit,
   });
@@ -31,7 +33,21 @@ abstract interface class ChatRepository {
     required UserSummary peer,
   });
 
-  Stream<List<Message>> watchMessages(String conversationId);
+  /// As [limit] mensagens mais recentes, ao vivo, da mais antiga para a mais
+  /// recente. O `cursor` aponta a mais antiga da janela e busca as anteriores
+  /// em [fetchOlderMessages].
+  Stream<PagedResult<Message>> watchRecentMessages(
+    String conversationId, {
+    int limit,
+  });
+
+  /// [pageSize] mensagens anteriores a [cursor], da mais antiga para a mais
+  /// recente. Leitura pontual: mensagem antiga não muda.
+  Future<PagedResult<Message>> fetchOlderMessages(
+    String conversationId, {
+    required Object cursor,
+    int pageSize,
+  });
 
   /// Envia [text] e incrementa o contador de não-lidas de [peerId].
   ///

@@ -18,12 +18,12 @@ class _CountingHomeRepository extends HomeRepositoryImpl {
   int subscriptions = 0;
 
   @override
-  Stream<List<Event>> watchNearbyEvents(
+  Future<List<Event>> fetchNearbyEvents(
     LatLng center, {
     double radiusKm = AppGeo.nearbyRadiusKm,
-  }) {
+  }) async {
     subscriptions++;
-    return Stream<List<Event>>.value(const <Event>[]);
+    return const <Event>[];
   }
 }
 

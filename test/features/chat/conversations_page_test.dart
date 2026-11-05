@@ -36,6 +36,7 @@ class _ChatRepository implements ChatRepository {
   bool fail = false;
   bool failMore = false;
   int fetchCalls = 0;
+  int watchCalls = 0;
   final cursors = <Object?>[];
 
   @override
@@ -46,8 +47,7 @@ class _ChatRepository implements ChatRepository {
   }) async {
     fetchCalls++;
     cursors.add(cursor);
-    if (cursor == null) await firstPageGate?.future;
-    if (fail || (cursor != null && failMore)) throw StateError('sem rede');
+    if (fail || failMore) throw StateError('sem rede');
     final start = (cursor as int?) ?? 0;
     final page = conversations.skip(start).take(pageSize).toList();
     final end = start + page.length;
@@ -59,11 +59,20 @@ class _ChatRepository implements ChatRepository {
   }
 
   @override
-  Stream<List<Conversation>> watchConversationsFirstPage(
+  Stream<PagedResult<Conversation>> watchConversationsFirstPage(
     String userId, {
     int limit = 10,
-  }) =>
-      Stream<List<Conversation>>.value(conversations.take(limit).toList());
+  }) async* {
+    watchCalls++;
+    await firstPageGate?.future;
+    if (fail) throw StateError('sem rede');
+    final page = conversations.take(limit).toList();
+    yield PagedResult<Conversation>(
+      items: page,
+      cursor: page.length,
+      hasMore: page.length < conversations.length,
+    );
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -128,7 +137,8 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 300));
     await tester.pumpAndSettle();
-    expect(repository.fetchCalls, 2);
+    expect(repository.watchCalls, 2);
+    expect(repository.fetchCalls, 0);
   });
 
   testWidgets('ação do vazio abre a rota existente de nova conversa',
@@ -182,7 +192,7 @@ void main() {
     await tester.tap(find.text(AppStrings.commonRetry));
     await tester.pumpAndSettle();
     expect(find.text(AppStrings.chatEmptyTitle), findsOneWidget);
-    expect(repository.fetchCalls, 2);
+    expect(repository.watchCalls, 2);
   });
 
   testWidgets('rolagem carrega a próxima página sem perder a primeira',
@@ -201,7 +211,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(
         container.read(paginatedConversationsProvider).valueOrNull?.length, 12);
-    expect(repository.cursors, <Object?>[null, 10]);
+    // A 1ª página veio do listener: o `get` só buscou a 2ª.
+    expect(repository.watchCalls, 1);
+    expect(repository.cursors, <Object?>[10]);
     expect(tester.takeException(), isNull);
   });
 

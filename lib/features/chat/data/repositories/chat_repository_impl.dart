@@ -56,20 +56,29 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Stream<List<Conversation>> watchConversationsFirstPage(
+  Stream<PagedResult<Conversation>> watchConversationsFirstPage(
     String userId, {
     int limit = 10,
   }) {
     if (!kUseFirebaseRepos || _remote == null) {
-      return InMemoryChatStore.instance
-          .watchConversations()
-          .map((all) => all.take(limit).toList());
+      return InMemoryChatStore.instance.watchConversations().map(
+            (all) => PagedResult<Conversation>(
+              items: all.take(limit).toList(),
+              cursor: all.length < limit ? all.length : limit,
+              hasMore: all.length > limit,
+            ),
+          );
     }
-    return _remote
-        .watchConversationsFirstPage(userId, limit: limit)
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ConversationMapper.fromMap(doc.id, doc.data(), userId))
-            .toList());
+    return _remote.watchConversationsFirstPage(userId, limit: limit).map(
+          (snapshot) => PagedResult<Conversation>(
+            items: snapshot.docs
+                .map((doc) =>
+                    ConversationMapper.fromMap(doc.id, doc.data(), userId))
+                .toList(),
+            cursor: snapshot.docs.isEmpty ? null : snapshot.docs.last,
+            hasMore: snapshot.docs.length == limit,
+          ),
+        );
   }
 
   @override
@@ -134,16 +143,68 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Stream<List<Message>> watchMessages(String conversationId) {
+  Stream<PagedResult<Message>> watchRecentMessages(
+    String conversationId, {
+    int limit = 20,
+  }) {
     if (!kUseFirebaseRepos || _remote == null) {
-      return InMemoryChatStore.instance.watchMessages(conversationId);
+      // Mock: o cursor é o índice da mais antiga da janela na lista em
+      // memória, que só cresce no fim — o índice não muda com mensagem nova.
+      return InMemoryChatStore.instance.watchMessages(conversationId).map(
+        (all) {
+          final start = all.length > limit ? all.length - limit : 0;
+          return PagedResult<Message>(
+            items: all.sublist(start),
+            cursor: start,
+            hasMore: start > 0,
+          );
+        },
+      );
     }
-    return _remote.watchMessages(conversationId).map((snapshot) {
-      final messages = snapshot.docs
-          .map((doc) => MessageMapper.fromMap(doc.id, conversationId, doc.data()))
-          .toList();
-      return MessageMapper.sortedBySentAt(messages);
-    });
+    return _remote
+        .watchRecentMessages(conversationId, limit: limit)
+        .map((snapshot) => _messagesPage(conversationId, snapshot, limit));
+  }
+
+  @override
+  Future<PagedResult<Message>> fetchOlderMessages(
+    String conversationId, {
+    required Object cursor,
+    int pageSize = 20,
+  }) async {
+    if (!kUseFirebaseRepos || _remote == null) {
+      final all = InMemoryChatStore.instance.messagesSnapshot(conversationId);
+      final end = cursor as int;
+      final start = end > pageSize ? end - pageSize : 0;
+      return PagedResult<Message>(
+        items: all.sublist(start, end),
+        cursor: start,
+        hasMore: start > 0,
+      );
+    }
+    final snapshot = await _remote.fetchMessagesBefore(
+      conversationId,
+      startAfter: cursor as DocumentSnapshot<Map<String, dynamic>>,
+      limit: pageSize,
+    );
+    return _messagesPage(conversationId, snapshot, pageSize);
+  }
+
+  /// A consulta vem da mais recente para a mais antiga; a sala quer o
+  /// contrário. O cursor é o último documento — o mais antigo da página.
+  PagedResult<Message> _messagesPage(
+    String conversationId,
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+    int limit,
+  ) {
+    final messages = snapshot.docs
+        .map((doc) => MessageMapper.fromMap(doc.id, conversationId, doc.data()))
+        .toList();
+    return PagedResult<Message>(
+      items: MessageMapper.sortedBySentAt(messages),
+      cursor: snapshot.docs.isEmpty ? null : snapshot.docs.last,
+      hasMore: snapshot.docs.length == limit,
+    );
   }
 
   @override

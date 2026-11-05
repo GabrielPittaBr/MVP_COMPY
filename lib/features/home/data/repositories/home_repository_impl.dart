@@ -47,37 +47,35 @@ class HomeRepositoryImpl implements HomeRepository {
   }
 
   @override
-  Stream<List<Event>> watchNearbyEvents(
+  Future<List<Event>> fetchNearbyEvents(
     LatLng center, {
     double radiusKm = AppGeo.nearbyRadiusKm,
-  }) {
+  }) async {
     if (!kUseFirebaseRepos || _remote == null) {
-      // return Stream<List<Event>>.value(MockEvents.nearby);
-      return Stream<List<Event>>.value(const <Event>[]);
+      // return MockEvents.nearby;
+      return const <Event>[];
     }
 
-    return _remote
-        .watchEvents(notBefore: openEventsNotBefore(_clock()))
-        .map((docs) {
-      // O lote vem ordenado por data; aqui recortamos pelo raio e
-      // reordenamos por proximidade (RF03). O limite inferior da consulta
-      // não pega tudo — um evento curto que terminou de manhã, ou um
-      // encerrado à mão, ainda cai na janela —, então o status no relógio
-      // tira os encerrados do que sobrou.
-      final now = _clock();
-      final events = <({Event event, double km})>[];
-      for (final doc in docs) {
-        final event = Event.fromMap(doc.id, doc.data());
-        if (event.statusAt(now) == EventStatus.ended) continue;
-        final km = _distance.as(
-          LengthUnit.Kilometer,
-          center,
-          event.coordinates,
-        );
-        if (km <= radiusKm) events.add((event: event, km: km));
-      }
-      events.sort((a, b) => a.km.compareTo(b.km));
-      return <Event>[for (final e in events) e.event];
-    });
+    final docs =
+        await _remote.fetchEvents(notBefore: openEventsNotBefore(_clock()));
+    // O lote vem ordenado por data; aqui recortamos pelo raio e
+    // reordenamos por proximidade (RF03). O limite inferior da consulta
+    // não pega tudo — um evento curto que terminou de manhã, ou um
+    // encerrado à mão, ainda cai na janela —, então o status no relógio
+    // tira os encerrados do que sobrou.
+    final now = _clock();
+    final events = <({Event event, double km})>[];
+    for (final doc in docs) {
+      final event = Event.fromMap(doc.id, doc.data());
+      if (event.statusAt(now) == EventStatus.ended) continue;
+      final km = _distance.as(
+        LengthUnit.Kilometer,
+        center,
+        event.coordinates,
+      );
+      if (km <= radiusKm) events.add((event: event, km: km));
+    }
+    events.sort((a, b) => a.km.compareTo(b.km));
+    return <Event>[for (final e in events) e.event];
   }
 }
