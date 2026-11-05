@@ -87,6 +87,14 @@ keytool -importkeystore -srckeystore ~/.android/debug.keystore -srcstorepass and
   -deststorepass <senha> -destkeypass <senha>
 ```
 
+Em 04/11/2026, na v1.0.3, a máquina do build não tinha o `compy-release-v2.jks`
+e o `key.properties` dela ainda apontava para a chave antiga: o primeiro APK
+saiu com a SHA-1 `A2:2C…` e foi descartado. O arquivo foi refeito ali com o
+comando acima, a partir do `debug.keystore` original, e com outra senha. A chave
+dentro dele é a mesma, então os dois arquivos assinam igual; o que muda é só a
+senha de cada cópia. Por isso a conferência com o `apksigner` vem antes de toda
+publicação.
+
 O `keytool -storepasswd` não serve: em PKCS12 ele troca só a senha do arquivo,
 a chave continua com a antiga e o Gradle falha com `Given final block not
 properly padded`.
@@ -227,7 +235,7 @@ regras forem seguidas a cada versão:
 3. **O build number sobe** (`version: X.Y.Z+N` no `pubspec.yaml`, que o Gradle
    usa como `versionCode`). O Android recusa instalar por cima um APK com
    `versionCode` menor ou igual ao instalado. A v0.1.0 foi o `+1`, a v1.0.0 o
-   `+2`, a v1.0.1 o `+3` e a v1.0.2 é o `+4`.
+   `+2`, a v1.0.1 o `+3`, a v1.0.2 o `+4` e a v1.0.3 é o `+5`.
 4. **A chave é a mesma da versão anterior.** Desde a v1.0.1 é o
    `compy-release-v2.jks` do [item 0](#0-assinatura-de-release)
    (SHA-1 `92:33:…:3B:B8`); a v0.1.0 e a v1.0.0 usaram o `compy-release.jks`
