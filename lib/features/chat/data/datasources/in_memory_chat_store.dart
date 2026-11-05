@@ -119,6 +119,11 @@ class InMemoryChatStore {
   List<Conversation> get conversationsSnapshot =>
       List<Conversation>.unmodifiable(_conversations);
 
+  /// Snapshot imutável das mensagens, da mais antiga para a mais recente —
+  /// usado pela paginação mock das mensagens anteriores.
+  List<Message> messagesSnapshot(String conversationId) =>
+      List<Message>.unmodifiable(_messages[conversationId] ?? <Message>[]);
+
   Stream<List<Message>> watchMessages(String conversationId) async* {
     final ctl = _messagesCtls.putIfAbsent(
       conversationId,

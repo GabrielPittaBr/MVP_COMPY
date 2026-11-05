@@ -65,15 +65,41 @@ class ChatRemoteDataSource {
     return _firestore.collection('conversations').doc(conversationId).get();
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> watchMessages(
-      String conversationId) {
-    return _firestore
-        .collection('conversations')
-        .doc(conversationId)
-        .collection('messages')
-        .orderBy('sentAt')
+  /// As [limit] mensagens mais recentes, ao vivo (RNF02), da mais recente
+  /// para a mais antiga.
+  ///
+  /// Antes a sala ouvia o histórico inteiro: cada abertura lia todas as
+  /// mensagens da conversa. As anteriores vêm de [fetchMessagesBefore], uma
+  /// vez só. O `orderBy` desc numa subcoleção usa o índice automático.
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchRecentMessages(
+    String conversationId, {
+    int limit = 20,
+  }) {
+    return _messages(conversationId)
+        .orderBy('sentAt', descending: true)
+        .limit(limit)
         .snapshots();
   }
+
+  /// Página de mensagens anteriores a [startAfter], da mais recente para a
+  /// mais antiga.
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchMessagesBefore(
+    String conversationId, {
+    required DocumentSnapshot<Map<String, dynamic>> startAfter,
+    int limit = 20,
+  }) {
+    return _messages(conversationId)
+        .orderBy('sentAt', descending: true)
+        .startAfterDocument(startAfter)
+        .limit(limit)
+        .get();
+  }
+
+  CollectionReference<Map<String, dynamic>> _messages(String conversationId) =>
+      _firestore
+          .collection('conversations')
+          .doc(conversationId)
+          .collection('messages');
 
   /// Cria `conversations/{conversationId}`.
   ///

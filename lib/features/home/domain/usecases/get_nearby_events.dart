@@ -12,6 +12,6 @@ class GetNearbyEvents {
   const GetNearbyEvents(this._repository);
   final HomeRepository _repository;
 
-  Stream<List<Event>> call(LatLng center) =>
-      _repository.watchNearbyEvents(center);
+  Future<List<Event>> call(LatLng center) =>
+      _repository.fetchNearbyEvents(center);
 }

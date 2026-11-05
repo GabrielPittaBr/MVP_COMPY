@@ -7,8 +7,8 @@ import '../entities/sport_category.dart';
 
 /// Contrato de dados da Home.
 ///
-/// Stream para que ligações com Firestore sejam plug-and-play
-/// (RNF02: tempo real); listas de categorias são síncronas.
+/// Os eventos vêm de uma leitura pontual (a Home atualiza ao puxar para
+/// baixo); listas de categorias são síncronas.
 abstract interface class HomeRepository {
   /// Categorias do carrossel da Home. Com [favoriteSports] preenchido o
   /// carrossel reflete o perfil do usuário; vazio cai no trio padrão.
@@ -16,7 +16,7 @@ abstract interface class HomeRepository {
 
   /// Eventos dentro de [radiusKm] a partir de [center], ordenados por
   /// distância crescente (RF03 — proximidade real).
-  Stream<List<Event>> watchNearbyEvents(
+  Future<List<Event>> fetchNearbyEvents(
     LatLng center, {
     double radiusKm = AppGeo.nearbyRadiusKm,
   });

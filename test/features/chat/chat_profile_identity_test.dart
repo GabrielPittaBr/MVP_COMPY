@@ -115,16 +115,11 @@ class _Chat implements ChatRepository {
   final Conversation conversation;
   int fetches = 0;
   @override
-  Future<PagedResult<Conversation>> fetchConversationsPage(String userId,
-      {Object? cursor, int pageSize = 10}) async {
+  Stream<PagedResult<Conversation>> watchConversationsFirstPage(String userId,
+      {int limit = 10}) {
     fetches++;
-    return PagedResult(items: [conversation], hasMore: false);
+    return Stream.value(PagedResult(items: [conversation], hasMore: false));
   }
-
-  @override
-  Stream<List<Conversation>> watchConversationsFirstPage(String userId,
-          {int limit = 10}) =>
-      Stream.value([conversation]);
   @override
   Future<Conversation?> fetchConversation(
           String conversationId, String userId) async =>
@@ -132,7 +127,9 @@ class _Chat implements ChatRepository {
   @override
   Future<void> markAsRead(String conversationId) async {}
   @override
-  Stream<List<Message>> watchMessages(String conversationId) => Stream.value([
+  Stream<PagedResult<Message>> watchRecentMessages(String conversationId,
+          {int limit = 20}) =>
+      Stream.value(PagedResult(hasMore: false, items: [
         for (var i = 0; i < 3; i++)
           Message(
               id: 'm$i',
@@ -140,7 +137,7 @@ class _Chat implements ChatRepository {
               senderId: 'B',
               text: 'Mensagem $i preservada',
               sentAt: DateTime(2026, 10, 29, 12, i)),
-      ]);
+      ]));
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -407,6 +407,8 @@ abstract final class AppStrings {
       'Confira sua conexão e tente novamente.';
   static const String chatLoadMoreError =
       'Não foi possível carregar mais conversas.';
+  static const String chatLoadOlderError =
+      'Não foi possível carregar as mensagens anteriores.';
   static String chatUnreadCount(int count) => count > 99 ? '99+' : '$count';
   static const String chatFindMore = 'Encontre mais companheiros...';
   static const String chatHint = 'Digite uma mensagem...';
