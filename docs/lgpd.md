@@ -18,6 +18,35 @@ painel e das regras do Firebase.
 
 ---
 
+## 0. O que foi implementado (`chore/lgpd`, 14/11/2026)
+
+O plano das seções 5 a 8 foi aplicado no app, no painel, nas regras e nas
+Functions. Os documentos de governança estão em [`docs/lgpd/`](lgpd/).
+
+| Item | Situação | Onde |
+|---|---|---|
+| 5.1 Idade mínima 16 e sinal de idade da Play | Feito | `lib/core/utils/age_rules.dart`, `MainActivity.kt`, `validConsent` nas regras |
+| 5.2 Política e Termos em página pública | Feito | `site/`, publicado em https://compy-tcc.web.app |
+| 5.3 Link do login e aceite registrado | Feito | `login_page.dart`, `legal_consent_fields.dart`, `/consentimento` |
+| 5.4 Canal e encarregado | Feito; falta assinar a designação | `docs/lgpd/designacao-encarregado.md` |
+| 5.5 Exclusão completa e pela web | Feito | `functions/src/account_cleanup.ts`, `site/excluir-conta.html`, Configurações |
+| 5.6 Aviso antes da localização | Feito | `lib/shared/widgets/location_disclosure.dart` |
+| 5.7 Denunciar e bloquear | Feito | `lib/features/safety/`, fila "Denúncias" no painel |
+| 5.8 Segurança dos dados da Play | Respostas prontas; falta preencher no Console | `docs/lgpd/guia-play-console.md` |
+| 5.9 Configurações → Privacidade e "Baixar meus dados" | Feito | `lib/features/settings/`, `functions/src/data_export.ts` |
+| 5.10 Retenção | Feito para o que nasce agora; falta o backfill dos documentos antigos | `firestore.indexes.json` (TTL), `docs/lgpd/retencao.md` |
+| 5.11 Transferência internacional na política | Feito | `site/privacidade.html`, seção 5 |
+| 5.12 Segurança e incidentes | Feito; imposição do App Check fica para depois da Play | `docs/lgpd/politica-de-seguranca.md`, `plano-de-incidentes.md` |
+| 5.13 Proteções de 16–17 (nível Essencial) | Feito: chat só com amigos, localização desligada por padrão | `canTalk` em `firestore.rules` |
+| 5.14 OSM, logs e fotos antigas | Feito | `lib/shared/widgets/osm_map.dart`, `lib/main.dart`, `functions/src/avatar_cleanup.ts` |
+| Seção 7 — documentos | Feito | `docs/lgpd/` |
+
+Ficaram de fora, por decisão: esconder o perfil de 16–17 da busca (nível
+"Completo", seção 5.13), a troca do `usernames` público por uma callable e o
+`allowBackup` do Android (seção 5.14).
+
+---
+
 ## 1. Resumo em 10 pontos
 
 1. **A LGPD se aplica ao COMPY por inteiro.** A exceção de "fins
