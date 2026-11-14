@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/domain/entities/auth_user.dart';
+import '../../features/auth/presentation/pages/consent_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
@@ -39,6 +40,9 @@ abstract final class AppRoutes {
   static const String login = '/login';
   static const String signup = '/signup';
   static const String username = '/username';
+
+  /// Aceite dos Termos e data de nascimento de quem já tem conta (chore/lgpd).
+  static const String consent = '/consentimento';
   static const String onboardingSports = '/onboarding/esportes';
 
   // App (dentro do shell com 5 abas)
@@ -85,8 +89,11 @@ abstract final class AppRoutes {
   /// Busca de eventos — sub-rota da home (aberta pelo SearchField).
   static const String search = '/home/search';
 
-  /// Configurações — o botão da Home já existe; a tela, ainda não.
+  /// Configurações — privacidade, dados e conta (chore/lgpd).
   static const String settings = '/home/configuracoes';
+
+  /// Pessoas bloqueadas — sub-rota das Configurações.
+  static const String blockedUsers = '/home/configuracoes/bloqueados';
 
   /// Central de notificações (tarefa 14) — aberta pelo sino da Home.
   static const String notifications = '/home/notificacoes';
@@ -102,6 +109,7 @@ const Set<String> _publicRoutes = <String>{AppRoutes.login, AppRoutes.signup};
 /// Ficam fora do shell — não têm bottom nav e não são "o app" ainda.
 const Set<String> _onboardingRoutes = <String>{
   AppRoutes.username,
+  AppRoutes.consent,
   AppRoutes.onboardingSports,
 };
 
@@ -114,9 +122,9 @@ const Set<String> _onboardingRoutes = <String>{
 /// `test/core/routes/auth_redirect_test.dart`, que percorre os quatro
 /// estados a partir de toda rota e prova que nenhum caminho cicla.
 ///
-/// A ordem dos degraus é o contrato: autenticar, depois username, depois
-/// esportes, depois entrar. Cada degrau só é avaliado quando o anterior
-/// está satisfeito.
+/// A ordem dos degraus é o contrato: autenticar, depois username, depois o
+/// aceite dos Termos com a data de nascimento, depois esportes, depois
+/// entrar. Cada degrau só é avaliado quando o anterior está satisfeito.
 @visibleForTesting
 String? authRedirect({
   required AuthUser? user,
@@ -154,6 +162,13 @@ String? authRedirect({
   // Autenticado sem username (conta Google nova) → /username.
   if (!user.hasUsername) {
     return location == AppRoutes.username ? null : AppRoutes.username;
+  }
+
+  // Sem o aceite da versão atual dos Termos (conta anterior à LGPD, ou
+  // Termos novos) → /consentimento. Quem se cadastra agora aceita no próprio
+  // cadastro e nem passa por aqui.
+  if (!user.hasCurrentConsent) {
+    return location == AppRoutes.consent ? null : AppRoutes.consent;
   }
 
   // Com username e sem ter passado pelos esportes → /onboarding/esportes.
@@ -245,6 +260,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           }
           return UsernamePage(user: user);
         },
+      ),
+
+      GoRoute(
+        path: AppRoutes.consent,
+        builder: (context, state) => const ConsentPage(),
       ),
 
       GoRoute(

@@ -12,6 +12,7 @@ import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/avatar_picker.dart';
 import '../../../../shared/widgets/rounded_text_field.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../auth/presentation/widgets/delete_account_dialog.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../providers/profile_providers.dart';
@@ -74,7 +75,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   /// Vive na página, e não dentro do diálogo, pelo mesmo motivo do
   /// `_customDurationCtrl` da criação de evento: descartá-lo assim que o
   /// `showDialog` retorna estoura enquanto a rota ainda anima a saída.
-  final TextEditingController _passwordCtrl = TextEditingController();
 
   /// Sem isto, uma reemissão do perfil sobrescreveria o campo já preenchido.
   bool _prefilled = false;
@@ -105,7 +105,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     _usernameCtrl.dispose();
     _nameCtrl.dispose();
     _bioCtrl.dispose();
-    _passwordCtrl.dispose();
     super.dispose();
   }
 
@@ -339,66 +338,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     );
   }
 
-  Future<void> _deleteAccount() async {
-    final bool needsPassword =
-        ref.read(authRepositoryProvider).signedInWithPassword();
-    _passwordCtrl.clear();
-
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text(AppStrings.profileDeleteAccountTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text(AppStrings.profileDeleteAccountBody),
-            const SizedBox(height: 16),
-            if (needsPassword)
-              TextField(
-                controller: _passwordCtrl,
-                autofocus: true,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  hintText: AppStrings.profileDeleteAccountPasswordHint,
-                ),
-              )
-            else
-              const _Hint(AppStrings.profileDeleteAccountGoogleHint),
-          ],
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(AppStrings.commonCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              AppStrings.profileDeleteAccountConfirm,
-              style: TextStyle(color: AppColors.error),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (!mounted || confirmed != true) return;
-
-    final String password = _passwordCtrl.text;
-    if (needsPassword && password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(AppStrings.profileDeleteAccountPasswordEmpty),
-        ),
-      );
-      return;
-    }
-
-    await ref
-        .read(authControllerProvider.notifier)
-        .deleteAccount(password: needsPassword ? password : null);
-  }
+  Future<void> _deleteAccount() => confirmAndDeleteAccount(context, ref);
 }
 
 class _Label extends StatelessWidget {

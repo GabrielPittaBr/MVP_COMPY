@@ -51,6 +51,12 @@ class AdminShell extends StatelessWidget {
       selectedIcon: Icons.people,
       route: '/users',
     ),
+    (
+      label: 'Denúncias',
+      icon: Icons.flag_outlined,
+      selectedIcon: Icons.flag,
+      route: '/reports',
+    ),
   ];
 
   int get _selectedIndex {

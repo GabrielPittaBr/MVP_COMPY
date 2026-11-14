@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../entities/auth_user.dart';
+import '../entities/legal_consent.dart';
 
 /// Interface do repositório de autenticação.
 ///
@@ -20,11 +21,15 @@ abstract interface class AuthRepository {
   ///
   /// [photo] é a foto de perfil já recortada, em JPEG; `null` deixa a
   /// inicial do nome. Se o envio dela falhar, o cadastro segue sem foto.
+  ///
+  /// [consent] é o aceite dos Termos com a data de nascimento, gravado no
+  /// mesmo batch do perfil (chore/lgpd).
   Future<AuthUser> signUpWithEmail({
     required String name,
     required String username,
     required String email,
     required String password,
+    required LegalConsentInput consent,
     Uint8List? photo,
   });
 
@@ -50,9 +55,18 @@ abstract interface class AuthRepository {
     required String username,
     required String name,
     required String email,
+    required LegalConsentInput consent,
     Uint8List? photo,
     String? photoUrl,
   });
+
+  /// Registra o aceite da versão atual dos Termos para quem já tem conta.
+  /// [consent] só é obrigatório quando ainda não há data de nascimento.
+  Future<AuthUser> acceptLegalTerms({LegalConsentInput? consent});
+
+  /// Apaga a conta Google recém-criada de quem tem menos de 16 anos, antes de
+  /// gravar o perfil, e sai.
+  Future<void> abortUnderageSignup();
 
   /// Faz logout do Firebase Auth.
   Future<void> signOut();

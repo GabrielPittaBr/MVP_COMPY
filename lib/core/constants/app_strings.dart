@@ -362,12 +362,14 @@ abstract final class AppStrings {
   static const String profileAccountSection = 'Conta';
   static const String profileDeleteAccount = 'Excluir minha conta';
   static const String profileDeleteAccountHint =
-      'Apaga seu perfil e sua foto, libera seu @username e encerra seu acesso '
-      'ao COMPY.';
+      'Apaga seu perfil, sua foto, suas mensagens e seus eventos futuros, '
+      'libera seu @username e encerra seu acesso ao COMPY.';
   static const String profileDeleteAccountTitle = 'Excluir conta?';
   static const String profileDeleteAccountBody =
-      'Esta ação não pode ser desfeita. Eventos que você criou e mensagens já '
-      'enviadas continuam visíveis para os outros participantes.';
+      'Esta ação não pode ser desfeita. Seus eventos futuros são cancelados e '
+      'os participantes, avisados; suas mensagens são apagadas; nos eventos '
+      'passados e nas conversas, seu nome passa a aparecer como "Conta '
+      'excluída".';
   static const String profileDeleteAccountPasswordHint = 'Confirme sua senha';
   static const String profileDeleteAccountPasswordEmpty =
       'Digite sua senha para confirmar a exclusão.';
@@ -442,9 +444,12 @@ abstract final class AppStrings {
   static const String authLoginWithEmail = 'Entrar com email';
   static const String authLoginWithGoogle = 'Entrar com Google';
   static const String authCreateAccount = 'Criar Conta';
-  static const String authPrivacyPrefix =
-      'Ao continuar, você concorda com nossa';
+  // Rodapé do login: só aponta para os textos. O aceite de verdade é a
+  // caixa do cadastro e da tela de aceite (chore/lgpd).
+  static const String authPrivacyPrefix = 'Leia a nossa';
   static const String authPrivacyPolicy = 'Política de Privacidade';
+  static const String authTermsJoiner = 'e os';
+  static const String authTermsOfUse = 'Termos de Uso';
   static const String authName = 'Nome completo';
   static const String authUsername = 'Username (ex.: @joao)';
   static const String authEmail = 'E-mail';
@@ -496,6 +501,136 @@ abstract final class AppStrings {
       'Marque ou desmarque à vontade — dá para mudar quando quiser.';
   static const String onboardingSportsSaveError =
       'Não foi possível salvar seus esportes. Tente novamente.';
+
+  // LGPD — idade, aceite dos Termos e privacidade (chore/lgpd)
+  static const String ageBirthDateHint = 'Data de nascimento (dd/mm/aaaa)';
+  static const String ageBirthDateHelp =
+      'O COMPY é para quem tem 16 anos ou mais. A data não aparece no seu perfil.';
+  static const String ageInvalidFormat = 'Informe a data no formato dd/mm/aaaa.';
+  static const String ageInvalidDate = 'Informe uma data de nascimento válida.';
+  static const String ageUnderMinimum =
+      'Você precisa ter 16 anos ou mais para usar o COMPY.';
+  static const String legalAcceptPrefix = 'Li e aceito os';
+  static const String legalAcceptJoiner = 'e a';
+  static const String legalTerms = 'Termos de Uso';
+  static const String legalPrivacyPolicy = 'Política de Privacidade';
+  static const String legalAcceptRequired =
+      'Para continuar, aceite os Termos de Uso e a Política de Privacidade.';
+  static const String legalLinkError = 'Não foi possível abrir o link.';
+
+  static const String consentTitle = 'Termos e privacidade';
+  static const String consentHeadline = 'Antes de continuar';
+  static const String consentBodyFirst =
+      'Para seguir no COMPY, informe sua data de nascimento e aceite os Termos '
+      'de Uso e a Política de Privacidade. Eles explicam quais dados usamos, '
+      'por quanto tempo e como você pode baixar ou apagar tudo.';
+  static const String consentBodyRenew =
+      'Os Termos de Uso e a Política de Privacidade mudaram. Leia e aceite '
+      'para continuar usando o COMPY.';
+  static const String consentContinue = 'Continuar';
+  static const String consentSignOut = 'Sair da conta';
+  static const String consentUnderageTitle =
+      'O COMPY é para quem tem 16 anos ou mais';
+  static const String consentUnderageBody =
+      'Pela data informada, você ainda não tem 16 anos, e por isso sua conta '
+      'precisa ser excluída. Se a data estiver errada, escreva para '
+      'contato.compy@gmail.com antes de excluir.';
+  static const String consentUnderageDelete = 'Excluir minha conta';
+  static const String consentMinorNotice =
+      'Você tem menos de 18 anos, então sua conta tem uma proteção extra: só '
+      'amigos que você aceitar podem conversar com você.';
+
+  static const String settingsPrivacySection = 'Privacidade e segurança';
+  static const String settingsPrivacyPolicy = 'Política de Privacidade';
+  static const String settingsTerms = 'Termos de Uso';
+  static const String settingsSafety = 'Segurança e orientação para pais';
+  static const String settingsDownloadData = 'Baixar meus dados';
+  static const String settingsDownloadDataHint =
+      'Uma cópia de tudo o que o COMPY guarda sobre você, em JSON.';
+  static const String settingsDownloadPreparing = 'Preparando seus dados…';
+  static const String settingsDownloadError =
+      'Não foi possível gerar a cópia dos seus dados. Tente novamente.';
+  static const String settingsDownloadShareSubject = 'Meus dados do COMPY';
+  static const String settingsLocation = 'Localização';
+  static const String settingsLocationOn =
+      'Ativada. Usada só no celular, para ordenar os eventos.';
+  static const String settingsLocationOff =
+      'Desativada. Os eventos aparecem a partir do centro de Taquara.';
+  static const String settingsBlocked = 'Pessoas bloqueadas';
+  static const String settingsContact = 'Falar com o encarregado de dados';
+  static const String settingsContactSubject = 'Privacidade no COMPY';
+  static const String settingsAccountSection = 'Conta';
+  static const String settingsSignOut = 'Sair da conta';
+  static const String settingsDeleteAccount = 'Excluir minha conta';
+  static String settingsAcceptedOn(String date) => 'Termos aceitos em $date';
+
+  static const String blockUser = 'Bloquear';
+  static const String unblockUser = 'Desbloquear';
+  static String blockConfirmTitle(String name) => 'Bloquear $name?';
+  static const String blockConfirmBody =
+      'Vocês não vão poder trocar mensagens nem pedidos de amizade. A pessoa '
+      'não é avisada.';
+  static const String blockDone = 'Usuário bloqueado.';
+  static const String unblockDone = 'Usuário desbloqueado.';
+  static const String blockError =
+      'Não foi possível atualizar o bloqueio. Tente novamente.';
+  static const String blockedListEmpty = 'Você não bloqueou ninguém.';
+  static const String blockedDeletedAccount = 'Conta excluída';
+  static const String blockedChatBanner =
+      'Você bloqueou esta pessoa. Desbloqueie para voltar a conversar.';
+  static const String chatNotAllowed =
+      'Não é possível conversar com esta pessoa. Contas de 16 e 17 anos só '
+      'conversam com amigos, e um bloqueio também impede a conversa.';
+
+  static const String reportAction = 'Denunciar';
+  static const String reportUserTitle = 'Denunciar perfil';
+  static const String reportEventTitle = 'Denunciar evento';
+  static const String reportMessageTitle = 'Denunciar mensagem';
+  static const String reportReasonLabel = 'O que está acontecendo?';
+  static const String reportReasonHarassment = 'Assédio, ameaça ou ofensa';
+  static const String reportReasonHate = 'Discurso de ódio ou discriminação';
+  static const String reportReasonSexual = 'Conteúdo sexual';
+  static const String reportReasonChildSafety = 'Envolve criança ou adolescente';
+  static const String reportReasonViolence = 'Violência';
+  static const String reportReasonSpam = 'Golpe, spam ou venda';
+  static const String reportReasonFake = 'Perfil ou evento falso';
+  static const String reportReasonOther = 'Outro motivo';
+  static const String reportDetailsHint = 'Conte o que aconteceu (opcional)';
+  static const String reportSubmit = 'Enviar denúncia';
+  static const String reportSent =
+      'Denúncia enviada. Obrigado por ajudar a manter o COMPY seguro.';
+  static const String reportError =
+      'Não foi possível enviar a denúncia. Tente novamente.';
+  static const String reportPrivacyNote =
+      'A pessoa denunciada não sabe quem denunciou. Os administradores só veem '
+      'o que você denunciar.';
+  static const String reportEmergencyNote =
+      'Em caso de perigo imediato, ligue 190.';
+
+  static const String locationDisclosureTitle = 'Ver eventos perto de você';
+  static const String locationDisclosureBody =
+      'O COMPY usa a localização do seu celular só para ordenar os eventos pela '
+      'distância até você. A posição fica no aparelho: não é enviada nem '
+      'gravada nos nossos servidores. Você pode desligar quando quiser.';
+  static const String locationDisclosureAllow = 'Ativar localização';
+  static const String locationDisclosureNotNow = 'Agora não';
+  static const String locationCardTitle = 'Eventos perto de você';
+  static const String locationCardBody =
+      'Ative a localização para ordenar os eventos pela distância. Sem ela, '
+      'usamos o centro de Taquara.';
+  static const String locationDeniedForever =
+      'A permissão foi negada. Ative a localização do COMPY nas configurações '
+      'do Android.';
+  static const String locationOpenSettings = 'Abrir configurações';
+
+  static String notificationEventCancelledTitle(String eventTitle) =>
+      'Evento cancelado: $eventTitle';
+  static const String notificationEventCancelledBody =
+      'Quem organizava excluiu a conta, e o evento foi cancelado.';
+  static const String notificationEventCancelledGone =
+      'Este evento foi cancelado.';
+
+  static const String mapsAttribution = 'OpenStreetMap contributors';
 
   // Em construção — os botões já existem; as telas, ainda não.
   static const String settingsTitle = 'Configurações';
