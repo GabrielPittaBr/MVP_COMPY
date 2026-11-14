@@ -20,8 +20,8 @@ Aplicativo móvel que conecta praticantes de esporte em **Taquara/RS**.
 [![OpenStreetMap](https://img.shields.io/badge/OpenStreetMap-flutter__map%207-7EBC6F?style=for-the-badge&logo=openstreetmap&logoColor=white)](https://openstreetmap.org)
 [![Android](https://img.shields.io/badge/Android-br.com.compy.app-3DDC84?style=for-the-badge&logo=android&logoColor=white)](android/app/build.gradle.kts)
 
-[![Versão](https://img.shields.io/badge/Vers%C3%A3o-v1.0.3-1F3A8A?style=for-the-badge)](https://github.com/GabrielPittaBr/MVP_COMPY/releases/latest)
-![Testes](https://img.shields.io/badge/Testes-523%20passando-10B981?style=for-the-badge)
+[![Versão](https://img.shields.io/badge/Vers%C3%A3o-v1.1.0-1F3A8A?style=for-the-badge)](https://github.com/GabrielPittaBr/MVP_COMPY/releases/latest)
+![Testes](https://img.shields.io/badge/Testes-546%20passando-10B981?style=for-the-badge)
 ![Regras](https://img.shields.io/badge/Regras%20do%20Firestore%20e%20Storage-219%20casos-F59E0B?style=for-the-badge)
 
 </div>
@@ -47,7 +47,9 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 | 💬 | **Chat** | Conversas em tempo real, direto sobre os streams do Firestore. A sala abre com as 20 mensagens mais recentes e carrega as anteriores ao rolar até o topo, o que poupa leituras do Firestore. A lista mostra o horário ou a data da última mensagem e destaca as não lidas, e o nome e a foto de cada pessoa acompanham o perfil atual dela. Dá para começar uma conversa pelo nome de usuário e enviar o local de um evento como cartão na conversa. |
 | 👤 | **Perfil** | Foto, nome, biografia, esportes favoritos, insígnias, amigos, média das avaliações recebidas e galeria. A foto vem da galeria ou da câmera e passa por um recorte antes do envio; nome, biografia e foto se editam no próprio app, e a exclusão da conta apaga também as fotos. O perfil de outras pessoas abre pelo evento, pela conversa ou pela busca de usuários, só com os dados públicos e os botões de **amizade** e de mensagem lado a lado: dá para enviar uma solicitação, que a outra pessoa aceita ou recusa, cancelar a que ainda não foi respondida e desfazer uma amizade, com confirmação. A seção de amigos mostra a contagem, um aviso das solicitações recebidas e uma prévia dos amigos, e a tela de amizades separa amigos, solicitações recebidas e enviadas, com atalho de mensagem e busca por @ para adicionar alguém. |
 
-**Entrada no app:** cadastro e login por e-mail/senha ou **conta Google**, foto de perfil opcional já no cadastro (quem entra com o Google recebe a foto da conta como sugestão), escolha de um nome de usuário único e onboarding de esportes favoritos, tudo protegido por um guard de rotas que leva cada pessoa exatamente ao degrau que falta.
+**Entrada no app:** cadastro e login por e-mail/senha ou **conta Google**, foto de perfil opcional já no cadastro (quem entra com o Google recebe a foto da conta como sugestão), escolha de um nome de usuário único, data de nascimento com o aceite dos Termos de Uso e da Política de Privacidade, e onboarding de esportes favoritos, tudo protegido por um guard de rotas que leva cada pessoa exatamente ao degrau que falta.
+
+**Privacidade e segurança (LGPD):** o COMPY é para quem tem 16 anos ou mais, e contas de 16 e 17 anos só conversam com amigos aceitos. A engrenagem da Início abre as **Configurações**, com a Política de Privacidade, os Termos, o *Baixar meus dados* (uma cópia em JSON de tudo o que o app guarda), a localização, as pessoas bloqueadas, o contato do encarregado e a exclusão da conta, que apaga ou anonimiza tudo o que a pessoa deixou no app. Perfis, eventos e mensagens podem ser **denunciados**, e qualquer pessoa pode ser **bloqueada**. A localização só é pedida depois de um aviso e nunca sai do celular. Os textos públicos ficam em <https://compy-tcc.web.app>, e o diagnóstico completo está em [`docs/lgpd.md`](docs/lgpd.md).
 
 **Modalidades:** são 16, agrupadas de quatro em quatro, que é o número de colunas das grades do app.
 
@@ -76,7 +78,7 @@ O **COMPY** resolve um problema simples de quem gosta de esporte: querer jogar e
 
 ## Baixar
 
-A versão atual é a **v1.0.3**, publicada em 4 de novembro de 2026. O APK de Android (7.0 ou superior) fica sempre no mesmo endereço, que aponta para a versão mais recente:
+A versão atual é a **v1.1.0**, publicada em 14 de novembro de 2026. O APK de Android (7.0 ou superior) fica sempre no mesmo endereço, que aponta para a versão mais recente:
 
 **[compy-release.apk](https://github.com/GabrielPittaBr/MVP_COMPY/releases/latest/download/compy-release.apk)**
 
@@ -94,6 +96,7 @@ Os locais esportivos do mapa e a moderação ficam num **painel web separado**, 
 | **Locais** | Cadastro e edição com endereço, modalidades, acesso público ou privado, telefone e até oito fotos com crédito; ativação e desativação; lista com filtros e um **mapa geral** com todos os locais |
 | **Eventos** | Lista com busca e filtro por modalidade, a fase de cada evento (agendado, acontecendo ou encerrado), detalhe com os participantes e exclusão |
 | **Usuários** | Busca por nome, nome de usuário, e-mail ou UID, eventos organizados por cada pessoa, suspensão, reativação e exclusão da conta |
+| **Denúncias** | Fila das denúncias feitas no app, com as que envolvem criança ou adolescente primeiro e a cópia conferida da mensagem denunciada; cada uma é resolvida ou descartada com uma nota |
 
 Suspender ou excluir sempre pede um motivo, que fica registrado. Essas ações mexem em dados de outras pessoas, então passam por Cloud Functions protegidas por App Check, e não por escrita direta no Firestore. O funcionamento completo está em [`docs/admin/painel-administrativo.md`](docs/admin/painel-administrativo.md).
 
