@@ -26,3 +26,16 @@ conta habilitada, com e-mail verificado e provider `password`. Ele preserva
 outras custom claims, não altera senha/e-mail/providers/verificação e é
 idempotente quando a claim já existe. Após a execução real, a pessoa deve sair
 e entrar novamente para renovar o ID token.
+
+## Prazos de retenção dos documentos antigos (LGPD)
+
+As notificações e os registros de `adminOperations` criados antes da
+`chore/lgpd` não têm `expiresAt`, e por isso as políticas de TTL não os
+apagam. O backfill completa só esse campo (90 dias depois da criação para as
+notificações, 5 anos para os registros de moderação) e não mexe em quem já o
+tem:
+
+```powershell
+npm run backfill-retention-expiry --prefix tools/firebase-admin -- --dry-run
+npm run backfill-retention-expiry --prefix tools/firebase-admin
+```

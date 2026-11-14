@@ -6,6 +6,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/routes/app_router.dart';
 import '../../../shared/models/user_summary.dart';
 import '../../profile/presentation/providers/profile_providers.dart';
+import '../domain/entities/conversation_not_allowed_exception.dart';
 import 'providers/chat_providers.dart';
 
 /// Abre (ou cria) a conversa com [peer] e empilha a sala por cima da tela
@@ -26,10 +27,14 @@ Future<void> pushConversationWith(
     // Sem await: o push só completa quando a sala fecha, e a trava de quem
     // chama ficaria presa até lá.
     context.push<void>('${AppRoutes.chat}/$conversationId');
-  } catch (_) {
+  } catch (error) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(AppStrings.chatOpenConversationError)),
+      SnackBar(
+        content: Text(error is ConversationNotAllowedException
+            ? AppStrings.chatNotAllowed
+            : AppStrings.chatOpenConversationError),
+      ),
     );
   }
 }

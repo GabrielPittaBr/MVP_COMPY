@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../shared/widgets/osm_map.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -22,6 +23,8 @@ import '../../../../shared/widgets/user_avatar.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../../ratings/domain/entities/rating_summary.dart';
 import '../../../ratings/presentation/providers/ratings_providers.dart';
+import '../../../safety/domain/entities/report.dart';
+import '../../../safety/presentation/widgets/report_sheet.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../providers/events_providers.dart';
 import '../widgets/participants_avatars.dart';
@@ -80,6 +83,22 @@ class _Body extends ConsumerWidget {
           elevation: 0,
           title: Text(event.title),
           leading: const BackButton(),
+          actions: <Widget>[
+            if (ref.watch(currentUserSummaryProvider).valueOrNull?.id !=
+                event.creator.id)
+              IconButton(
+                tooltip: AppStrings.reportEventTitle,
+                icon: const Icon(Icons.flag_outlined),
+                onPressed: () => showReportSheet(
+                  context,
+                  ref,
+                  ReportTarget.event(
+                    eventId: event.id,
+                    creatorId: event.creator.id,
+                  ),
+                ),
+              ),
+          ],
         ),
         SliverToBoxAdapter(
           child: AspectRatio(
@@ -193,11 +212,8 @@ class _Body extends ConsumerWidget {
                         ),
                       ),
                       children: <Widget>[
-                        TileLayer(
-                          urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'br.com.compy.mvp',
-                        ),
+                        osmTileLayer(),
+                        const OsmAttribution(),
                         MarkerLayer(
                           markers: <Marker>[
                             Marker(

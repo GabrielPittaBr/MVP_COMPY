@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../domain/entities/auth_user.dart';
+import '../../domain/entities/legal_consent.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
 
@@ -30,6 +31,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String username,
     required String email,
     required String password,
+    required LegalConsentInput consent,
     Uint8List? photo,
   }) =>
       _dataSource.signUpWithEmail(
@@ -37,6 +39,7 @@ class AuthRepositoryImpl implements AuthRepository {
         username: username,
         email: email,
         password: password,
+        consent: consent,
         photo: photo,
       );
 
@@ -53,6 +56,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String username,
     required String name,
     required String email,
+    required LegalConsentInput consent,
     Uint8List? photo,
     String? photoUrl,
   }) =>
@@ -61,9 +65,17 @@ class AuthRepositoryImpl implements AuthRepository {
         username: username,
         name: name,
         email: email,
+        consent: consent,
         photo: photo,
         photoUrl: photoUrl,
       );
+
+  @override
+  Future<AuthUser> acceptLegalTerms({LegalConsentInput? consent}) =>
+      _dataSource.acceptLegalTerms(consent: consent);
+
+  @override
+  Future<void> abortUnderageSignup() => _dataSource.abortUnderageSignup();
 
   @override
   Future<void> signOut() => _dataSource.signOut();

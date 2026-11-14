@@ -2,6 +2,7 @@ import { FieldValue, getFirestore, Timestamp, type DocumentReference, type Fires
 import { HttpsError } from 'firebase-functions/v2/https';
 
 import type { AdministrativeCallableRequest } from './admin_auth_read.js';
+import { moderationRecordExpiresAt } from './retention.js';
 
 /**
  * Protocolo comum às exclusões do Painel Administrativo (`deleteEvent` e
@@ -270,6 +271,8 @@ export function createFirestoreDeletionOperationsGateway(): DeletionOperationsGa
           reason: input.reason,
           status: 'pending',
           createdAt: FieldValue.serverTimestamp(),
+          // Registro de moderação: 5 anos, depois a política de TTL apaga.
+          expiresAt: moderationRecordExpiresAt(),
         });
         return { created: true, operation: { ...input, status: 'pending' as const } };
       }

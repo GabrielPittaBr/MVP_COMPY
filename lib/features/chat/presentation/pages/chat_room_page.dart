@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,7 +9,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/day_label.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../../../shared/widgets/user_avatar.dart';
+import '../../../safety/domain/entities/report.dart';
+import '../../../safety/presentation/providers/safety_providers.dart';
+import '../../../safety/presentation/widgets/report_sheet.dart';
+import '../../../safety/presentation/widgets/safety_menu.dart';
 import '../../domain/entities/conversation.dart';
+import '../../domain/entities/message.dart';
 import '../models/chat_timeline.dart';
 import '../providers/chat_providers.dart';
 import '../widgets/chat_input_bar.dart';
@@ -61,10 +67,14 @@ class ChatRoomPage extends ConsumerWidget {
           ),
         ),
         actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {},
-          ),
+          // Denunciar e bloquear (chore/lgpd; Play exige bloqueio no 1:1).
+          if (conversation != null &&
+              conversation.peer.id.isNotEmpty &&
+              conversation.peer.id != 'unknown')
+            UserSafetyMenu(
+              uid: conversation.peer.id,
+              name: peer?.name ?? conversation.peer.name,
+            ),
         ],
       ),
       body: switch ((conversation, conversationAsync.isLoading)) {
@@ -105,6 +115,36 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     // que o Flutter pode chamar várias vezes por quadro.
     WidgetsBinding.instance.addPostFrameCallback((_) => _markAsRead());
   }
+
+  /// Envia e, se as regras recusarem (bloqueio, ou alguém de 16 ou 17 anos
+  /// sem amizade — `canTalk` em `firestore.rules`), explica em vez de deixar
+  /// a mensagem sumir calada.
+  Future<void> _send(String text) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(sendMessageProvider).call(
+            conversationId: widget.conversation.id,
+            peerId: widget.conversation.peer.id,
+            text: text,
+          );
+    } on FirebaseException catch (error) {
+      if (error.code != 'permission-denied') rethrow;
+      messenger.showSnackBar(
+        const SnackBar(content: Text(AppStrings.chatNotAllowed)),
+      );
+    }
+  }
+
+  void _reportMessage(Message message) => showReportSheet(
+        context,
+        ref,
+        ReportTarget.message(
+          messageId: message.id,
+          conversationId: widget.conversation.id,
+          senderId: message.senderId,
+          text: message.text,
+        ),
+      );
 
   void _markAsRead() {
     if (!mounted) return;
@@ -170,6 +210,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                               message: message,
                               isMine: message.senderId == currentUserId,
                               peer: widget.peer,
+                              // Toque longo denuncia a mensagem recebida.
+                              onLongPress: message.senderId == currentUserId
+                                  ? null
+                                  : () => _reportMessage(message),
                             ),
                         };
                       },
@@ -183,13 +227,17 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               ),
         ),
         const Divider(height: 1),
-        ChatInputBar(
-          onSend: (text) => ref.read(sendMessageProvider).call(
-                conversationId: conversation.id,
-                peerId: conversation.peer.id,
-                text: text,
-              ),
-        ),
+        if (ref.watch(isBlockedProvider(conversation.peer.id)))
+          _BlockedBanner(
+            onUnblock: () => toggleBlock(
+              context,
+              ref,
+              uid: conversation.peer.id,
+              name: widget.peer.name,
+            ),
+          )
+        else
+          ChatInputBar(onSend: _send),
       ],
     );
   }
@@ -264,6 +312,37 @@ class _DateChip extends StatelessWidget {
         child: Text(
           text,
           style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceMuted),
+        ),
+      ),
+    );
+  }
+}
+
+/// No lugar da barra de digitação, quando o usuário bloqueou a outra pessoa.
+class _BlockedBanner extends StatelessWidget {
+  const _BlockedBanner({required this.onUnblock});
+
+  final VoidCallback onUnblock;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+        child: Row(
+          children: <Widget>[
+            const Expanded(
+              child: Text(
+                AppStrings.blockedChatBanner,
+                style: TextStyle(color: AppColors.onSurfaceMuted),
+              ),
+            ),
+            TextButton(
+              onPressed: onUnblock,
+              child: const Text(AppStrings.unblockUser),
+            ),
+          ],
         ),
       ),
     );

@@ -6,13 +6,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/age_rules.dart';
 import '../../../../core/utils/username_rules.dart';
 import '../../../../shared/widgets/avatar_picker.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../providers/auth_providers.dart';
 import '../widgets/auth_text_field.dart';
+import '../widgets/legal_consent_fields.dart';
 
-/// Tela de cadastro manual — foto (opcional), Nome, Username, E-mail e Senha.
+/// Tela de cadastro manual — foto (opcional), Nome, Username, E-mail, Senha,
+/// data de nascimento e o aceite dos Termos (chore/lgpd).
 class SignupPage extends ConsumerStatefulWidget {
   const SignupPage({super.key});
 
@@ -26,6 +29,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _birthDateController = TextEditingController();
 
   /// JPEG já recortado; só é enviado junto com o cadastro.
   Uint8List? _photo;
@@ -36,6 +40,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _birthDateController.dispose();
     super.dispose();
   }
 
@@ -132,13 +137,21 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                   hint: AppStrings.authPassword,
                   controller: _passwordController,
                   obscureText: true,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _submit(),
+                  textInputAction: TextInputAction.next,
                   validator: (v) =>
                       (v == null || v.length < 6) ? AppStrings.authErrorPasswordShort : null,
                 ),
+                const SizedBox(height: 12),
 
-                const SizedBox(height: 28),
+                // Data de nascimento e aceite (LGPD, ECA Digital)
+                BirthDateField(
+                  controller: _birthDateController,
+                  textInputAction: TextInputAction.done,
+                ),
+                const SizedBox(height: 8),
+                LegalAcceptanceField(),
+
+                const SizedBox(height: 20),
 
                 // Botão Cadastrar
                 PrimaryButton(
@@ -176,6 +189,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
           username: _usernameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
+          birthDate: AgeRules.parseBirthDate(_birthDateController.text)!,
           photo: _photo,
         );
   }

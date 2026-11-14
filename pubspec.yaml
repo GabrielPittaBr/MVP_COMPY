@@ -1,7 +1,7 @@
 name: mvp_compy
 description: COMPY — App para conectar praticantes de esportes em Taquara/RS.
 publish_to: "none"
-version: 1.0.3+5
+version: 1.1.0+6
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -56,6 +56,7 @@ dependencies:
   # Util
   intl: ^0.20.2
   equatable: ^2.0.5
+  share_plus: ^11.1.0
 
 dev_dependencies:
   flutter_lints: ^4.0.0

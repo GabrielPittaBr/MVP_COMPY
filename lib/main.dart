@@ -9,6 +9,7 @@
 // Nota: o login anônimo automático foi removido. O gate de autenticação
 // é tratado pelo GoRouter (`redirect` em `app_router.dart`).
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -17,6 +18,9 @@ import 'app.dart';
 import 'core/services/firebase_service.dart';
 
 Future<void> main() async {
+  // `debugPrint` também escreve no logcat do build de release, e vários logs
+  // levam o uid (LGPD art. 46, segurança). No release ele fica mudo.
+  if (kReleaseMode) debugPrint = (String? message, {int? wrapWidth}) {};
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR');
   await FirebaseService.instance.ensureInitialized();

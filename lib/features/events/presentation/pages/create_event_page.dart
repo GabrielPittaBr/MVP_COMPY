@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../shared/widgets/osm_map.dart';
 import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/providers/clock_providers.dart';
@@ -752,10 +753,8 @@ class _LocationMapPreview extends StatelessWidget {
               ),
             ),
             children: <Widget>[
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'br.com.compy.mvp',
-              ),
+              osmTileLayer(),
+              const OsmAttribution(),
               if (location != null)
                 MarkerLayer(
                   markers: <Marker>[
