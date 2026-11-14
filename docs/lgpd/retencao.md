@@ -30,15 +30,16 @@ Ver `functions/src/account_cleanup.ts` e a página
   "Conta excluída"; as notas dadas ficam só nas médias.
 - **Guardado pelo prazo da tabela:** denúncias e registros de moderação.
 
-## Pendência
+## Documentos antigos
 
 As notificações e os registros de moderação criados **antes** da
-`chore/lgpd` não têm `expiresAt`. Rodar uma vez:
+`chore/lgpd` não tinham `expiresAt`. O backfill abaixo já foi rodado em
+14/11/2026; repetir não muda nada, porque ele só completa quem não tem o
+campo:
 
 ```powershell
 npm run backfill-retention-expiry --prefix tools/firebase-admin -- --dry-run
 npm run backfill-retention-expiry --prefix tools/firebase-admin
 ```
 
-Precisa de credencial do Admin SDK (`gcloud auth application-default login`),
-que esta máquina não tinha em 14/11/2026.
+Precisa de credencial do Admin SDK (`gcloud auth application-default login`).

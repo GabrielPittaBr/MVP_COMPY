@@ -34,8 +34,8 @@ Functions. Os documentos de governança estão em [`docs/lgpd/`](lgpd/).
 | 5.7 Denunciar e bloquear | Feito | `lib/features/safety/`, fila "Denúncias" no painel |
 | 5.8 Segurança dos dados da Play | Respostas prontas; falta preencher no Console | `docs/lgpd/guia-play-console.md` |
 | 5.9 Configurações → Privacidade e "Baixar meus dados" | Feito | `lib/features/settings/`, `functions/src/data_export.ts` |
-| 5.10 Retenção | Feito para o que nasce agora; falta o backfill dos documentos antigos | `firestore.indexes.json` (TTL), `docs/lgpd/retencao.md` |
-| 5.11 Transferência internacional na política | Feito | `site/privacidade.html`, seção 5 |
+| 5.10 Retenção | Feito, inclusive o backfill dos documentos antigos | `firestore.indexes.json` (TTL), `docs/lgpd/retencao.md` |
+| 5.11 Transferência internacional na política | Feito (Auth e Storage nos EUA) | `site/privacidade.html`, seção 5 |
 | 5.12 Segurança e incidentes | Feito; imposição do App Check fica para depois da Play | `docs/lgpd/politica-de-seguranca.md`, `plano-de-incidentes.md` |
 | 5.13 Proteções de 16–17 (nível Essencial) | Feito: chat só com amigos, localização desligada por padrão | `canTalk` em `firestore.rules` |
 | 5.14 OSM, logs e fotos antigas | Feito | `lib/shared/widgets/osm_map.dart`, `lib/main.dart`, `functions/src/avatar_cleanup.ts` |
@@ -444,8 +444,10 @@ como **coleta**, não como compartilhamento. Rascunho:
   [cláusulas-padrão brasileiras][br-sccs]. O Hosting segue os [termos do
   Firebase][firebase-dpst], ainda sem cláusula brasileira; ele só recebe IP
   de acesso.
-- **Conferir no console** em que região está o bucket do Storage. As
-  Functions já usam `southamerica-east1` via `setGlobalOptions` e
+- **Região do Storage:** o bucket `compy-tcc.firebasestorage.app` fica em
+  `us-east1`, nos EUA (conferido no console em 14/11/2026). As fotos de
+  perfil também são transferência internacional, e a política diz isso na
+  seção 5. As Functions usam `southamerica-east1` via `setGlobalOptions` e
   `administrativeFunctionsRegion`.
 
 #### 5.12 Segurança e incidentes

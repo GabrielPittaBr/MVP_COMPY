@@ -3,17 +3,66 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Página não encontrada — COMPY</title>
-  <link rel="stylesheet" href="/estilo.css">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="robots" content="noindex">
+  <title>Página não encontrada no COMPY</title>
+  <link rel="icon" href="/img/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="stylesheet" href="/estilo.css?v=2">
 </head>
 <body>
-<header>
-  <a href="/">COMPY</a>
-  <p>Encontre seu próximo jogo em Taquara</p>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+<header class="topo">
+  <div class="topo__dentro">
+    <a class="marca" href="/" aria-label="COMPY, página inicial"><img src="/img/compy-icone.png" width="40" height="40" alt=""><span translate="no">COMPY</span></a>
+    <nav class="menu" aria-label="Páginas do COMPY">
+      <a href="/privacidade">Privacidade</a>
+      <a href="/termos">Termos</a>
+      <a href="/excluir-conta">Excluir conta</a>
+      <a href="/seguranca">Segurança</a>
+    </nav>
+  </div>
 </header>
-<main>
-  <h1>Página não encontrada</h1>
-  <p><a href="/">Voltar para o início</a></p>
+
+<main id="conteudo">
+  <div class="capa capa--inicio capa--erro">
+    <svg class="capa__quadra" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      <g fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="24" y="24" width="952" height="452"/>
+        <path d="M500 24V476"/>
+        <circle cx="500" cy="250" r="74"/>
+        <path d="M24 130a120 120 0 0 1 0 240M976 130a120 120 0 0 0 0 240"/>
+        <path d="M24 214h-14v72h14M976 214h14v72h-14"/>
+      </g>
+      <g fill="currentColor">
+        <circle cx="500" cy="250" r="4"/>
+        <circle cx="164" cy="250" r="3.5"/>
+        <circle cx="836" cy="250" r="3.5"/>
+      </g>
+    </svg>
+    <div class="capa__dentro">
+      <h1>Bola fora</h1>
+      <p class="capa__intro">Esta página não existe. <a href="/">Voltar para o início</a></p>
+    </div>
+  </div>
 </main>
+
+<footer class="rodape">
+  <div class="rodape__dentro">
+    <a href="/" aria-label="COMPY, página inicial"><img class="rodape__logo" src="/img/compy-logo-branco.png" width="141" height="72" alt="" loading="lazy" decoding="async"></a>
+    <div>
+      <nav aria-label="Rodapé">
+        <ul>
+          <li><a href="/privacidade">Política de Privacidade</a></li>
+          <li><a href="/termos">Termos de Uso</a></li>
+          <li><a href="/excluir-conta">Excluir conta</a></li>
+          <li><a href="/seguranca">Segurança</a></li>
+        </ul>
+      </nav>
+      <p>Contato e encarregado de dados: <a href="mailto:contato.compy@gmail.com">contato.compy@gmail.com</a></p>
+      <p>Trabalho de Conclusão de Curso de Gabriel Fernandes Pitta e Bernardo Pedroso Finkler, em Taquara/RS.</p>
+    </div>
+  </div>
+</footer>
 </body>
 </html>

@@ -1,79 +1,596 @@
 /* Páginas públicas do COMPY (Política, Termos, exclusão de conta e
-   segurança). Mesma paleta do app: lib/core/theme/app_colors.dart. */
+   segurança).
+
+   Identidade: o azul de quadra e as linhas de futsal em giz vêm do app e do
+   painel administrativo (admin/lib/core/theme/admin_court.dart); a faixa
+   colorida é a do banner do README; as cores do degradê são as da logo.
+   Sem fontes nem scripts de terceiros: uma página de privacidade não deve
+   avisar ninguém de que foi aberta. */
+
 :root {
-  --primary: #1f3a8a;
-  --primary-dark: #0b2566;
-  --secondary: #10b981;
-  --text: #0a0a0a;
-  --muted: #4b5563;
-  --surface: #f7f7f8;
-  --outline: #e2e2e5;
-  --error: #dc2626;
+  color-scheme: light;
+
+  --quadra: #1f3a8a;        /* azul principal do app */
+  --quadra-funda: #172d6e;
+  --noite: #08192e;         /* marinho do corredor da logo */
+  --grama: #047857;         /* verde que passa no contraste para texto */
+  --lima: #9bcf3b;          /* degradê da logo: só em traços, nunca em texto */
+  --verde: #3dbb79;
+  --turquesa: #07a7a3;
+  --alerta: #b91c1c;
+
+  --texto: #1c2433;
+  --suave: #4b5563;
+  --papel: #f3f6fa;
+  --linha: #e1e6ee;
+  --giz: rgba(255, 255, 255, 0.17);
+
+  --faixa: linear-gradient(90deg, var(--lima), var(--verde) 38%, var(--turquesa) 68%, var(--quadra));
+  --fonte: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --largura: 1120px;
+  --coluna: 68ch;
 }
 
-* { box-sizing: border-box; }
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
 
 body {
   margin: 0;
   background: #ffffff;
-  color: var(--text);
-  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--texto);
+  font: 400 1.0625rem/1.65 var(--fonte);
+  text-rendering: optimizeLegibility;
+  overflow-wrap: break-word;
+  /* Rodapé sempre no fim da tela, mesmo em página curta. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
-header {
-  background: var(--primary);
-  color: #ffffff;
-  padding: 20px 16px;
+main { flex: 1 0 auto; }
+
+h1,
+h2,
+h3 { text-wrap: balance; }
+
+p,
+li { text-wrap: pretty; }
+
+img,
+svg { display: block; max-width: 100%; }
+
+a { color: var(--quadra); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+
+a,
+summary {
+  -webkit-tap-highlight-color: rgba(31, 58, 138, 0.12);
+  touch-action: manipulation;
 }
+a:hover { color: var(--quadra-funda); text-decoration-thickness: 2px; }
 
-header a { color: #ffffff; text-decoration: none; font-weight: 700; font-size: 20px; }
-header p { margin: 4px 0 0; opacity: 0.85; font-size: 14px; }
-
-main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
-
-h1 { font-size: 28px; line-height: 1.25; margin: 0 0 8px; color: var(--primary-dark); }
-h2 { font-size: 20px; margin: 32px 0 8px; color: var(--primary-dark); }
-h3 { font-size: 17px; margin: 20px 0 4px; }
-
-a { color: var(--primary); }
-
-.versao { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
-
-.destaque {
-  background: var(--surface);
-  border-left: 4px solid var(--secondary);
-  padding: 12px 16px;
-  margin: 16px 0;
+:focus-visible {
+  outline: 3px solid var(--quadra);
+  outline-offset: 3px;
   border-radius: 4px;
 }
 
-.alerta { border-left-color: var(--error); }
-
-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 15px; }
-th, td { border: 1px solid var(--outline); padding: 8px; text-align: left; vertical-align: top; }
-th { background: var(--surface); }
-
-.tabela { overflow-x: auto; }
-
-ul, ol { padding-left: 22px; }
-li { margin: 4px 0; }
-
-.cartoes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 24px 0; }
-.cartoes a {
-  display: block;
-  padding: 16px;
-  border: 1px solid var(--outline);
-  border-radius: 12px;
+.pular {
+  position: absolute;
+  left: 16px;
+  top: -64px;
+  z-index: 10;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--noite);
+  color: #ffffff;
+  font-weight: 700;
   text-decoration: none;
-  color: var(--text);
 }
-.cartoes a strong { display: block; color: var(--primary); margin-bottom: 4px; }
+.pular:focus { top: 12px; color: #ffffff; }
 
-footer {
-  border-top: 1px solid var(--outline);
-  color: var(--muted);
-  font-size: 14px;
-  padding: 16px;
-  text-align: center;
+.visualmente-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
-footer a { margin: 0 6px; }
+
+/* ── Cabeçalho ───────────────────────────────────────────────────────── */
+
+.topo {
+  position: relative;
+  background: #ffffff;
+}
+
+/* A faixa do banner do README, embaixo do cabeçalho. */
+.topo::after {
+  content: "";
+  display: block;
+  height: 4px;
+  background: var(--faixa);
+}
+
+.topo__dentro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+  max-width: var(--largura);
+  margin: 0 auto;
+  padding: 14px 16px;
+}
+
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--noite);
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+.marca:hover { color: var(--noite); }
+.marca img { width: 40px; height: 40px; }
+
+.menu {
+  display: flex;
+  gap: 4px;
+  margin: 0 -8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.menu::-webkit-scrollbar { display: none; }
+
+.menu a {
+  flex: none;
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: var(--suave);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.menu a:hover { background: var(--papel); color: var(--noite); }
+.menu a[aria-current="page"] { background: var(--papel); color: var(--quadra); }
+
+/* A rolagem do menu cortaria o anel de fora; ele vai por dentro da pílula. */
+.menu a:focus-visible { outline-offset: -3px; border-radius: 999px; }
+
+/* No celular os quatro itens cabem numa linha, sem nenhum escondido na
+   rolagem; numa tela ainda mais estreita, o último desce de linha. */
+@media (max-width: 480px) {
+  .menu { flex-wrap: wrap; overflow: visible; margin: 0 -6px; gap: 2px; }
+  .menu a { padding: 6px 8px; font-size: 0.875rem; }
+}
+
+/* ── Capa: a quadra em giz sobre o azul ─────────────────────────────── */
+
+.capa {
+  position: relative;
+  overflow: hidden;
+  background: var(--quadra);
+  color: #ffffff;
+}
+
+/* Nas páginas de texto, a quadra inteira à direita, alinhada à coluna; no
+   celular ela fica atrás do título, ainda mais apagada. */
+.capa__quadra {
+  position: absolute;
+  top: 20px;
+  right: max(16px, calc((100% - var(--largura)) / 2 + 16px));
+  height: calc(100% - 40px);
+  width: auto;
+  aspect-ratio: 2 / 1;
+  color: var(--giz);
+  pointer-events: none;
+}
+.capa__quadra * { vector-effect: non-scaling-stroke; }
+
+@media (max-width: 700px) {
+  .capa__quadra { color: rgba(255, 255, 255, 0.1); }
+}
+
+/* No início, a quadra ocupa a capa inteira. */
+.capa--inicio .capa__quadra {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.capa__dentro {
+  position: relative;
+  max-width: var(--largura);
+  margin: 0 auto;
+  padding: 44px 16px 48px;
+}
+
+.capa h1 {
+  max-width: 20ch;
+  margin: 0;
+  font-size: clamp(2rem, 1.4rem + 3vw, 3rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.capa .versao {
+  margin: 14px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.9375rem;
+}
+
+.capa a,
+.capa a:hover { color: #ffffff; }
+.capa :focus-visible { outline-color: #ffffff; }
+
+/* Início: a quadra inteira, a logo grande e a apresentação. */
+.capa--inicio .capa__dentro { padding: 56px 16px 64px; }
+
+/* 404: a quadra ocupa a tela até o rodapé. */
+main:has(.capa--erro) { display: flex; background: var(--quadra); }
+.capa--erro { flex: 1; display: flex; align-items: center; min-height: 360px; }
+.capa--erro .capa__dentro { width: 100%; }
+
+.capa__logo {
+  width: clamp(190px, 40vw, 282px);
+  height: auto;
+  margin: 0 0 28px -6px;
+}
+
+.capa__intro {
+  max-width: 54ch;
+  margin: 18px 0 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.125rem;
+}
+
+/* ── Corpo das páginas de texto ─────────────────────────────────────── */
+
+.corpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: var(--largura);
+  margin: 0 auto;
+  padding: 32px 16px 72px;
+}
+
+@media (min-width: 960px) {
+  .corpo {
+    grid-template-columns: 232px minmax(0, var(--coluna));
+    justify-content: space-between;
+    gap: 64px;
+    padding-top: 48px;
+  }
+}
+
+/* Sumário: lateral fixa no computador, recolhível no celular. */
+.sumario {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .sumario {
+    display: block;
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+  }
+  .sumario-movel { display: none; }
+}
+
+.sumario__titulo {
+  margin: 0 0 10px;
+  color: var(--noite);
+  font-size: 0.9375rem;
+  font-weight: 800;
+}
+
+.sumario ol,
+.sumario-movel ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 2px solid var(--linha);
+}
+
+.sumario li a,
+.sumario-movel li a {
+  display: block;
+  margin-left: -2px;
+  padding: 6px 0 6px 14px;
+  border-left: 2px solid transparent;
+  color: var(--suave);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  text-decoration: none;
+}
+.sumario li a:hover,
+.sumario-movel li a:hover {
+  border-left-color: var(--verde);
+  color: var(--noite);
+}
+
+.sumario-movel {
+  margin: 0 0 28px;
+  border: 1px solid var(--linha);
+  border-radius: 14px;
+  background: var(--papel);
+}
+.sumario-movel summary {
+  padding: 14px 16px;
+  color: var(--noite);
+  font-weight: 700;
+  cursor: pointer;
+}
+.sumario-movel summary:hover { color: var(--quadra); }
+.sumario-movel ol { margin: 0 16px 14px; }
+
+/* Texto: coluna de leitura. */
+.texto { min-width: 0; }
+
+.texto > :first-child { margin-top: 0; }
+
+.texto h2 {
+  margin: 44px 0 10px;
+  color: var(--noite);
+  font-size: 1.375rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  scroll-margin-top: 24px;
+}
+
+.texto h3 {
+  margin: 26px 0 6px;
+  color: var(--noite);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.texto p { margin: 0 0 14px; }
+
+.texto ul,
+.texto ol { margin: 0 0 16px; padding-left: 1.4em; }
+.texto li { margin: 6px 0; }
+.texto li::marker { color: var(--turquesa); }
+
+.texto strong { color: var(--noite); }
+
+/* Resumo e alerta: o traço do degradê da logo marca o que é importante. */
+.destaque {
+  position: relative;
+  margin: 24px 0;
+  padding: 18px 20px 18px 24px;
+  border-radius: 14px;
+  background: var(--papel);
+  overflow: hidden;
+}
+.destaque::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: linear-gradient(180deg, var(--lima), var(--turquesa));
+}
+.destaque > :last-child { margin-bottom: 0; }
+
+.destaque--alerta { background: #fef2f2; }
+.destaque--alerta::before { background: var(--alerta); }
+
+/* Tabelas: no celular, cada linha vira um bloco com o nome da coluna. */
+.tabela {
+  margin: 16px 0 24px;
+  border: 1px solid var(--linha);
+  border-radius: 14px;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.96875rem;
+  line-height: 1.55;
+}
+
+th,
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--linha);
+  text-align: left;
+  vertical-align: top;
+}
+
+thead th {
+  background: var(--papel);
+  color: var(--noite);
+  font-weight: 700;
+}
+
+tbody tr:last-child td { border-bottom: 0; }
+
+@media (max-width: 640px) {
+  .tabela { border: 0; border-radius: 0; overflow: visible; }
+
+  .empilha thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .empilha,
+  .empilha tbody,
+  .empilha tr,
+  .empilha td { display: block; }
+
+  .empilha tr {
+    margin: 0 0 12px;
+    padding: 6px 16px;
+    border: 1px solid var(--linha);
+    border-radius: 14px;
+  }
+
+  .empilha td {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--linha);
+  }
+  .empilha tr td:last-child { border-bottom: 0; }
+  .empilha tbody tr:last-child td { border-bottom: 1px solid var(--linha); }
+  .empilha tbody tr:last-child td:last-child { border-bottom: 0; }
+
+  .empilha td::before {
+    content: attr(data-rotulo);
+    display: block;
+    margin-bottom: 2px;
+    color: var(--suave);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+}
+
+/* ── Início: os atalhos ─────────────────────────────────────────────── */
+
+/* Mesma margem esquerda da capa; a coluna de atalhos não passa de 760px. */
+.inicio {
+  max-width: var(--largura);
+  margin: 0 auto;
+  padding: 40px 16px 72px;
+}
+.inicio > * { max-width: 760px; }
+
+.inicio h2 {
+  margin: 0 0 12px;
+  color: var(--noite);
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* Raias: uma linha por página, como as raias de uma pista. */
+.raias {
+  margin: 0 0 40px;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--linha);
+}
+
+.raias a {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 4px;
+  border-bottom: 1px solid var(--linha);
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.raias a:hover .raias__nome { color: var(--quadra); text-decoration: underline; text-decoration-thickness: 2px; }
+.raias a:hover .raias__seta { color: var(--quadra); }
+
+.raias__icone {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--papel);
+  color: var(--quadra);
+}
+.raias__icone svg { width: 24px; height: 24px; }
+
+.raias__nome {
+  display: block;
+  color: var(--noite);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.raias__descricao {
+  display: block;
+  color: var(--suave);
+  font-size: 0.96875rem;
+  line-height: 1.45;
+}
+
+.raias__seta { color: #9aa3b2; }
+.raias__seta svg { width: 20px; height: 20px; }
+
+.contato p { margin: 0 0 8px; }
+
+/* ── Rodapé ─────────────────────────────────────────────────────────── */
+
+.rodape {
+  background: var(--noite);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.9375rem;
+}
+
+.rodape__dentro {
+  display: grid;
+  gap: 24px;
+  max-width: var(--largura);
+  margin: 0 auto;
+  padding: 40px 16px 44px;
+}
+
+@media (min-width: 760px) {
+  .rodape__dentro {
+    grid-template-columns: auto 1fr;
+    align-items: start;
+    column-gap: 56px;
+  }
+}
+
+.rodape__logo { width: 141px; height: auto; }
+
+.rodape ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.rodape a { color: #ffffff; text-decoration: none; }
+.rodape a:hover { color: #ffffff; text-decoration: underline; }
+.rodape :focus-visible { outline-color: #ffffff; }
+
+.rodape p { margin: 0 0 6px; }
+
+/* ── Impressão: só o texto ──────────────────────────────────────────── */
+
+@media print {
+  .pular,
+  .menu,
+  .topo::after,
+  .capa__quadra,
+  .sumario,
+  .sumario-movel,
+  .rodape { display: none; }
+
+  body { font-size: 11pt; }
+  .capa { background: none; color: #000000; }
+  .capa .versao { color: #333333; }
+  .corpo { display: block; padding: 0; }
+  a { color: #000000; }
+  .destaque { border: 1px solid #999999; }
+}

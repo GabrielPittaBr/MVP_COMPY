@@ -16,7 +16,7 @@ Versão de 14/11/2026. Revisar sempre que um dado novo entrar no app.
 | Contato | contato.compy@gmail.com |
 | Operador | Google (Firebase: Authentication, Cloud Firestore, Cloud Storage, Cloud Functions, App Check, Hosting) |
 | Categorias de titulares | Usuários do app com 16 anos ou mais, **incluindo adolescentes de 16 e 17 anos** |
-| Transferência internacional | Sim: Firebase Authentication nos EUA (cláusulas-padrão da ANPD no Cloud Data Processing Addendum do Google) |
+| Transferência internacional | Sim: Firebase Authentication e Cloud Storage (bucket `compy-tcc.firebasestorage.app`, região `us-east1`) nos EUA (cláusulas-padrão da ANPD no Cloud Data Processing Addendum do Google) |
 
 ## Operações
 
@@ -24,7 +24,7 @@ Versão de 14/11/2026. Revisar sempre que um dado novo entrar no app.
 |---|---|---|---|---|---|---|---|---|
 | 1 | Conta e login | Criar a conta e autenticar | Nome, e-mail, senha (hash), conta Google, uid, datas de criação e último acesso, IP | Execução de contrato (art. 7º, V) | Firebase Auth (EUA) | Titular; admins veem e-mail, provedores, datas e status | Enquanto a conta existir; backups do Google até 180 dias | Senha não legível; App Check; admins com claim |
 | 2 | Aceite e idade | Provar o aceite dos Termos; idade mínima de 16; proteções de 16–17 | Versão e hora do aceite, data de nascimento, 18º aniversário, faixa etária da Google Play | Obrigação legal (art. 7º, II; ECA Digital arts. 12–14) e contrato | `users/{uid}/private/consent` | Só o titular; as regras leem para aplicar a proteção | Enquanto a conta existir | Regra valida idade e impede troca da data |
-| 3 | Perfil público | Identificar o usuário para os outros | Nome, @username, foto, esportes, bio | Contrato | `users/{uid}`, Storage `users/{uid}/` | Usuários logados | Enquanto a conta existir; fotos antigas apagadas na troca | EXIF removido; escrita só do dono |
+| 3 | Perfil público | Identificar o usuário para os outros | Nome, @username, foto, esportes, bio | Contrato | `users/{uid}`, Storage `users/{uid}/` (EUA, `us-east1`) | Usuários logados | Enquanto a conta existir; fotos antigas apagadas na troca | EXIF removido; escrita só do dono |
 | 4 | Contato | Exportação de dados e contato pelo encarregado | E-mail | Contrato | `users/{uid}/private/contact` | Só o titular | Enquanto a conta existir | Fora do perfil público |
 | 5 | Eventos | Organizar partidas | Evento (esporte, local, data, vagas), criador e participantes (nome, @, foto copiados) | Contrato | `events` | Usuários logados | Enquanto a conta existir; na exclusão: futuros cancelados, passados anonimizados | Regras de criação, join e encerramento |
 | 6 | Chat | Conversas 1:1 | Texto, remetente, horário, locais compartilhados | Contrato | `conversations`, `messages` | Só os dois membros | Enquanto a conta existir; na exclusão, mensagens enviadas apagadas | Regras por membro; `canTalk` (bloqueio e 16–17) |
