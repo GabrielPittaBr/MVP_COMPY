@@ -1,0 +1,4 @@
+Taquara, 14 de Novembro de 2026
+
+
+- Hoje decidimos que a idade mínima do COMPY é 16 anos e registramos a decisão no diagnóstico da LGPD (`docs/lgpd.md`). O corte nos 16 evita contas de quem é absolutamente incapaz pelo Código Civil e, na maior parte, o vínculo com responsável que o ECA Digital pede para redes sociais. Mas quem tem 16 e 17 anos ainda é adolescente, então as proteções do ECA Digital passaram a fazer parte do plano obrigatório: data de nascimento no cadastro com o sinal de idade da Play, configurações mais protetivas por padrão para essas contas, canal de denúncia e avaliação de impacto. Também deixamos de contar com o regime de pequeno porte da ANPD, porque dados de adolescentes contam como alto risco, e por isso vamos cumprir os prazos normais e indicar um encarregado. Reordenamos o plano de trabalho com essas mudanças.
