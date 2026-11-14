@@ -1,0 +1,79 @@
+/* Páginas públicas do COMPY (Política, Termos, exclusão de conta e
+   segurança). Mesma paleta do app: lib/core/theme/app_colors.dart. */
+:root {
+  --primary: #1f3a8a;
+  --primary-dark: #0b2566;
+  --secondary: #10b981;
+  --text: #0a0a0a;
+  --muted: #4b5563;
+  --surface: #f7f7f8;
+  --outline: #e2e2e5;
+  --error: #dc2626;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+header {
+  background: var(--primary);
+  color: #ffffff;
+  padding: 20px 16px;
+}
+
+header a { color: #ffffff; text-decoration: none; font-weight: 700; font-size: 20px; }
+header p { margin: 4px 0 0; opacity: 0.85; font-size: 14px; }
+
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+
+h1 { font-size: 28px; line-height: 1.25; margin: 0 0 8px; color: var(--primary-dark); }
+h2 { font-size: 20px; margin: 32px 0 8px; color: var(--primary-dark); }
+h3 { font-size: 17px; margin: 20px 0 4px; }
+
+a { color: var(--primary); }
+
+.versao { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
+
+.destaque {
+  background: var(--surface);
+  border-left: 4px solid var(--secondary);
+  padding: 12px 16px;
+  margin: 16px 0;
+  border-radius: 4px;
+}
+
+.alerta { border-left-color: var(--error); }
+
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 15px; }
+th, td { border: 1px solid var(--outline); padding: 8px; text-align: left; vertical-align: top; }
+th { background: var(--surface); }
+
+.tabela { overflow-x: auto; }
+
+ul, ol { padding-left: 22px; }
+li { margin: 4px 0; }
+
+.cartoes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 24px 0; }
+.cartoes a {
+  display: block;
+  padding: 16px;
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text);
+}
+.cartoes a strong { display: block; color: var(--primary); margin-bottom: 4px; }
+
+footer {
+  border-top: 1px solid var(--outline);
+  color: var(--muted);
+  font-size: 14px;
+  padding: 16px;
+  text-align: center;
+}
+footer a { margin: 0 6px; }

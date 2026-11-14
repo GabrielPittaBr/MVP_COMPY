@@ -66,6 +66,17 @@
           "destination": "/index.html"
         }
       ]
+    },
+    {
+      "target": "site",
+      "public": "site",
+      "cleanUrls": true,
+      "trailingSlash": false,
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
     }
   ],
   "emulators": {

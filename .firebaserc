@@ -5,7 +5,12 @@
   "targets": {
     "compy-tcc": {
       "hosting": {
-        "admin": ["compy-tcc-admin"]
+        "admin": [
+          "compy-tcc-admin"
+        ],
+        "site": [
+          "compy-tcc"
+        ]
       }
     }
   }
