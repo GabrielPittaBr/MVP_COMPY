@@ -235,7 +235,7 @@ regras forem seguidas a cada versão:
 3. **O build number sobe** (`version: X.Y.Z+N` no `pubspec.yaml`, que o Gradle
    usa como `versionCode`). O Android recusa instalar por cima um APK com
    `versionCode` menor ou igual ao instalado. A v0.1.0 foi o `+1`, a v1.0.0 o
-   `+2`, a v1.0.1 o `+3`, a v1.0.2 o `+4` e a v1.0.3 é o `+5`.
+   `+2`, a v1.0.1 o `+3`, a v1.0.2 o `+4`, a v1.0.3 o `+5` e a v1.1.0 é o `+6`.
 4. **A chave é a mesma da versão anterior.** Desde a v1.0.1 é o
    `compy-release-v2.jks` do [item 0](#0-assinatura-de-release)
    (SHA-1 `92:33:…:3B:B8`); a v0.1.0 e a v1.0.0 usaram o `compy-release.jks`
