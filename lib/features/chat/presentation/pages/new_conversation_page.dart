@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/entities/conversation_not_allowed_exception.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -57,11 +58,15 @@ class _NewConversationPageState extends ConsumerState<NewConversationPage> {
 
       if (!mounted) return;
       context.go('${AppRoutes.chat}/$conversationId');
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() => _opening = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.chatOpenConversationError)),
+        SnackBar(
+          content: Text(error is ConversationNotAllowedException
+              ? AppStrings.chatNotAllowed
+              : AppStrings.chatOpenConversationError),
+        ),
       );
     }
   }

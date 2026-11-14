@@ -31,6 +31,49 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
 
+    // ── Proteções da LGPD e do ECA Digital (chore/lgpd) ─────────────────
+    // `get()` e `exists()` nas regras leem qualquer documento, sem passar
+    // pelas regras dele: é o que deixa a data de nascimento e os bloqueios
+    // privados e, mesmo assim, valendo para todo mundo.
+
+    function consentPath(uid) {
+      return /databases/$(database)/documents/users/$(uid)/private/consent;
+    }
+
+    /// Conta de 16 ou 17 anos, pela data declarada ou pela faixa que a
+    /// Google Play informou. Sem o documento (contas anteriores ao aceite,
+    /// que o app leva para /consentimento), vale como adulto: senão o app
+    /// antigo perderia o chat de todo mundo de uma vez.
+    function isMinor(uid) {
+      return exists(consentPath(uid))
+          && (get(consentPath(uid)).data.adultAt > request.time
+              || get(consentPath(uid)).data.get('ageSignal', {})
+                   .get('upper', 99) < 18);
+    }
+
+    /// Amizade aceita. O id do par é `{menor}:{maior}`; as regras não têm
+    /// como ordenar, então olham as duas ordens — só uma existe.
+    function areFriends(a, b) {
+      return (exists(/databases/$(database)/documents/friendships/$(a + ':' + b))
+              && get(/databases/$(database)/documents/friendships/$(a + ':' + b))
+                   .data.status == 'accepted')
+          || (exists(/databases/$(database)/documents/friendships/$(b + ':' + a))
+              && get(/databases/$(database)/documents/friendships/$(b + ':' + a))
+                   .data.status == 'accepted');
+    }
+
+    /// `a` bloqueou `b`.
+    function hasBlocked(a, b) {
+      return exists(/databases/$(database)/documents/users/$(a)/blocks/$(b));
+    }
+
+    /// Duas pessoas podem conversar: nenhuma bloqueou a outra e, se uma
+    /// delas tem 16 ou 17 anos, são amigas (ECA Digital, art. 17, §4º, I).
+    function canTalk(a, b) {
+      return !hasBlocked(a, b) && !hasBlocked(b, a)
+          && ((!isMinor(a) && !isMinor(b)) || areFriends(a, b));
+    }
+
     // ── users ────────────────────────────────────────────────────────
     // Tarefa 13. Perfis públicos: qualquer autenticado lê, só o dono escreve
     // o seu. `hasOnly` impede que o cliente despeje campos arbitrários no
@@ -123,15 +166,91 @@ service cloud.firestore {
       allow delete: if signedIn() && request.auth.uid == userId;
 
       // ── users/{uid}/private ──────────────────────────────────────
-      // Tarefa 13 (RN-06). Dados de contato — hoje só o e-mail. Subcoleção
+      // Tarefa 13 (RN-06). Dados que não podem ser públicos. Subcoleção
       // porque as regras do documento pai não alcançam os filhos: é o que
-      // permite o perfil continuar público e o contato não.
+      // permite o perfil continuar público e estes documentos não.
       //
-      // Só o dono lê e escreve. Nenhuma tela do app lê este documento; ele
-      // existe para o e-mail ter onde ficar sem virar dado público.
+      // Só o dono lê e escreve, e só os dois documentos conhecidos:
+      //   - `contact`: o e-mail, que a exportação de dados devolve;
+      //   - `consent` (chore/lgpd): versão e data do aceite dos Termos, data
+      //     de nascimento e a faixa etária que a Google Play informou. As
+      //     regras de `conversations` o consultam para saber quem tem 16 ou
+      //     17 anos.
       match /private/{docId} {
-        allow read, create, update, delete: if signedIn()
-                                            && request.auth.uid == userId;
+        function validAgeSignal(signal) {
+          return signal is map
+              && signal.keys().hasAll(['checkedAt'])
+              && signal.keys().hasOnly(['lower', 'upper', 'checkedAt'])
+              && signal.checkedAt is timestamp
+              && (!('lower' in signal) || signal.lower is int)
+              && (!('upper' in signal) || signal.upper is int);
+        }
+
+        // A idade mínima (16) é conferida aqui também, não só na tela:
+        // 5843 dias são 16 anos com 4 dias bissextos. `adultAt` é o 18º
+        // aniversário que o app calcula; a janela aceita 18 anos de 6574 a
+        // 6575 dias e a folga de quem nasceu em 29/02.
+        function validConsent() {
+          let data = request.resource.data;
+          return data.keys().hasAll(
+                   ['termsVersion', 'acceptedAt', 'birthDate', 'adultAt'])
+              && data.keys().hasOnly(
+                   ['termsVersion', 'acceptedAt', 'birthDate', 'adultAt',
+                    'ageSignal'])
+              && data.termsVersion is string
+              && data.termsVersion.size() > 0
+              && data.termsVersion.size() <= 20
+              && data.acceptedAt is timestamp
+              && data.birthDate is timestamp
+              && data.birthDate >= timestamp.date(1900, 1, 1)
+              && data.birthDate <= request.time - duration.value(5843, 'd')
+              && data.adultAt is timestamp
+              && data.adultAt > data.birthDate + duration.value(6570, 'd')
+              && data.adultAt < data.birthDate + duration.value(6577, 'd')
+              && (!('ageSignal' in data) || validAgeSignal(data.ageSignal));
+        }
+
+        function isOwner() {
+          return signedIn() && request.auth.uid == userId;
+        }
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && (docId == 'contact'
+                          || (docId == 'consent'
+                              && validConsent()
+                              && request.resource.data.acceptedAt
+                                 == request.time));
+        // A data de nascimento não muda pelo app: corrigir é pelo canal do
+        // encarregado. O aceite muda quando os Termos mudam (nova versão,
+        // com a hora do servidor) e a faixa da Play pode ser reconsultada.
+        allow update: if isOwner()
+                      && (docId == 'contact'
+                          || (docId == 'consent'
+                              && validConsent()
+                              && request.resource.data.birthDate
+                                 == resource.data.birthDate
+                              && request.resource.data.adultAt
+                                 == resource.data.adultAt
+                              && (request.resource.data.acceptedAt
+                                    == request.time
+                                  || (request.resource.data.acceptedAt
+                                        == resource.data.acceptedAt
+                                      && request.resource.data.termsVersion
+                                        == resource.data.termsVersion))));
+        allow delete: if isOwner();
+      }
+
+      // ── users/{uid}/blocks/{blockedUid} ──────────────────────────
+      // chore/lgpd. Quem o dono bloqueou. Só ele vê a lista; as regras de
+      // `conversations` e `friendships` a consultam com `exists()`.
+      match /blocks/{blockedId} {
+        allow read, delete: if signedIn() && request.auth.uid == userId;
+        allow create: if signedIn()
+                      && request.auth.uid == userId
+                      && blockedId != userId
+                      && request.resource.data.keys().hasOnly(['createdAt'])
+                      && request.resource.data.createdAt == request.time;
       }
 
       // ── users/{uid}/notifications ────────────────────────────────
@@ -364,10 +483,16 @@ service cloud.firestore {
       allow get: if signedIn() && canonical(pairId.split(':'))
                  && request.auth.uid in pairId.split(':');
       allow list: if signedIn() && request.auth.uid in resource.data.members;
+      // Bloqueio (chore/lgpd): quem foi bloqueado não pede amizade, e quem
+      // bloqueou precisa desbloquear antes de pedir.
       allow create: if signedIn() && validRelation()
                     && request.resource.data.senderId == request.auth.uid
                     && request.resource.data.status == 'pending'
                     && request.resource.data.requestedAt == request.time
+                    && !hasBlocked(request.resource.data.members[0],
+                                   request.resource.data.members[1])
+                    && !hasBlocked(request.resource.data.members[1],
+                                   request.resource.data.members[0])
                     && exists(/databases/$(database)/documents/users/$(request.resource.data.members[0]))
                     && exists(/databases/$(database)/documents/users/$(request.resource.data.members[1]));
       allow update: if signedIn() && validRelation()
@@ -412,11 +537,14 @@ service cloud.firestore {
 
       // Só se cria conversa incluindo a si mesmo — ninguém abre conversa entre
       // terceiros. Conversas são 1:1 (a entidade `Conversation` resolve um
-      // único `peer`).
+      // único `peer`). `canTalk` (chore/lgpd): sem bloqueio entre os dois e,
+      // com alguém de 16 ou 17 anos, só entre amigos.
       allow create: if signedIn()
                     && request.resource.data.members is list
                     && request.resource.data.members.size() == 2
-                    && request.auth.uid in request.resource.data.members;
+                    && request.auth.uid in request.resource.data.members
+                    && canTalk(request.resource.data.members[0],
+                               request.resource.data.members[1]);
 
       // Depois de criada, `members` é imutável: só o rodapé da conversa muda.
       allow update: if isMember()
@@ -451,8 +579,17 @@ service cloud.firestore {
                  == get(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.primarySport;
         }
 
+        // A mesma checagem da criação vale para cada mensagem: um bloqueio
+        // ou uma amizade desfeita com alguém de 16 ou 17 anos fecham também
+        // as conversas que já existiam.
+        function parentMembers() {
+          return get(/databases/$(database)/documents/conversations/$(conversationId))
+              .data.members;
+        }
+
         allow read: if isMemberOfParent();
         allow create: if isMemberOfParent()
+                      && canTalk(parentMembers()[0], parentMembers()[1])
                       && request.resource.data.senderId == request.auth.uid
                       && ((!('placeId' in request.resource.data)
                            && !('placeSnapshot' in request.resource.data))
@@ -615,6 +752,97 @@ service cloud.firestore {
     // protocolo pending/succeeded/failed ao cliente.
     match /adminOperations/{operationId} {
       allow read, write: if false;
+    }
+
+    // ── reports ──────────────────────────────────────────────────────
+    // chore/lgpd. Denúncias de perfil, evento ou mensagem (Play, conteúdo
+    // gerado por usuário; ECA Digital, arts. 28–30). Quem denuncia não lê
+    // nada depois; só o Administrador lê e fecha.
+    //
+    // A cópia da mensagem denunciada é conferida com a mensagem real: os
+    // Administradores não leem conversas, então o texto que chega a eles
+    // precisa ser o que foi enviado, e não o que o denunciante digitou.
+    // `priority` 0 é "envolve criança ou adolescente", analisada primeiro.
+    match /reports/{reportId} {
+      function eventPath(eventId) {
+        return /databases/$(database)/documents/events/$(eventId);
+      }
+
+      function messagePath(conversationId, messageId) {
+        return /databases/$(database)/documents/conversations/$(conversationId)/messages/$(messageId);
+      }
+
+      function validTarget(data) {
+        return (data.targetType == 'user'
+                && data.targetUid == data.targetId
+                && exists(/databases/$(database)/documents/users/$(data.targetId)))
+            || (data.targetType == 'event'
+                && exists(eventPath(data.targetId))
+                && get(eventPath(data.targetId)).data.creator.id
+                   == data.targetUid)
+            || (data.targetType == 'message'
+                && data.conversationId is string
+                && data.conversationId.size() > 0
+                && request.auth.uid in get(/databases/$(database)/documents/conversations/$(data.conversationId)).data.members
+                && exists(messagePath(data.conversationId, data.targetId))
+                && get(messagePath(data.conversationId, data.targetId))
+                     .data.senderId == data.targetUid
+                && get(messagePath(data.conversationId, data.targetId))
+                     .data.text == data.messageText);
+      }
+
+      function validReport() {
+        let data = request.resource.data;
+        return data.keys().hasAll(
+                 ['reporterId', 'targetType', 'targetId', 'targetUid',
+                  'reason', 'details', 'priority', 'status', 'createdAt'])
+            && data.keys().hasOnly(
+                 ['reporterId', 'targetType', 'targetId', 'targetUid',
+                  'reason', 'details', 'priority', 'status', 'createdAt',
+                  'conversationId', 'messageText'])
+            && data.reporterId == request.auth.uid
+            && data.targetType in ['user', 'event', 'message']
+            && data.targetId is string
+            && data.targetId.size() > 0
+            && data.targetId.size() <= 200
+            && data.targetUid is string
+            && data.targetUid.size() > 0
+            && data.targetUid != request.auth.uid
+            && data.reason in ['harassment', 'hate', 'sexual', 'childSafety',
+                               'violence', 'spam', 'fake', 'other']
+            && data.details is string
+            && data.details.size() <= 1000
+            && ((data.reason == 'childSafety' && data.priority == 0)
+                || (data.reason != 'childSafety' && data.priority == 1))
+            && data.status == 'open'
+            && data.createdAt == request.time
+            && (data.targetType == 'message'
+                || (!('conversationId' in data) && !('messageText' in data)))
+            && validTarget(data);
+      }
+
+      // Fechar: só o status, quem fechou, quando, a nota e o prazo de
+      // retenção (12 meses, apagado pela política de TTL em `expiresAt`).
+      function validClose() {
+        let data = request.resource.data;
+        return changed().hasOnly(
+                 ['status', 'resolvedAt', 'resolvedBy', 'resolution',
+                  'expiresAt'])
+            && resource.data.status == 'open'
+            && data.status in ['resolved', 'dismissed']
+            && data.resolvedAt == request.time
+            && data.resolvedBy == request.auth.uid
+            && data.resolution is string
+            && data.resolution.size() <= 500
+            && data.expiresAt is timestamp
+            && data.expiresAt > request.time + duration.value(364, 'd')
+            && data.expiresAt < request.time + duration.value(366, 'd');
+      }
+
+      allow create: if signedIn() && validReport();
+      allow read: if isAdmin();
+      allow update: if isAdmin() && validClose();
+      allow delete: if false;
     }
 
     // ── ratings / ratingSummaries ────────────────────────────────────

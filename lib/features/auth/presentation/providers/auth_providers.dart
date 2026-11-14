@@ -2,10 +2,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_links.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/services/age_signals_service.dart';
+import '../../../../core/utils/age_rules.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/auth_user.dart';
+import '../../domain/entities/legal_consent.dart';
 import '../../domain/repositories/auth_repository.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,6 +46,24 @@ class AuthController extends AsyncNotifier<AuthUser?> {
 
   AuthRepository get _repo => ref.read(authRepositoryProvider);
 
+  /// Junta a data declarada com a faixa etária da Google Play (ECA Digital,
+  /// arts. 12–14). Se uma das duas diz menos de 16, para aqui. Se a Play diz
+  /// 16 ou 17 e a data diz adulto, a faixa fica gravada e vale a proteção.
+  Future<LegalConsentInput> _consentFor(DateTime birthDate) async {
+    if (AgeRules.ageOn(birthDate, DateTime.now()) < AgeRules.minimumAge) {
+      throw const UnderageException();
+    }
+    final AgeSignal? signal = await ref.read(ageSignalsServiceProvider).check();
+    if (signal != null && signal.isBelow(AgeRules.minimumAge)) {
+      throw const UnderageException();
+    }
+    return LegalConsentInput(
+      birthDate: birthDate,
+      ageSignalLower: signal?.lower,
+      ageSignalUpper: signal?.upper,
+    );
+  }
+
   /// Reflete uma edição confirmada no Auth imediatamente na saudação da Home.
   void reflectDisplayName(String name) {
     final current =
@@ -62,21 +84,25 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     );
   }
 
-  /// Cadastro manual, com a foto de perfil opcional.
+  /// Cadastro manual, com a foto de perfil opcional e o aceite dos Termos.
+  /// A idade é conferida antes de a conta existir: abaixo de 16 anos, nada é
+  /// criado.
   Future<void> signUpWithEmail({
     required String name,
     required String username,
     required String email,
     required String password,
+    required DateTime birthDate,
     Uint8List? photo,
   }) async {
     state = const AsyncLoading<AuthUser?>();
     state = await AsyncValue.guard<AuthUser?>(
-      () => _repo.signUpWithEmail(
+      () async => _repo.signUpWithEmail(
         name: name,
         username: username,
         email: email,
         password: password,
+        consent: await _consentFor(birthDate),
         photo: photo,
       ),
     );
@@ -92,32 +118,62 @@ class AuthController extends AsyncNotifier<AuthUser?> {
 
   /// Grava username (fluxo pós-Google para novos usuários), com a foto do
   /// perfil: [photo] escolhida na tela, ou [photoUrl] do Google.
+  ///
+  /// Quem tem menos de 16 anos não chega a ter perfil: a conta Google
+  /// recém-criada é apagada e o erro aparece na tela de login.
   Future<void> setUsername({
     required String uid,
     required String username,
     required String name,
     required String email,
+    required DateTime birthDate,
     Uint8List? photo,
     String? photoUrl,
   }) async {
     state = const AsyncLoading<AuthUser?>();
     state = await AsyncValue.guard<AuthUser?>(
       () async {
+        final LegalConsentInput consent;
+        try {
+          consent = await _consentFor(birthDate);
+        } on UnderageException {
+          await _repo.abortUnderageSignup();
+          rethrow;
+        }
         await _repo.setUsername(
           uid: uid,
           username: username,
           name: name,
           email: email,
+          consent: consent,
           photo: photo,
           photoUrl: photoUrl,
         );
-        // Retorna o usuário atualizado com hasUsername = true. O estado do
-        // controller tem prioridade no guard, então é ele que faz o
+        // Retorna o usuário atualizado com hasUsername = true e o aceite. O
+        // estado do controller tem prioridade no guard, então é ele que faz o
         // redirecionamento acontecer sem esperar o stream reemitir.
         final AuthUser? current =
             state.valueOrNull ?? ref.read(authStateProvider).valueOrNull;
-        return current?.copyWith(hasUsername: true);
+        return current?.copyWith(
+          hasUsername: true,
+          legalVersion: AppLinks.legalVersion,
+          birthDate: consent.birthDate,
+          adultAt: AgeRules.adultAt(consent.birthDate),
+          ageSignalUpper: consent.ageSignalUpper,
+        );
       },
+    );
+  }
+
+  /// Aceite da versão atual dos Termos para quem já tem conta. [birthDate]
+  /// só vem quando a conta ainda não tem data registrada (contas anteriores
+  /// à LGPD).
+  Future<void> acceptLegalTerms({DateTime? birthDate}) async {
+    state = const AsyncLoading<AuthUser?>();
+    state = await AsyncValue.guard<AuthUser?>(
+      () async => _repo.acceptLegalTerms(
+        consent: birthDate == null ? null : await _consentFor(birthDate),
+      ),
     );
   }
 
@@ -169,6 +225,9 @@ final authControllerProvider =
 // ─────────────────────────────────────────────────────────────────────────────
 
 String firebaseAuthErrorMessage(Object error) {
+  if (error is UnderageException) {
+    return AppStrings.ageUnderMinimum;
+  }
   if (error is UsernameAlreadyTakenException) {
     return 'Este username já está em uso.';
   }

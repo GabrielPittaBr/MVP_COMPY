@@ -1,9 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mvp_compy/core/constants/app_links.dart';
 import 'package:mvp_compy/core/routes/app_router.dart';
 import 'package:mvp_compy/features/auth/domain/entities/auth_user.dart';
 
 void main() {
-  // Os quatro estados que o guard precisa distinguir.
+  // Os cinco estados que o guard precisa distinguir.
   const AuthUser semUsername = AuthUser(
     uid: 'u1',
     email: 'g@example.com',
@@ -11,20 +12,24 @@ void main() {
     hasUsername: false,
     hasFavoriteSports: false,
   );
-  const AuthUser semEsportes = AuthUser(
-    uid: 'u1',
-    email: 'g@example.com',
-    displayName: 'Gabriel',
-    hasUsername: true,
-    hasFavoriteSports: false,
-  );
-  const AuthUser completo = AuthUser(
+  // Conta anterior à LGPD: tem perfil, mas não aceitou os Termos atuais.
+  const AuthUser semAceite = AuthUser(
     uid: 'u1',
     email: 'g@example.com',
     displayName: 'Gabriel',
     hasUsername: true,
     hasFavoriteSports: true,
   );
+  final AuthUser semEsportes = AuthUser(
+    uid: 'u1',
+    email: 'g@example.com',
+    displayName: 'Gabriel',
+    hasUsername: true,
+    hasFavoriteSports: false,
+    legalVersion: AppLinks.legalVersion,
+    birthDate: DateTime.utc(2000, 5, 1),
+  );
+  final AuthUser completo = semEsportes.copyWith(hasFavoriteSports: true);
 
   /// Rotas de dentro do app — as 5 abas e o que pende delas.
   const List<String> rotasDoApp = <String>[
@@ -45,6 +50,7 @@ void main() {
     AppRoutes.login,
     AppRoutes.signup,
     AppRoutes.username,
+    AppRoutes.consent,
     AppRoutes.onboardingSports,
     ...rotasDoApp,
   ];
@@ -112,6 +118,7 @@ void main() {
     // servir de porta lateral para dentro do fluxo de cadastro.
     test('as telas de onboarding não abrigam quem não está logado', () {
       expect(redirect(null, AppRoutes.username), AppRoutes.login);
+      expect(redirect(null, AppRoutes.consent), AppRoutes.login);
       expect(redirect(null, AppRoutes.onboardingSports), AppRoutes.login);
     });
   });
@@ -126,6 +133,24 @@ void main() {
     test('não pula direto para os esportes', () {
       expect(redirect(semUsername, AppRoutes.onboardingSports),
           AppRoutes.username);
+    });
+  });
+
+  group('autenticado sem o aceite dos Termos atuais', () {
+    test('tudo converge para o aceite', () {
+      for (final String rota in todasAsRotas) {
+        expect(settle(semAceite, rota), AppRoutes.consent, reason: rota);
+      }
+    });
+
+    test('versão antiga dos Termos também volta para o aceite', () {
+      final AuthUser antigo = completo.copyWith(legalVersion: '2020-01-01');
+      expect(redirect(antigo, AppRoutes.home), AppRoutes.consent);
+    });
+
+    test('o aceite vem antes dos esportes e depois do username', () {
+      expect(redirect(semAceite, AppRoutes.onboardingSports), AppRoutes.consent);
+      expect(redirect(semUsername, AppRoutes.consent), AppRoutes.username);
     });
   });
 
@@ -159,6 +184,7 @@ void main() {
         AppRoutes.login,
         AppRoutes.signup,
         AppRoutes.username,
+        AppRoutes.consent,
         AppRoutes.onboardingSports,
       ]) {
         expect(redirect(completo, rota), AppRoutes.home, reason: rota);
@@ -248,9 +274,10 @@ void main() {
 
   group('nenhum estado cicla', () {
     test('todo par (estado, rota) estabiliza', () {
-      const List<AuthUser?> estados = <AuthUser?>[
+      final List<AuthUser?> estados = <AuthUser?>[
         null,
         semUsername,
+        semAceite,
         semEsportes,
         completo,
       ];

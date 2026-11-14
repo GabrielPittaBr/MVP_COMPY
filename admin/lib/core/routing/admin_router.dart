@@ -9,6 +9,8 @@ import '../../features/events/presentation/admin_events_pages.dart';
 import '../../features/places/data/admin_places_repository.dart';
 import '../../features/places/presentation/admin_place_form_page.dart';
 import '../../features/places/presentation/admin_places_page.dart';
+import '../../features/reports/data/admin_reports_repository.dart';
+import '../../features/reports/presentation/admin_reports_page.dart';
 import '../../features/users/data/admin_users_repository.dart';
 import '../../features/users/presentation/admin_users_pages.dart';
 import '../shell/admin_shell.dart';
@@ -41,7 +43,8 @@ String? _validatedAdminDestination(String? value) {
       path == '/places/new' ||
       isDetails('/places/') ||
       path == '/users' ||
-      isDetails('/users/');
+      isDetails('/users/') ||
+      path == '/reports';
 
   return isKnownProtectedRoute ? uri.toString() : null;
 }
@@ -97,6 +100,7 @@ GoRouter createAdminRouter({
   AdminEventsRepository? eventsRepository,
   AdminPlacesRepository? placesRepository,
   AdminUsersRepository? usersRepository,
+  AdminReportsRepository? reportsRepository,
 }) {
   return GoRouter(
     initialLocation: initialLocation ?? '/dashboard',
@@ -215,6 +219,14 @@ GoRouter createAdminRouter({
             ),
           );
         },
+      ),
+      GoRoute(
+        path: '/reports',
+        builder: (context, state) => AdminShell(
+          controller: authController,
+          location: state.uri.path,
+          child: AdminReportsPage(repository: reportsRepository),
+        ),
       ),
     ],
   );

@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/constants/app_links.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/external_links.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../providers/auth_providers.dart';
 import '../widgets/auth_text_field.dart';
@@ -427,7 +429,31 @@ class _GoogleLogoPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _PrivacyFooter extends StatelessWidget {
+/// Links para a Política de Privacidade e os Termos de Uso (chore/lgpd).
+/// O aceite de verdade é a caixa do cadastro e da tela de aceite.
+class _PrivacyFooter extends StatefulWidget {
+  @override
+  State<_PrivacyFooter> createState() => _PrivacyFooterState();
+}
+
+class _PrivacyFooterState extends State<_PrivacyFooter> {
+  static const TextStyle _linkStyle = TextStyle(
+    decoration: TextDecoration.underline,
+    color: AppColors.onSurface,
+  );
+
+  late final TapGestureRecognizer _privacy = TapGestureRecognizer()
+    ..onTap = () => openExternalLink(context, AppLinks.privacyPolicy);
+  late final TapGestureRecognizer _terms = TapGestureRecognizer()
+    ..onTap = () => openExternalLink(context, AppLinks.terms);
+
+  @override
+  void dispose() {
+    _privacy.dispose();
+    _terms.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -442,14 +468,16 @@ class _PrivacyFooter extends StatelessWidget {
             TextSpan(text: '${AppStrings.authPrivacyPrefix} '),
             TextSpan(
               text: AppStrings.authPrivacyPolicy,
-              style: const TextStyle(
-                decoration: TextDecoration.underline,
-                color: AppColors.onSurface,
-              ),
-              recognizer: TapGestureRecognizer()..onTap = () {
-                // TODO: abrir URL da política de privacidade
-              },
+              style: _linkStyle,
+              recognizer: _privacy,
             ),
+            const TextSpan(text: ' ${AppStrings.authTermsJoiner} '),
+            TextSpan(
+              text: AppStrings.authTermsOfUse,
+              style: _linkStyle,
+              recognizer: _terms,
+            ),
+            const TextSpan(text: '.'),
           ],
         ),
       ),

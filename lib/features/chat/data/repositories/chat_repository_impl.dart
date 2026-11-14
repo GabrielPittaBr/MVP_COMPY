@@ -4,6 +4,7 @@ import '../../../../core/constants/app_flags.dart';
 import '../../../../shared/models/paged_result.dart';
 import '../../../../shared/models/user_summary.dart';
 import '../../domain/entities/conversation.dart';
+import '../../domain/entities/conversation_not_allowed_exception.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../datasources/chat_remote_datasource.dart';
@@ -139,6 +140,14 @@ class ChatRepositoryImpl implements ChatRepository {
         peer.id: peer.toMap(),
       },
     );
+    // A criação engole `permission-denied` por causa da corrida dos dois
+    // lados criando juntos. Desde a LGPD (chore/lgpd) ela também é a
+    // resposta de `canTalk`: bloqueio, ou alguém de 16 ou 17 anos sem
+    // amizade. Se depois da criação a conversa não existe para mim, não foi
+    // corrida.
+    if (await fetchConversation(conversationId, me.id) == null) {
+      throw const ConversationNotAllowedException();
+    }
     return conversationId;
   }
 

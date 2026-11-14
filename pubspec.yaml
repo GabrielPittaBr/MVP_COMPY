@@ -56,6 +56,7 @@ dependencies:
   # Util
   intl: ^0.20.2
   equatable: ^2.0.5
+  share_plus: ^11.1.0
 
 dev_dependencies:
   flutter_lints: ^4.0.0

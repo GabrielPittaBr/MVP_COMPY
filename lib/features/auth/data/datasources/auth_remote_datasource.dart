@@ -7,11 +7,14 @@ import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/constants/app_links.dart';
 import '../../../../core/services/avatar_storage.dart';
 import '../../../../core/services/firebase_service.dart';
+import '../../../../core/utils/age_rules.dart';
 import '../../../../core/utils/text_normalizer.dart';
 import '../../../../shared/models/sport.dart';
 import '../../domain/entities/auth_user.dart';
+import '../../domain/entities/legal_consent.dart';
 
 /// Datasource remoto de autenticação.
 ///
@@ -96,6 +99,7 @@ class AuthRemoteDataSource {
     required String username,
     required String email,
     required String password,
+    required LegalConsentInput consent,
     Uint8List? photo,
   }) async {
     final String normalizedUsername = username.trim().toLowerCase();
@@ -125,6 +129,7 @@ class AuthRemoteDataSource {
       username: normalizedUsername,
       email: email.trim(),
       avatarUrl: photoUrl ?? AppAssets.avatar(name.trim()),
+      consent: consent,
     );
 
     return AuthUser(
@@ -135,6 +140,10 @@ class AuthRemoteDataSource {
       // Conta recém-criada: o perfil nasce sem o campo de esportes, então o
       // guard leva este usuário para o onboarding antes da Home.
       hasFavoriteSports: false,
+      legalVersion: AppLinks.legalVersion,
+      birthDate: consent.birthDate,
+      adultAt: AgeRules.adultAt(consent.birthDate),
+      ageSignalUpper: consent.ageSignalUpper,
     );
   }
 
@@ -229,6 +238,7 @@ class AuthRemoteDataSource {
     required String username,
     required String name,
     required String email,
+    required LegalConsentInput consent,
     Uint8List? photo,
     String? photoUrl,
   }) async {
@@ -249,6 +259,7 @@ class AuthRemoteDataSource {
       avatarUrl: await _tryUploadAvatar(uid, photo) ??
           photoUrl ??
           AppAssets.avatar(trimmedName),
+      consent: consent,
     );
 
     // O nome que a Home exibe (`greetingNameProvider`) vem de
@@ -262,6 +273,79 @@ class AuthRemoteDataSource {
       await current.updateDisplayName(trimmedName);
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Aceite dos Termos e idade (chore/lgpd)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Registra o aceite da versão atual dos Termos para quem já tem conta.
+  ///
+  /// Quem já tem data de nascimento registrada só renova o aceite: a regra
+  /// não deixa trocar a data pelo app, então [consent] só é usado na primeira
+  /// vez (contas anteriores à LGPD).
+  Future<AuthUser> acceptLegalTerms({LegalConsentInput? consent}) async {
+    final User? user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'Não há usuário autenticado para registrar o aceite.',
+      );
+    }
+    final DocumentReference<Map<String, dynamic>> ref = _consentRef(user.uid);
+    final DocumentSnapshot<Map<String, dynamic>> existing = await ref.get();
+
+    if (existing.data()?['birthDate'] != null) {
+      await ref.update(<String, dynamic>{
+        'termsVersion': AppLinks.legalVersion,
+        'acceptedAt': FieldValue.serverTimestamp(),
+        if (consent != null && consent.hasAgeSignal)
+          'ageSignal': _ageSignalData(consent),
+      });
+    } else {
+      if (consent == null) {
+        throw StateError('A data de nascimento é obrigatória no primeiro aceite.');
+      }
+      await ref.set(consentData(consent));
+    }
+    return _toAuthUser(user);
+  }
+
+  /// Desfaz o login com Google de quem tem menos de 16 anos, antes de
+  /// qualquer dado do perfil ser gravado: apaga a conta recém-criada no Auth.
+  Future<void> abortUnderageSignup() async {
+    final User? user = _auth.currentUser;
+    try {
+      await user?.delete();
+    } catch (error) {
+      debugPrint('[Auth] conta abaixo da idade mínima não foi apagada: $error');
+    }
+    await signOut();
+  }
+
+  /// Dados do documento `users/{uid}/private/consent`, no formato que as
+  /// regras validam (`validConsent` em `firestore.rules`).
+  @visibleForTesting
+  static Map<String, dynamic> consentData(LegalConsentInput consent) =>
+      <String, dynamic>{
+        'termsVersion': AppLinks.legalVersion,
+        'acceptedAt': FieldValue.serverTimestamp(),
+        'birthDate': Timestamp.fromDate(consent.birthDate),
+        'adultAt': Timestamp.fromDate(AgeRules.adultAt(consent.birthDate)),
+        if (consent.hasAgeSignal) 'ageSignal': _ageSignalData(consent),
+      };
+
+  static Map<String, dynamic> _ageSignalData(LegalConsentInput consent) =>
+      <String, dynamic>{
+        if (consent.ageSignalLower != null) 'lower': consent.ageSignalLower,
+        if (consent.ageSignalUpper != null) 'upper': consent.ageSignalUpper,
+        'checkedAt': Timestamp.now(),
+      };
+
+  DocumentReference<Map<String, dynamic>> _consentRef(String uid) => _firestore
+      .collection('users')
+      .doc(uid)
+      .collection('private')
+      .doc('consent');
 
   // ─────────────────────────────────────────────────────────────────────────
   // Logout
@@ -397,6 +481,7 @@ class AuthRemoteDataSource {
       batch.delete(_firestore.collection('usernames').doc(usernameDocId));
     }
     batch.delete(userRef.collection('private').doc('contact'));
+    batch.delete(userRef.collection('private').doc('consent'));
     for (final QueryDocumentSnapshot<Map<String, dynamic>> doc
         in notifications.docs) {
       batch.delete(doc.reference);
@@ -424,7 +509,15 @@ class AuthRemoteDataSource {
 
   /// Uma leitura de `users/{uid}` alimenta os dois sinais do guard.
   Future<AuthUser> _toAuthUser(User firebaseUser) async {
-    final Map<String, dynamic>? data = await _fetchUserData(firebaseUser.uid);
+    final List<Map<String, dynamic>?> docs = await Future.wait(
+      <Future<Map<String, dynamic>?>>[
+        _fetchUserData(firebaseUser.uid),
+        _fetchConsent(firebaseUser.uid),
+      ],
+    );
+    final Map<String, dynamic>? data = docs[0];
+    final Map<String, dynamic>? consent = docs[1];
+    final Object? ageSignal = consent?['ageSignal'];
     return AuthUser(
       uid: firebaseUser.uid,
       email: firebaseUser.email ?? '',
@@ -432,7 +525,25 @@ class AuthRemoteDataSource {
       hasUsername: (data?['handle'] as String?)?.isNotEmpty == true,
       hasFavoriteSports: Sport.hasStoredFavorites(data),
       photoUrl: largeGooglePhoto(firebaseUser.photoURL),
+      legalVersion: consent?['termsVersion'] as String?,
+      birthDate: (consent?['birthDate'] as Timestamp?)?.toDate(),
+      adultAt: (consent?['adultAt'] as Timestamp?)?.toDate(),
+      ageSignalUpper: ageSignal is Map ? ageSignal['upper'] as int? : null,
     );
+  }
+
+  /// Lê `users/{uid}/private/consent`. Como em [_fetchUserData], falha de
+  /// leitura estoura: "não consegui saber" não pode virar "nunca aceitou",
+  /// senão quem já aceitou seria mandado de volta para o aceite.
+  Future<Map<String, dynamic>?> _fetchConsent(String uid) async {
+    try {
+      final DocumentSnapshot<Map<String, dynamic>> doc =
+          await _consentRef(uid).get().timeout(_profileLookupTimeout);
+      return doc.exists ? doc.data() : null;
+    } catch (error) {
+      debugPrint('[Auth] leitura do aceite de users/$uid falhou: $error');
+      throw ProfileLookupFailedException(error);
+    }
   }
 
   /// A foto do Google chega com 96 px (`...=s96-c`), o que fica borrado no
@@ -486,6 +597,7 @@ class AuthRemoteDataSource {
     required String username,
     required String email,
     required String avatarUrl,
+    required LegalConsentInput consent,
   }) async {
     // Documento de perfil — compatível com UserSummary.fromMap().
     final DocumentReference<Map<String, dynamic>> userRef =
@@ -534,6 +646,14 @@ class AuthRemoteDataSource {
       <String, dynamic>{'email': email},
       SetOptions(merge: true),
     );
+
+    // Aceite dos Termos e data de nascimento (chore/lgpd), no mesmo batch: a
+    // conta não existe sem eles. No re-cadastro o aceite já existe e a regra
+    // não deixa reescrever a data, então ele fica como está.
+    final DocumentReference<Map<String, dynamic>> consentRef = _consentRef(uid);
+    if (!(await consentRef.get()).exists) {
+      batch.set(consentRef, consentData(consent));
+    }
 
     // Índice de unicidade. Merge porque no re-cadastro o documento já existe
     // e `set` sem merge sobrescreveria o documento inteiro — a regra permite

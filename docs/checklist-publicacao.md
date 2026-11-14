@@ -262,12 +262,11 @@ Releases). Vira bloqueio no dia em que o destino for a loja.
 
 - **Conta de desenvolvedor** (US$ 25, uma vez) e ficha da loja: descrição,
   capturas, ícone 512×512, banner 1024×500.
-- **Política de privacidade em URL pública.** O app coleta localização, dados
-  de conta e **fotos** (a foto de perfil, da galeria ou da câmera, que fica no
-  Storage e é visível para os outros usuários) — a Play exige a política e o
-  formulário de Segurança dos Dados declarando os três. Vale dizer na política
-  que o EXIF (com a localização da foto) é removido antes do envio e que a
-  exclusão da conta apaga as fotos.
+- ~~**Política de privacidade em URL pública.**~~ Feito na `chore/lgpd`
+  (14/11/2026): https://compy-tcc.web.app/privacidade, com Termos, exclusão de
+  conta e segurança. O que preencher em "Conteúdo do app" (Segurança dos dados,
+  público-alvo 16+, classificação, acesso ao app) está em
+  [`docs/lgpd/guia-play-console.md`](lgpd/guia-play-console.md).
 - **AAB em vez de APK** (`flutter build appbundle`). A loja não aceita mais APK
   para apps novos.
 - **Play App Signing.** Ao aderir, o Google reassina o app com uma chave dele.

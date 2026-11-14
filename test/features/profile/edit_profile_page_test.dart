@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mvp_compy/core/constants/app_strings.dart';
 import 'package:mvp_compy/features/auth/domain/entities/auth_user.dart';
+import 'package:mvp_compy/features/auth/domain/entities/legal_consent.dart';
 import 'package:mvp_compy/features/auth/domain/repositories/auth_repository.dart';
 import 'package:mvp_compy/features/auth/presentation/providers/auth_providers.dart';
 import 'package:mvp_compy/features/profile/domain/entities/user_profile.dart';
@@ -54,6 +55,7 @@ class _FakeAuthRepository implements AuthRepository {
     required String username,
     required String email,
     required String password,
+    required LegalConsentInput consent,
     Uint8List? photo,
   }) =>
       throw UnimplementedError();
@@ -71,10 +73,18 @@ class _FakeAuthRepository implements AuthRepository {
     required String username,
     required String name,
     required String email,
+    required LegalConsentInput consent,
     Uint8List? photo,
     String? photoUrl,
   }) =>
       throw UnimplementedError();
+
+  @override
+  Future<AuthUser> acceptLegalTerms({LegalConsentInput? consent}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> abortUnderageSignup() => throw UnimplementedError();
 
   @override
   Future<void> signOut() => throw UnimplementedError();

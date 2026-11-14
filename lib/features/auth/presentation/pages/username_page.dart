@@ -5,12 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/age_rules.dart';
 import '../../../../core/utils/username_rules.dart';
 import '../../../../shared/widgets/avatar_picker.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../domain/entities/auth_user.dart';
 import '../providers/auth_providers.dart';
 import '../widgets/auth_text_field.dart';
+import '../widgets/legal_consent_fields.dart';
 
 /// Tela intermediária exibida após login com Google pela primeira vez.
 ///
@@ -20,6 +22,10 @@ import '../widgets/auth_text_field.dart';
 /// read-only**: é a chave da credencial Google, e mudá-lo aqui só criaria
 /// divergência entre o que o Firebase Auth sabe e o que o Firestore guarda.
 /// A **foto** do Google vem sugerida e pode ser trocada ou removida.
+///
+/// A data de nascimento e o aceite dos Termos (chore/lgpd) entram aqui,
+/// antes de qualquer dado do perfil ser gravado: quem tem menos de 16 anos
+/// tem a conta Google recém-criada apagada e volta para o login.
 class UsernamePage extends ConsumerStatefulWidget {
   const UsernamePage({required this.user, super.key});
 
@@ -33,6 +39,7 @@ class UsernamePage extends ConsumerStatefulWidget {
 class _UsernamePageState extends ConsumerState<UsernamePage> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
+  final _birthDateController = TextEditingController();
   late final TextEditingController _nameController =
       TextEditingController(text: widget.user.displayName);
 
@@ -45,6 +52,7 @@ class _UsernamePageState extends ConsumerState<UsernamePage> {
   @override
   void dispose() {
     _usernameController.dispose();
+    _birthDateController.dispose();
     _nameController.dispose();
     super.dispose();
   }
@@ -135,14 +143,23 @@ class _UsernamePageState extends ConsumerState<UsernamePage> {
                 AuthTextField(
                   hint: AppStrings.authUsernameField,
                   controller: _usernameController,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _submit(),
+                  textInputAction: TextInputAction.next,
                   maxLength: UsernameRules.maxLength,
                   inputFormatters: UsernameRules.inputFormatters,
                   validator: UsernameRules.validate,
                 ),
+                const SizedBox(height: 12),
 
-                const SizedBox(height: 28),
+                // Data de nascimento e aceite (LGPD, ECA Digital)
+                BirthDateField(
+                  controller: _birthDateController,
+                  textInputAction: TextInputAction.done,
+                  enforceMinimumAge: false,
+                ),
+                const SizedBox(height: 8),
+                LegalAcceptanceField(),
+
+                const SizedBox(height: 20),
 
                 PrimaryButton(
                   label: isLoading ? AppStrings.authLoading : AppStrings.authConfirmUsername,
@@ -163,6 +180,7 @@ class _UsernamePageState extends ConsumerState<UsernamePage> {
           username: _usernameController.text.trim(),
           name: _nameController.text.trim(),
           email: widget.user.email,
+          birthDate: AgeRules.parseBirthDate(_birthDateController.text)!,
           photo: _photo,
           photoUrl: _photoUrl,
         );

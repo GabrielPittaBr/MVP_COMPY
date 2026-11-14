@@ -70,3 +70,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Faixa etária da Google Play (ECA Digital) — ver MainActivity.kt.
+    implementation("com.google.android.play:age-signals:0.0.4")
+}
