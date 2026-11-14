@@ -7,6 +7,7 @@ import '../../../../shared/widgets/user_avatar.dart';
 import '../../../chat/presentation/open_conversation.dart';
 import '../../../chat/presentation/providers/chat_providers.dart';
 import '../../../friends/presentation/widgets/friendship_actions.dart';
+import '../../../safety/presentation/widgets/safety_menu.dart';
 import '../../domain/entities/user_profile.dart';
 import '../providers/profile_providers.dart';
 import '../widgets/favorite_sports_chips.dart';
@@ -41,7 +42,17 @@ class _PublicProfilePageState extends ConsumerState<PublicProfilePage> {
 
     final profile = ref.watch(publicProfileProvider(widget.uid));
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.profilePublicTitle)),
+      appBar: AppBar(
+        title: const Text(AppStrings.profilePublicTitle),
+        actions: <Widget>[
+          // Denunciar e bloquear (chore/lgpd): também para perfis que já
+          // não carregam, porque quem incomoda pode ter apagado a bio.
+          UserSafetyMenu(
+            uid: widget.uid,
+            name: profile.valueOrNull?.summary.name ?? '',
+          ),
+        ],
+      ),
       body: profile.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => _Notice(

@@ -100,7 +100,12 @@ class _NotificationTile extends ConsumerWidget {
           .call(uid, notification.id)
           .ignore();
     }
-    if (notification.isCompleted) {
+    if (notification.type == AppNotificationType.eventCancelled) {
+      // O evento foi apagado junto com a conta de quem organizava.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.notificationEventCancelledGone)),
+      );
+    } else if (notification.isCompleted) {
       context.go(AppRoutes.eventDetailPath(notification.eventId));
     } else {
       context.push(AppRoutes.eventRatingPath(notification.eventId));

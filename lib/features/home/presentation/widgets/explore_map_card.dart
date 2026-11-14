@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 
+import '../../../../shared/widgets/osm_map.dart';
 import '../../../../core/constants/app_geo.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -28,11 +29,8 @@ class ExploreMapCard extends StatelessWidget {
                   interactionOptions: InteractionOptions(flags: InteractiveFlag.none),
                 ),
                 children: <Widget>[
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'br.com.compy.mvp',
-                  ),
+                  osmTileLayer(),
+                  const OsmAttribution(),
                 ],
               ),
             ),

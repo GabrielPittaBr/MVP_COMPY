@@ -44,10 +44,15 @@ class NotificationsRemoteDataSource {
 
   /// Converte o documento; tipo desconhecido vira `null` e some da lista.
   static AppNotification? fromFirestore(String id, Map<String, dynamic> data) {
-    if (data['type'] != 'eventEnded') return null;
+    final AppNotificationType? type = switch (data['type']) {
+      'eventEnded' => AppNotificationType.eventEnded,
+      'eventCancelled' => AppNotificationType.eventCancelled,
+      _ => null,
+    };
+    if (type == null) return null;
     return AppNotification(
       id: id,
-      type: AppNotificationType.eventEnded,
+      type: type,
       eventId: (data['eventId'] as String?) ?? '',
       eventTitle: (data['eventTitle'] as String?) ?? '',
       sport: (data['sport'] as String?) ?? '',

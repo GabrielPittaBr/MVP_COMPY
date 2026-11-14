@@ -26,6 +26,8 @@ import '../../features/profile/presentation/pages/favorite_sports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/public_profile_page.dart';
 import '../../features/ratings/presentation/pages/event_rating_page.dart';
+import '../../features/safety/presentation/pages/blocked_users_page.dart';
+import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../shared/pages/under_construction_page.dart';
 import '../../features/friends/presentation/pages/friends_page.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
@@ -304,9 +306,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'configuracoes',
-                    builder: (context, state) => const UnderConstructionPage(
-                      title: AppStrings.settingsTitle,
-                    ),
+                    builder: (context, state) => const SettingsPage(),
+                    routes: <RouteBase>[
+                      GoRoute(
+                        path: 'bloqueados',
+                        builder: (context, state) => const BlockedUsersPage(),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'notificacoes',

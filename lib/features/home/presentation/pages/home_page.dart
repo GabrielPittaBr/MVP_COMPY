@@ -11,6 +11,7 @@ import '../../../../features/events/presentation/widgets/events_filter_sheet.dar
 import '../../../../features/profile/presentation/providers/profile_providers.dart';
 import '../../../../shared/widgets/event_card.dart';
 import '../../../../shared/widgets/event_status_chip.dart';
+import '../../../../shared/widgets/location_disclosure.dart';
 import '../../../notifications/presentation/providers/notifications_providers.dart';
 import '../providers/home_providers.dart';
 import '../widgets/category_circle.dart';
@@ -122,6 +123,9 @@ class HomePage extends ConsumerWidget {
                     ],
                   ),
                 ),
+                // Sem localização, a lista parte do centro de Taquara; o
+                // cartão oferece ligar, com o aviso antes do pedido.
+                const LocationPromptCard(),
                 eventsAsync.when(
                   data: (events) => events.isEmpty
                       ? const _NearbyMessage(AppStrings.homeNearbyEmpty)

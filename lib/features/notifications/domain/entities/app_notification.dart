@@ -1,8 +1,9 @@
 import 'package:equatable/equatable.dart';
 
-/// Tipos de notificação in-app. Só `eventEnded` existe por enquanto; o
+/// Tipos de notificação in-app. `eventCancelled` (chore/lgpd) avisa os
+/// participantes quando quem organizava um evento futuro exclui a conta; o
 /// modelo aceita outros no futuro sem quebrar a leitura.
-enum AppNotificationType { eventEnded }
+enum AppNotificationType { eventEnded, eventCancelled }
 
 /// Notificação da central (`users/{uid}/notifications/{id}`, tarefa 14).
 ///

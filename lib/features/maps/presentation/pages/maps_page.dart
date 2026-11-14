@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/widgets/osm_map.dart';
 import '../../../../core/constants/app_geo.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/app_router.dart';
@@ -195,10 +196,8 @@ class _MapsPageState extends ConsumerState<MapsPage> {
                   ref.read(selectedPlaceProvider.notifier).state = null,
             ),
             children: <Widget>[
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'br.com.compy.mvp',
-              ),
+              osmTileLayer(),
+              const OsmAttribution(),
               placesAsync.when(
                 data: (_) => MarkerLayer(
                   markers: <Marker>[

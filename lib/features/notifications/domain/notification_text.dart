@@ -13,6 +13,9 @@ import 'entities/app_notification.dart';
 /// no design aprovado: o "o" errava o gênero com títulos femininos.
 abstract final class NotificationText {
   static String title(AppNotification notification, String viewerId) {
+    if (notification.type == AppNotificationType.eventCancelled) {
+      return AppStrings.notificationEventCancelledTitle(notification.eventTitle);
+    }
     if (_isAutoEndedForCreator(notification, viewerId)) {
       return AppStrings.notificationAutoEndedTitle;
     }
@@ -20,6 +23,9 @@ abstract final class NotificationText {
   }
 
   static String body(AppNotification notification, String viewerId) {
+    if (notification.type == AppNotificationType.eventCancelled) {
+      return AppStrings.notificationEventCancelledBody;
+    }
     if (_isAutoEndedForCreator(notification, viewerId)) {
       return AppStrings.notificationAutoEndedBody(notification.eventTitle);
     }
