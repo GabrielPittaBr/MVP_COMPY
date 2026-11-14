@@ -11,7 +11,7 @@ segurança do Firebase, que não têm equivalente em Dart.
 
 ```bash
 npm install --prefix tools/firestore-rules-tests   # uma vez
-npm test --prefix tools/firestore-rules-tests      # 206 casos
+npm test --prefix tools/firestore-rules-tests      # 244 casos
 ```
 
 ## Pré-requisitos
@@ -31,6 +31,16 @@ mesmo emulador: o `clearFirestore()` de um apagaria os dados semeados dos
 outros no meio do teste.
 
 ## O que está coberto
+
+**LGPD e ECA Digital** (`lgpd.test.js`, `chore/lgpd`): o aceite em
+`users/{uid}/private/consent` (idade mínima de 16 conferida na regra, data de
+nascimento imutável, novo aceite só com a hora do servidor, faixa etária da
+Google Play), os bloqueios em `users/{uid}/blocks`, as denúncias em `reports`
+(cópia da mensagem conferida com a original, só o Administrador lê e fecha) e o
+`canTalk`: com bloqueio, ou com alguém de 16 ou 17 anos que não é amigo, não se
+cria conversa nem se envia mensagem, e o bloqueio também impede o pedido de
+amizade. Contas sem o documento de aceite valem como adultas, para o app
+antigo continuar conversando.
 
 **Salvamento de perfil** (`profile-save.test.js`): usa Auth e Firestore locais
 com uma conta nova, reproduz `permission-denied` com o recorte literal das
