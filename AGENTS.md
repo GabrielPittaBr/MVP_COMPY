@@ -64,7 +64,7 @@ features/<name>/
 
 Gitflow: `main` (stable) ← `develop` ← work branches. PRs target `develop`; releases merge `develop` → `main`.
 
-- **Branches:** `feature/`, `fix/`, `refactor/`, `chore/` or `style/` prefix plus a kebab-case slug, e.g. `fix/deep-link-admin-web`.
+- **Branches:** `feature/`, `fix/`, `refactor/`, `chore/`, `docs/` or `style/` prefix plus a kebab-case slug, e.g. `fix/deep-link-admin-web`.
 - **Commits:** Conventional Commits written in PT-BR, lowercase and without accents, e.g. `fix: deep link do painel admin sobrevive as telas de carregamento na web`. Types: `feat`, `fix`, `refactor`, `chore`, `style`, `docs`.
 - **Local merges into `develop`:** `merge: <branch> em develop`.
 - **Authorship:** commits and PRs carry only the human author — no AI `Co-Authored-By` trailer and no agent signature in messages or PR bodies.
