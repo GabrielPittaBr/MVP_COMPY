@@ -3,6 +3,7 @@ import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 
 import { administrativeFunctionsRegion } from './config.js';
 import { creatorIdOf, participantIdsOf } from './event_documents.js';
+import { notificationExpiresAt } from './retention.js';
 
 /** Id determinístico: a reentrega do gatilho não duplica a notificação. */
 export const eventEndedNotificationId = (eventId: string) => `eventEnded_${eventId}`;
@@ -92,6 +93,8 @@ export function createFirestoreNotificationsGateway(): NotificationsGateway {
           createdAt: FieldValue.serverTimestamp(),
           readAt: draft.readOnCreate ? FieldValue.serverTimestamp() : null,
           completedAt: null,
+          // Apagada pela política de TTL depois de 90 dias (retention.ts).
+          expiresAt: notificationExpiresAt(),
         });
         return true;
       } catch (error) {

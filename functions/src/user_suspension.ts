@@ -6,6 +6,7 @@ import {
   administrativeCallableOptions,
   type AdministrativeCallableRequest,
 } from './admin_auth_read.js';
+import { moderationRecordExpiresAt } from './retention.js';
 
 const maxFirebaseAuthUidLength = 128;
 const operationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -309,6 +310,8 @@ function createFirestoreSuspensionOperationsGateway(): SuspensionOperationsGatew
           reason: input.reason,
           status: 'pending',
           createdAt: FieldValue.serverTimestamp(),
+          // Registro de moderação: 5 anos, depois a política de TTL apaga.
+          expiresAt: moderationRecordExpiresAt(),
         });
         return {
           created: true,

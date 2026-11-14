@@ -18,3 +18,6 @@ export { autoEndOverdueEvents } from './event_lifecycle.js';
 export { submitEventRatings } from './event_ratings.js';
 export { onEventEnded } from './event_notifications.js';
 export { onProfileDeletedFriendships } from './friendships_cleanup.js';
+export { onProfileDeletedCleanup } from './account_cleanup.js';
+export { onProfileAvatarChanged } from './avatar_cleanup.js';
+export { exportMyData } from './data_export.js';
