@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import '../../../../core/utils/firebase_errors.dart';
 import '../../../../core/utils/geohash.dart';
@@ -9,8 +10,9 @@ import '../../domain/repositories/events_repository.dart';
 
 /// Datasource Firestore dos eventos.
 class EventsRemoteDataSource {
-  EventsRemoteDataSource(this._firestore);
+  EventsRemoteDataSource(this._firestore, this._functions);
   final FirebaseFirestore _firestore;
+  final FirebaseFunctions _functions;
 
   /// Página de eventos ordenada por data. Passe o último documento da
   /// página anterior em [startAfter] para buscar a próxima (paginação
@@ -226,6 +228,30 @@ class EventsRemoteDataSource {
       // está na tela, nos dois casos o evento já foi encerrado.
       if (error.code == 'permission-denied') {
         throw const EventAlreadyEndedException();
+      }
+      rethrow;
+    }
+  }
+
+  /// Exclusão pelo Organizador (#37). É callable porque as regras não
+  /// deixam o cliente apagar o evento nem criar os avisos dos participantes.
+  Future<void> deleteOwn(String eventId, {String? reason}) async {
+    try {
+      await _functions.httpsCallable('deleteOwnEvent').call<Object?>(
+        <String, Object?>{
+          'eventId': eventId,
+          if (reason != null) 'reason': reason,
+        },
+      );
+    } on FirebaseFunctionsException catch (error) {
+      // O evento já sumiu: numa repetição, é a tentativa anterior que chegou
+      // ao fim sem a resposta voltar.
+      if (error.code == 'not-found') return;
+      if (error.code == 'failed-precondition') {
+        throw const EventAlreadyEndedException();
+      }
+      if (FirebaseErrors.isOffline(error)) {
+        throw const EventDeletionOfflineException();
       }
       rethrow;
     }

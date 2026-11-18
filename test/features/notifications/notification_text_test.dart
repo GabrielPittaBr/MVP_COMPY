@@ -58,6 +58,44 @@ void main() {
     });
   });
 
+  group('evento cancelado', () {
+    AppNotification cancelado({bool peloOrganizador = false, String? motivo}) =>
+        AppNotification(
+          id: 'eventCancelled_evt_1',
+          type: AppNotificationType.eventCancelled,
+          eventId: 'evt_1',
+          eventTitle: 'Peladinha de Quinta',
+          sport: 'futebol',
+          creatorId: 'u_dono',
+          endedAutomatically: false,
+          createdAt: DateTime(2026, 10, 21, 20),
+          cancelledByOrganizer: peloOrganizador,
+          reason: motivo,
+        );
+
+    test('pela exclusão da conta, o texto de sempre', () {
+      final n = cancelado();
+      expect(NotificationText.title(n, 'u_bruno'),
+          'Evento cancelado: Peladinha de Quinta');
+      expect(NotificationText.body(n, 'u_bruno'),
+          'Quem organizava excluiu a conta, e o evento foi cancelado.');
+    });
+
+    test('pelo Organizador, sem motivo', () {
+      final n = cancelado(peloOrganizador: true);
+      expect(NotificationText.title(n, 'u_bruno'),
+          'Evento cancelado: Peladinha de Quinta');
+      expect(NotificationText.body(n, 'u_bruno'),
+          'Quem organizava excluiu o evento.');
+    });
+
+    test('pelo Organizador, com o motivo na segunda linha', () {
+      final n = cancelado(peloOrganizador: true, motivo: 'Choveu demais.');
+      expect(NotificationText.body(n, 'u_bruno'),
+          'Quem organizava excluiu o evento.\nMotivo: Choveu demais.');
+    });
+  });
+
   group('RelativeTime', () {
     final agora = DateTime(2026, 10, 21, 20, 30);
 

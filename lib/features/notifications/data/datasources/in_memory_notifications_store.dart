@@ -5,8 +5,9 @@ import '../../../../shared/models/event.dart';
 import '../../domain/entities/app_notification.dart';
 
 /// Notificações do modo mock. Faz o papel do gatilho `onEventEnded` (quem
-/// chama é o `InMemoryEventsStore.end`) e da callable da avaliação, que
-/// marca "Avaliado".
+/// chama é o `InMemoryEventsStore.end`), da callable `deleteOwnEvent` (o
+/// `InMemoryEventsStore.delete`) e da callable da avaliação, que marca
+/// "Avaliado".
 class InMemoryNotificationsStore {
   InMemoryNotificationsStore._() {
     // O evento encerrado das fixtures já nasce com a notificação, como se o
@@ -52,6 +53,33 @@ class InMemoryNotificationsStore {
         endedAutomatically: event.endedAutomatically,
         createdAt: at,
         readAt: uid == event.creator.id && !event.endedAutomatically ? at : null,
+      ));
+    }
+    _changes.add(null);
+  }
+
+  /// O aviso da Exclusão pelo Organizador, para todos menos ele, com o id
+  /// determinístico da callable. Repetir não duplica.
+  void createEventCancelled(
+    Event event, {
+    String? reason,
+    required DateTime at,
+  }) {
+    final id = eventCancelledNotificationId(event.id);
+    for (final uid in event.participantIds.toSet()..remove(event.creator.id)) {
+      final list = _byUser.putIfAbsent(uid, () => <AppNotification>[]);
+      if (list.any((n) => n.id == id)) continue;
+      list.add(AppNotification(
+        id: id,
+        type: AppNotificationType.eventCancelled,
+        eventId: event.id,
+        eventTitle: event.title,
+        sport: event.sport.name,
+        creatorId: event.creator.id,
+        endedAutomatically: false,
+        createdAt: at,
+        cancelledByOrganizer: true,
+        reason: reason,
       ));
     }
     _changes.add(null);

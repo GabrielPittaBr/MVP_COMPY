@@ -45,7 +45,7 @@ Encontro organizado no COMPY para a prática de uma modalidade em data, horário
 _Evitar_: Partida, atividade
 
 **Organizador**:
-Usuário que criou um Evento Esportivo. É o único que pode encerrá-lo e também conta como Participante.
+Usuário que criou um Evento Esportivo. É o único que pode encerrá-lo ou excluí-lo pelo app e também conta como Participante.
 _Evitar_: Dono, anfitrião, host
 
 **Participante**:
@@ -64,6 +64,10 @@ _Evitar_: Finalização, término, cancelamento
 Encerramento feito pelo COMPY quando o Organizador não encerra o evento até 1h depois do fim previsto. O Organizador recebe um aviso único sobre ele.
 _Evitar_: Expiração, encerramento forçado
 
+**Exclusão pelo Organizador**:
+Remoção definitiva de um Evento Esportivo feita pelo próprio Organizador antes do Encerramento, com motivo opcional. Os outros Participantes recebem uma Notificação de que o evento foi cancelado, com o motivo quando houver. Não é o Encerramento, que mantém o evento e libera as Avaliações, nem a Exclusão Administrativa, feita por um Administrador com motivo obrigatório e registro.
+_Evitar_: Encerramento, apagar evento
+
 **Avaliação**:
 Nota de 1 a 5 estrelas, com comentário opcional, dada por um Participante depois do Encerramento a um Evento Esportivo, a um Local Esportivo ou a outro Participante. O Organizador não avalia o próprio evento, e o comentário nunca é público.
 _Evitar_: Review, feedback, reputação
@@ -73,7 +77,7 @@ Resumo público das Avaliações recebidas por um Evento Esportivo, Local Esport
 _Evitar_: Score, ranking, nota geral
 
 **Notificação**:
-Aviso que o COMPY entrega a um Usuário dentro do aplicativo, na central de notificações. Hoje avisa o fim de um evento e convida a avaliar.
+Aviso que o COMPY entrega a um Usuário dentro do aplicativo, na central de notificações. Hoje avisa o fim de um evento e convida a avaliar, ou avisa que um evento foi cancelado, pela Exclusão pelo Organizador ou pela exclusão da conta de quem organizava.
 _Evitar_: Push, alerta, mensagem
 
 **Mensagem de Local**:

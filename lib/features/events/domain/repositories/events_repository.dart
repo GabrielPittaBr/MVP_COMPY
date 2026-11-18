@@ -55,6 +55,14 @@ abstract interface class EventsRepository {
   /// em que a Function encerra por ele.
   Future<void> endEvent(String eventId);
 
+  /// Exclusão pelo Organizador (#37), pela callable `deleteOwnEvent`: apaga
+  /// o evento ainda não encerrado e avisa os outros participantes, com o
+  /// [reason] quando houver. Um evento que já sumiu conta como excluído.
+  ///
+  /// Lança [EventAlreadyEndedException] se o evento já foi encerrado e
+  /// [EventDeletionOfflineException] sem conexão.
+  Future<void> deleteOwnEvent(String eventId, {String? reason});
+
   /// Cria um novo evento com os dados informados.
   Future<Event> createEvent(
     Event draft, {
@@ -86,7 +94,13 @@ class EventCreationOfflineException implements Exception {
   String toString() => 'Reconecte-se para criar o evento.';
 }
 
-/// O evento já estava encerrado quando o criador tentou encerrar.
+class EventDeletionOfflineException implements Exception {
+  const EventDeletionOfflineException();
+  @override
+  String toString() => 'Reconecte-se para excluir o evento.';
+}
+
+/// O evento já estava encerrado quando o criador tentou encerrar ou excluir.
 class EventAlreadyEndedException implements Exception {
   const EventAlreadyEndedException();
   @override

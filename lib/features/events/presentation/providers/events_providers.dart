@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_flags.dart';
@@ -13,13 +14,19 @@ import '../../data/repositories/events_repository_impl.dart';
 import '../../domain/entities/events_filter.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../../domain/usecases/create_event.dart';
+import '../../domain/usecases/delete_own_event.dart';
 import '../../domain/usecases/end_event.dart';
 import '../../domain/usecases/join_event.dart';
 import '../../domain/usecases/watch_event_detail.dart';
 import '../../domain/usecases/watch_joined_active_events.dart';
 
 final eventsRemoteDataSourceProvider = Provider<EventsRemoteDataSource?>(
-  (ref) => kUseFirebaseRepos ? EventsRemoteDataSource(FirebaseFirestore.instance) : null,
+  (ref) => kUseFirebaseRepos
+      ? EventsRemoteDataSource(
+          FirebaseFirestore.instance,
+          FirebaseFunctions.instanceFor(region: kFunctionsRegion),
+        )
+      : null,
 );
 
 final eventsRepositoryProvider = Provider<EventsRepository>(
@@ -43,6 +50,10 @@ final watchJoinedActiveEventsProvider = Provider<WatchJoinedActiveEvents>(
 
 final endEventProvider = Provider<EndEvent>(
   (ref) => EndEvent(ref.watch(eventsRepositoryProvider)),
+);
+
+final deleteOwnEventProvider = Provider<DeleteOwnEvent>(
+  (ref) => DeleteOwnEvent(ref.watch(eventsRepositoryProvider)),
 );
 
 final createEventProvider = Provider<CreateEvent>(

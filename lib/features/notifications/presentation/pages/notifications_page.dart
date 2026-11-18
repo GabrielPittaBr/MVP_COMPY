@@ -101,7 +101,7 @@ class _NotificationTile extends ConsumerWidget {
           .ignore();
     }
     if (notification.type == AppNotificationType.eventCancelled) {
-      // O evento foi apagado junto com a conta de quem organizava.
+      // O evento foi apagado: por quem organizava ou junto com a conta dele.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text(AppStrings.notificationEventCancelledGone)),
       );

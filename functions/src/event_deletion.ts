@@ -1,4 +1,4 @@
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { onCall } from 'firebase-functions/v2/https';
 
 import { administrativeCallableOptions, type AdministrativeCallableRequest } from './admin_auth_read.js';
@@ -52,26 +52,34 @@ export function createDeleteEventHandler(events: EventDeletionGateway, operation
   };
 }
 
+export const deletableEventOf = (data: Record<string, unknown>): DeletableEvent => ({
+  participantIds: participantIdsOf(data),
+  ratedBy: toStringList(data.ratedBy),
+});
+
+/**
+ * O que sai junto com o evento: a Notificação de fim de evento de cada
+ * Participante (senão a central apontaria para um evento que não existe), as
+ * Avaliações do próprio evento e a Média dele. As Avaliações do Local e dos
+ * Participantes ficam, para as médias deles continuarem íntegras.
+ */
+export const eventCleanupReferences = (firestore: Firestore, eventId: string, event: DeletableEvent) => [
+  ...event.participantIds.map((uid) =>
+    firestore.collection('users').doc(uid).collection('notifications').doc(eventEndedNotificationId(eventId)),
+  ),
+  ...event.ratedBy.map((uid) => firestore.collection('ratings').doc(`${eventId}_${uid}_event_${eventId}`)),
+  firestore.collection('ratingSummaries').doc(`event_${eventId}`),
+];
+
 export function createFirestoreEventDeletionGateway(): EventDeletionGateway {
   const firestore = getFirestore();
   return {
     readEvent: async (eventId) => {
       const data = (await firestore.collection('events').doc(eventId).get()).data();
-      if (data === undefined) return null;
-      return { participantIds: participantIdsOf(data), ratedBy: toStringList(data.ratedBy) };
+      return data === undefined ? null : deletableEventOf(data);
     },
-    // Saem junto: a Notificação de fim de evento de cada Participante (senão
-    // a central apontaria para um evento que não existe), as Avaliações do
-    // próprio evento e a Média dele. As Avaliações do Local e dos
-    // Participantes ficam, para as médias deles continuarem íntegras.
     deleteEvent: async (eventId, event) => {
-      await deleteDocuments(firestore, [
-        ...event.participantIds.map((uid) =>
-          firestore.collection('users').doc(uid).collection('notifications').doc(eventEndedNotificationId(eventId)),
-        ),
-        ...event.ratedBy.map((uid) => firestore.collection('ratings').doc(`${eventId}_${uid}_event_${eventId}`)),
-        firestore.collection('ratingSummaries').doc(`event_${eventId}`),
-      ]);
+      await deleteDocuments(firestore, eventCleanupReferences(firestore, eventId, event));
       await firestore.collection('events').doc(eventId).delete();
     },
   };

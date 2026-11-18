@@ -185,9 +185,9 @@ sequência expand–contract nem os critérios do ticket 18.
   `index.html`.
 - As três Callable Functions administrativas usam `enforceAppCheck: true`.
   App Check complementa Auth, custom claim e Firestore Rules.
-- A callable `submitEventRatings`, do app mobile (tarefa 14), usa
-  `enforceAppCheck: false`; veja a seção "Functions do ciclo de vida do
-  evento" abaixo.
+- As callables `submitEventRatings` (tarefa 14) e `deleteOwnEvent` (#37), do
+  app mobile, usam `enforceAppCheck: false`; veja a seção "Functions do ciclo
+  de vida do evento" abaixo.
 - Não habilite enforcement global do Firestore nem replay protection beta como
   parte deste MVP.
 - Service accounts, chave secreta reCAPTCHA, token App Check de debug e arquivos
@@ -617,3 +617,20 @@ firebase deploy --only hosting:admin --project compy-tcc
   confere com o build, release `f9a4f3c6aff6`. `/`, `/login`, `/dashboard`,
   `/places`, `/users` e a imagem do Parque respondem HTTP 200.
 - Falta incluir os esportes novos nos locais já cadastrados, pelo painel.
+
+## Exclusão pelo Organizador — `deleteOwnEvent` (#37)
+
+| Function | Tipo | O que faz |
+|---|---|---|
+| `deleteOwnEvent` | Callable do app (`enforceAppCheck: false`) | O Organizador exclui o próprio evento antes do Encerramento, com motivo opcional de até 200 caracteres. Numa transação, grava `users/{uid}/notifications/eventCancelled_{eventId}` (`cancelledBy: 'organizer'`, `reason`) para os outros participantes, apaga o que o `deleteEvent` apaga e, no mesmo commit, o evento. |
+
+As regras e os índices não mudam. Publicar só a Function nova, a partir da
+`develop` com o merge e as suítes verdes:
+
+```powershell
+firebase deploy --project compy-tcc --only functions:administrative:deleteOwnEvent
+firebase functions:list --project compy-tcc
+```
+
+- Um APK sem esta versão (v1.1.0 ou anterior) mostra o aviso com o texto da
+  exclusão de conta, porque não conhece o `cancelledBy`. Nada quebra.

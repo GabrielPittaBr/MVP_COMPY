@@ -78,7 +78,7 @@ export function requireAdministrator(request: AdministrativeCallableRequest): st
   return request.auth.uid;
 }
 
-function requireTargetId(value: unknown): string {
+export function requireTargetId(value: unknown): string {
   // O id vira caminho de documento: barra, `.`, `..` e `__x__` não são ids válidos.
   if (
     typeof value !== 'string'

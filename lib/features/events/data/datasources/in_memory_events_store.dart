@@ -126,6 +126,17 @@ class InMemoryEventsStore {
     return ended;
   }
 
+  /// Exclusão pelo Organizador — no mock, faz o papel da callable
+  /// `deleteOwnEvent`: tira o evento e avisa os outros participantes.
+  void delete(String eventId, {String? reason, required DateTime at}) {
+    final index = _events.indexWhere((e) => e.id == eventId);
+    if (index == -1) return;
+    final removed = _events.removeAt(index);
+    _controller.add(List<Event>.unmodifiable(_events));
+    InMemoryNotificationsStore.instance
+        .createEventCancelled(removed, reason: reason, at: at);
+  }
+
   /// Registra que [uid] avaliou [eventId] — no mock, faz o papel da
   /// callable `submitEventRatings`, que grava o `ratedBy`.
   Event markRated(String eventId, String uid) {

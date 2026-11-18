@@ -19,6 +19,7 @@ import '../../../chat/presentation/providers/chat_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../providers/events_providers.dart';
+import '../widgets/delete_event_dialog.dart';
 import '../widgets/live_progress.dart';
 import '../widgets/participants_avatars.dart';
 
@@ -29,8 +30,9 @@ import '../widgets/participants_avatars.dart';
 /// atalho para a conversa 1:1 (D16), menos você mesmo — o chat não abre
 /// conversa consigo mesmo (`Conversation.idBetween` com `a == b`).
 ///
-/// Só o criador vê "Encerrar evento". Se o evento encerrar com a tela
-/// aberta, o participante vê a faixa de encerrado pelo stream.
+/// Só o criador vê "Encerrar evento" e, até o Encerramento, "Excluir evento"
+/// (#37). Se o evento encerrar com a tela aberta, o participante vê a faixa
+/// de encerrado pelo stream.
 class LiveEventPage extends ConsumerStatefulWidget {
   const LiveEventPage({required this.eventId, super.key});
 
@@ -155,6 +157,7 @@ class _LiveEventPageState extends ConsumerState<LiveEventPage> {
           onMessage: _openConversation,
           ending: _ending,
           onEnd: () => _confirmAndEnd(event),
+          onDelete: () => confirmAndDeleteOwnEvent(context, ref, event),
         );
       },
     );
@@ -170,6 +173,7 @@ class _LiveScaffold extends StatelessWidget {
     required this.onMessage,
     required this.ending,
     required this.onEnd,
+    required this.onDelete,
   });
 
   final Event event;
@@ -179,6 +183,7 @@ class _LiveScaffold extends StatelessWidget {
   final ValueChanged<UserSummary> onMessage;
   final bool ending;
   final VoidCallback onEnd;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -187,6 +192,14 @@ class _LiveScaffold extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.eventLiveTitle),
+        actions: <Widget>[
+          if (isCreator && !ended)
+            IconButton(
+              tooltip: AppStrings.eventDelete,
+              icon: const Icon(Icons.delete_outline),
+              onPressed: ending ? null : onDelete,
+            ),
+        ],
         bottom: opening
             ? const PreferredSize(
                 preferredSize: Size.fromHeight(2),
