@@ -634,3 +634,10 @@ firebase functions:list --project compy-tcc
 
 - Um APK sem esta versão (v1.1.0 ou anterior) mostra o aviso com o texto da
   exclusão de conta, porque não conhece o `cancelledBy`. Nada quebra.
+
+**Publicação em 2026-11-18.** O responsável publicou só a
+`deleteOwnEvent`, a partir da `develop` com o merge do PR #55
+(`5224982`). `firebase functions:list` mostra `deleteOwnEvent` em v2,
+callable, `southamerica-east1`, `nodejs22`, 256 MB. Antes, Functions com lint
+limpo e 130/130 testes, app com 566/566 e o gateway conferido no emulador do
+Firestore. O teste no aparelho com duas contas ainda não foi feito.
