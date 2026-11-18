@@ -27,6 +27,7 @@ import '../../../safety/domain/entities/report.dart';
 import '../../../safety/presentation/widgets/report_sheet.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../providers/events_providers.dart';
+import '../widgets/delete_event_dialog.dart';
 import '../widgets/participants_avatars.dart';
 
 /// Tela "3.1 Evento detalhes": cabeçalho com banner, dados,
@@ -52,7 +53,12 @@ class EventDetailPage extends ConsumerWidget {
           if (event == null) {
             return const Center(child: Text(AppStrings.eventNotFound));
           }
-          return _Body(event: event);
+          return _Body(
+            event: event,
+            // O context e o ref da página: o [_Body] sai da árvore quando o
+            // documento some, antes de a exclusão terminar.
+            onDelete: () => confirmAndDeleteOwnEvent(context, ref, event),
+          );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Erro: $e')),
@@ -65,14 +71,18 @@ class EventDetailPage extends ConsumerWidget {
 }
 
 class _Body extends ConsumerWidget {
-  const _Body({required this.event});
+  const _Body({required this.event, required this.onDelete});
   final Event event;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Dia da semana + intervalo início–fim ("Sábado, 15:00 – 16:00"):
     // saber a que horas acaba é mais útil que só o horário de início.
     final dayFormat = DateFormat('EEEE', 'pt_BR');
+    final isCreator =
+        ref.watch(currentUserSummaryProvider).valueOrNull?.id ==
+            event.creator.id;
 
     return CustomScrollView(
       slivers: <Widget>[
@@ -84,8 +94,20 @@ class _Body extends ConsumerWidget {
           title: Text(event.title),
           leading: const BackButton(),
           actions: <Widget>[
-            if (ref.watch(currentUserSummaryProvider).valueOrNull?.id !=
-                event.creator.id)
+            // O Organizador exclui o evento até o Encerramento (#37); os
+            // outros podem denunciá-lo.
+            if (isCreator)
+              EventStatusBuilder(
+                event: event,
+                builder: (context, status) => status == EventStatus.ended
+                    ? const SizedBox.shrink()
+                    : IconButton(
+                        tooltip: AppStrings.eventDelete,
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: onDelete,
+                      ),
+              )
+            else
               IconButton(
                 tooltip: AppStrings.reportEventTitle,
                 icon: const Icon(Icons.flag_outlined),

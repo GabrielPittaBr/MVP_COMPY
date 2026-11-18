@@ -1,8 +1,9 @@
 import 'package:equatable/equatable.dart';
 
-/// Tipos de notificação in-app. `eventCancelled` (chore/lgpd) avisa os
-/// participantes quando quem organizava um evento futuro exclui a conta; o
-/// modelo aceita outros no futuro sem quebrar a leitura.
+/// Tipos de notificação in-app. `eventCancelled` avisa os participantes de
+/// que o evento foi apagado: pela exclusão da conta de quem organizava
+/// (chore/lgpd) ou pela Exclusão pelo Organizador (#37). O modelo aceita
+/// outros tipos no futuro sem quebrar a leitura.
 enum AppNotificationType { eventEnded, eventCancelled }
 
 /// Notificação da central (`users/{uid}/notifications/{id}`, tarefa 14).
@@ -21,6 +22,8 @@ class AppNotification extends Equatable {
     required this.createdAt,
     this.readAt,
     this.completedAt,
+    this.cancelledByOrganizer = false,
+    this.reason,
   });
 
   final String id;
@@ -40,6 +43,13 @@ class AppNotification extends Equatable {
   /// Preenchido pela callable quando a pessoa avalia ("Avaliado ✓").
   final DateTime? completedAt;
 
+  /// `eventCancelled` pela Exclusão pelo Organizador (`cancelledBy:
+  /// 'organizer'`). Falso é a exclusão da conta, como nos avisos antigos.
+  final bool cancelledByOrganizer;
+
+  /// Motivo opcional da Exclusão pelo Organizador.
+  final String? reason;
+
   bool get isRead => readAt != null;
   bool get isCompleted => completedAt != null;
 
@@ -55,6 +65,8 @@ class AppNotification extends Equatable {
         createdAt: createdAt,
         readAt: readAt ?? this.readAt,
         completedAt: completedAt ?? this.completedAt,
+        cancelledByOrganizer: cancelledByOrganizer,
+        reason: reason,
       );
 
   @override
@@ -69,9 +81,15 @@ class AppNotification extends Equatable {
         createdAt,
         readAt,
         completedAt,
+        cancelledByOrganizer,
+        reason,
       ];
 }
 
 /// Id determinístico da notificação de evento encerrado, o mesmo do gatilho
 /// `onEventEnded` (functions/src/event_notifications.ts).
 String eventEndedNotificationId(String eventId) => 'eventEnded_$eventId';
+
+/// Id determinístico do aviso de evento cancelado, o mesmo das Functions
+/// (`eventCancelledNotificationId` em functions/src/account_cleanup.ts).
+String eventCancelledNotificationId(String eventId) => 'eventCancelled_$eventId';

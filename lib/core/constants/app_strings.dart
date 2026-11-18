@@ -216,6 +216,19 @@ abstract final class AppStrings {
   static const String eventEndError =
       'Não foi possível encerrar o evento. Tente de novo.';
   static const String eventAlreadyEndedError = 'Este evento já foi encerrado.';
+
+  // Exclusão pelo Organizador (#37)
+  static const String eventDelete = 'Excluir evento';
+  static const String eventDeleteConfirmTitle = 'Excluir evento?';
+  static const String eventDeleteConfirmBody =
+      'Os participantes vão receber um aviso. Não dá para desfazer.';
+  static const String eventDeleteReasonLabel = 'Motivo (opcional)';
+  static const String eventDeleteConfirm = 'Excluir';
+  static const String eventDeleted = 'Evento excluído.';
+  static const String eventDeleteOffline =
+      'Sem conexão. Reconecte-se para excluir o evento.';
+  static const String eventDeleteError =
+      'Não foi possível excluir o evento. Tente de novo.';
   static const String eventLiveRateNow = 'Avaliar agora';
   static const String eventRate = 'Avaliar evento';
   static const String eventRateAsCreator = 'Avaliar local e participantes';
@@ -629,6 +642,10 @@ abstract final class AppStrings {
       'Quem organizava excluiu a conta, e o evento foi cancelado.';
   static const String notificationEventCancelledGone =
       'Este evento foi cancelado.';
+  static const String notificationEventDeletedBody =
+      'Quem organizava excluiu o evento.';
+  static String notificationEventDeletedReason(String reason) =>
+      'Motivo: $reason';
 
   static const String mapsAttribution = 'OpenStreetMap contributors';
 

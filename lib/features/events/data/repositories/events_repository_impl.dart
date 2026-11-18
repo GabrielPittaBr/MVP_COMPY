@@ -241,6 +241,19 @@ class EventsRepositoryImpl implements EventsRepository {
   }
 
   @override
+  Future<void> deleteOwnEvent(String eventId, {String? reason}) async {
+    if (!kUseFirebaseRepos || _remote == null) {
+      final store = InMemoryEventsStore.instance;
+      final current = store.getById(eventId);
+      if (current == null) return;
+      if (current.endedAt != null) throw const EventAlreadyEndedException();
+      store.delete(eventId, reason: reason, at: _clock());
+      return;
+    }
+    await _remote.deleteOwn(eventId, reason: reason);
+  }
+
+  @override
   Future<Event> createEvent(
     Event draft, {
     required SportPlace selectedPlace,

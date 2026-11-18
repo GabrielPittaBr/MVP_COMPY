@@ -62,6 +62,8 @@ class NotificationsRemoteDataSource {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       readAt: (data['readAt'] as Timestamp?)?.toDate(),
       completedAt: (data['completedAt'] as Timestamp?)?.toDate(),
+      cancelledByOrganizer: data['cancelledBy'] == 'organizer',
+      reason: data['reason'] as String?,
     );
   }
 }

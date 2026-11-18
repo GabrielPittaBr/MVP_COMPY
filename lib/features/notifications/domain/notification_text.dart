@@ -8,6 +8,8 @@ import 'entities/app_notification.dart';
 /// - Criador que encerrou à mão: o mesmo título, sem o evento no convite
 ///   (D14: ele não avalia o próprio evento).
 /// - Criador com encerramento automático: o aviso de que o app encerrou.
+/// - Evento cancelado: pela exclusão da conta de quem organizava ou pela
+///   Exclusão pelo Organizador, com o motivo na segunda linha, se houver.
 ///
 /// O título "{título} terminou" substituiu o "Como foi o {título}?" do plano
 /// no design aprovado: o "o" errava o gênero com títulos femininos.
@@ -24,7 +26,14 @@ abstract final class NotificationText {
 
   static String body(AppNotification notification, String viewerId) {
     if (notification.type == AppNotificationType.eventCancelled) {
-      return AppStrings.notificationEventCancelledBody;
+      if (!notification.cancelledByOrganizer) {
+        return AppStrings.notificationEventCancelledBody;
+      }
+      final reason = notification.reason;
+      return reason == null
+          ? AppStrings.notificationEventDeletedBody
+          : '${AppStrings.notificationEventDeletedBody}\n'
+              '${AppStrings.notificationEventDeletedReason(reason)}';
     }
     if (_isAutoEndedForCreator(notification, viewerId)) {
       return AppStrings.notificationAutoEndedBody(notification.eventTitle);
