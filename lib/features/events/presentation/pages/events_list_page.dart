@@ -15,10 +15,11 @@ import '../widgets/events_filter_sheet.dart';
 import '../widgets/live_event_card.dart';
 
 /// Aba "Eventos" — três seções ("Criados por mim", "Participando" e
-/// "Todos os eventos"), sendo a última paginada com scroll infinito.
+/// "Outros eventos"), sendo a última paginada com scroll infinito.
 ///
-/// Um mesmo evento aparece em mais de uma seção de propósito: quem cria
-/// também participa, e ver o próprio evento nos dois lugares é o esperado.
+/// Cada evento aparece numa seção só, na primeira que se aplica: criei,
+/// entrei ou nenhum dos dois. Os cortes ficam nos providers
+/// ([joinedEventsProvider] e [PaginatedEventsController]).
 ///
 /// Os critérios vêm do [eventsFilterProvider] (escritos pelas categorias
 /// da Home ou pela folha de filtros) e valem para as três seções.
@@ -56,7 +57,7 @@ class EventsListPage extends ConsumerWidget {
 /// As três seções dentro de um scroll só.
 ///
 /// Um scroll compartilhado, e não três listas aninhadas, porque a
-/// paginação de "Todos os eventos" é disparada ao chegar perto do fim do
+/// paginação de "Outros eventos" é disparada ao chegar perto do fim do
 /// scroll — listas aninhadas exigiriam altura fixa por seção. O
 /// [NotificationListener] continua funcionando porque as duas primeiras
 /// seções vêm inteiras: o fim do scroll é sempre o fim da lista paginada.
@@ -110,7 +111,7 @@ class _Sections extends ConsumerWidget {
         ];
         if (slivers.isEmpty) {
           // Para quem ainda não criou nem entrou em nada, um título
-          // "Todos os eventos" sozinho no topo só ocuparia espaço: a aba
+          // "Outros eventos" sozinho no topo só ocuparia espaço: a aba
           // segue sendo a lista simples de antes.
           slivers.addAll(allContent);
         } else {

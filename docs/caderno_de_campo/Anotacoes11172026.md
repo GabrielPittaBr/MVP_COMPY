@@ -1,0 +1,4 @@
+Taquara, 17 de Novembro de 2026
+
+
+- Hoje tiramos a repetição da aba Eventos (issue #39). Um evento que a gente criava aparecia três vezes, em "Criados por mim", "Participando" e "Todos os eventos", porque o Organizador também conta como Participante e a última seção listava tudo. Agora cada evento fica numa seção só, na primeira que se aplica: criei, entrei ou nenhum dos dois. "Participando" deixou de trazer os eventos que a gente organiza, e "Todos os eventos" virou "Outros eventos", sem nenhum evento de que a gente participa. Esse último corte é feito no cliente, dentro do controller da lista paginada, porque o Firestore não tem "array não contém"; assim, uma página que vem só com eventos nossos conta como vazia e a lista busca a próxima sozinha, sem ficar presa no carregamento. O card do evento ao vivo continua igual, inclusive para o Organizador. Revogamos a parte "Duplicação aceita" da D3 do roadmap e criamos testes para a lista paginada e para as seções.

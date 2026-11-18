@@ -114,7 +114,7 @@ abstract final class AppStrings {
   // tem nada para mostrar (D3).
   static const String eventsSectionMine = 'Criados por mim';
   static const String eventsSectionJoined = 'Participando';
-  static const String eventsSectionAll = 'Todos os eventos';
+  static const String eventsSectionAll = 'Outros eventos';
   static const String eventsSectionError =
       'Não foi possível carregar esta seção.';
 

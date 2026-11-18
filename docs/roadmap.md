@@ -57,6 +57,7 @@
 **11 · Ver mais / filtros** — "Ver mais" no carrossel e um seletor de filtros dos eventos, acessível pela Home e pela aba Eventos.
 
 **12 · Três seções** — "Criados por mim", "Participando" e "Todos os eventos", com `participantIds` consultável e regras de `events` por papel (o criador edita; os outros só entram com o próprio uid), testadas no emulador. **Funciona, mas vai passar por ajustes** — anotar aqui o que mudar quando for decidido.
+- 17/11/2026 (#39): cada evento fica numa seção só. "Participando" não traz os que eu organizo, e "Todos os eventos" virou "Outros eventos", sem os eventos de que eu participo. O corte de "Outros eventos" é no cliente, dentro do controller paginado, que já busca a próxima página quando uma vem vazia.
 
 **13 · Esportes favoritos** — Contas novas passam por `/onboarding/esportes` antes da Home. Os favoritos ficam em `users/{uid}`, são editáveis pelo perfil e o carrossel da Home passa a segui-los. Junto, o e-mail saiu do documento público de perfil para `users/{uid}/private/contact`, legível só pelo dono (RN-06).
 
@@ -127,7 +128,7 @@ Continuam valendo. D14 a D17 vieram do planejamento da tarefa 14, em 21/10/2026.
 |---|---|
 | D1 | "Parcão" é apelido pessoal do Parque do Trabalhador; não aparece na UI. |
 | D2 | Descrição do evento é opcional e sem fallback. |
-| D3 | Aba Eventos com 3 seções: "Criados por mim", "Participando", "Todos os eventos". Duplicação aceita. |
+| D3 | Aba Eventos com 3 seções: "Criados por mim", "Participando", "Outros eventos". Cada evento aparece numa seção só, na primeira que se aplica; o card ao vivo não é seção e continua aparecendo para quem participa, inclusive o Organizador. A duplicação aceita no começo foi revogada em 17/11/2026 (issue #39). |
 | D4 | Sem migração de usuários, porque não há usuários reais. |
 | D5 | Evento em andamento: card acima das seções, só para participantes; "Encerrar" só para o criador; encerra sozinho 1h após o fim previsto, com aviso ao criador na volta. |
 | D6 | Presença não distingue "inscrito" de "compareceu". |

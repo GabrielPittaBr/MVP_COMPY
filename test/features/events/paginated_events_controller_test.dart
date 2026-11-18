@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:mvp_compy/features/events/domain/entities/events_filter.dart';
 import 'package:mvp_compy/features/events/domain/repositories/events_repository.dart';
 import 'package:mvp_compy/features/events/presentation/providers/events_providers.dart';
+import 'package:mvp_compy/features/profile/presentation/providers/profile_providers.dart';
 import 'package:mvp_compy/shared/models/event.dart';
 import 'package:mvp_compy/shared/models/paged_result.dart';
 import 'package:mvp_compy/shared/models/skill_level.dart';
@@ -40,7 +41,15 @@ PagedResult<Event> _pagina(
 }) =>
     PagedResult<Event>(items: items, cursor: cursor, hasMore: hasMore);
 
-Event _evento(String id) => Event(
+const _eu = UserSummary(
+  id: 'u_eu',
+  name: 'Eu',
+  handle: '@eu',
+  avatarUrl: '',
+);
+
+Event _evento(String id, {List<UserSummary> participantes = const []}) =>
+    Event(
       id: id,
       title: id,
       sport: Sport.futebol,
@@ -57,12 +66,14 @@ Event _evento(String id) => Event(
         handle: '@dono',
         avatarUrl: '',
       ),
+      participants: participantes,
     );
 
 ProviderContainer _container(EventsRepository repository) {
   final container = ProviderContainer(
     overrides: <Override>[
       eventsRepositoryProvider.overrideWithValue(repository),
+      currentUserSummaryProvider.overrideWith((ref) async => _eu),
     ],
   );
   addTearDown(container.dispose);
@@ -116,5 +127,45 @@ void main() {
       <String>['a', 'b'],
     );
     expect(container.read(paginatedEventsProvider.notifier).hasMore, isFalse);
+  });
+
+  test('"Outros eventos" tira os eventos de que eu participo', () async {
+    final repository = _PaginasRoteirizadas(<PagedResult<Event>>[
+      _pagina(
+        <Event>[
+          _evento('meu', participantes: const <UserSummary>[_eu]),
+          _evento('outro'),
+        ],
+        cursor: 1,
+        hasMore: false,
+      ),
+    ]);
+    final container = _container(repository);
+
+    final eventos = await container.read(paginatedEventsProvider.future);
+
+    expect(eventos.map((e) => e.id), <String>['outro']);
+  });
+
+  test('uma página só com eventos meus conta como vazia e busca a próxima',
+      () async {
+    final repository = _PaginasRoteirizadas(<PagedResult<Event>>[
+      _pagina(<Event>[_evento('a')], cursor: 1),
+      _pagina(
+        <Event>[_evento('meu', participantes: const <UserSummary>[_eu])],
+        cursor: 2,
+      ),
+      _pagina(<Event>[_evento('b')], cursor: 3, hasMore: false),
+    ]);
+    final container = _container(repository);
+    await container.read(paginatedEventsProvider.future);
+
+    await container.read(paginatedEventsProvider.notifier).loadMore();
+
+    expect(
+      container.read(paginatedEventsProvider).value!.map((e) => e.id),
+      <String>['a', 'b'],
+    );
+    expect(repository.cursores, <Object?>[null, 1, 2]);
   });
 }

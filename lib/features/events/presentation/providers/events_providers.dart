@@ -56,24 +56,27 @@ final createEventProvider = Provider<CreateEvent>(
 final eventsFilterProvider =
     StateProvider<EventsFilter>((ref) => const EventsFilter());
 
-/// Lista paginada da aba "5 Eventos" — blocos de 10 documentos via
-/// `startAfterDocument`. Use `loadMore()` ao aproximar do fim do scroll e
+/// Seção "Outros eventos" da aba Eventos — blocos de 10 documentos via
+/// `startAfterDocument`, sem os eventos de que o usuário participa (que já
+/// incluem os que ele criou: o Organizador também é Participante). Use
+/// `loadMore()` ao aproximar do fim do scroll e
 /// `ref.invalidate(paginatedEventsProvider)` para recarregar do zero
 /// (pull-to-refresh, após criar evento etc.).
 class PaginatedEventsController extends AsyncNotifier<List<Event>> {
   static const int pageSize = 10;
 
   /// Teto de páginas lidas numa carga só. O repositório tira os eventos
-  /// encerrados (tarefa 14), então uma página pode chegar vazia com mais
-  /// páginas pela frente; sem buscar a próxima, a lista ficaria num spinner
-  /// sem fim quando a tela não chega a rolar. O teto evita um laço de
-  /// leituras se houver muitos encerrados seguidos.
+  /// encerrados (tarefa 14) e o [_fetchVisible] tira os do usuário, então
+  /// uma página pode chegar vazia com mais páginas pela frente; sem buscar a
+  /// próxima, a lista ficaria num spinner sem fim quando a tela não chega a
+  /// rolar. O teto evita um laço de leituras se houver muitos seguidos.
   static const int maxPagesPerLoad = 5;
 
   Object? _cursor;
   bool _hasMore = true;
   bool _isLoadingMore = false;
   EventsFilter _filter = const EventsFilter();
+  String _uid = '';
 
   /// Se ainda há páginas para buscar — controla o footer de loading.
   bool get hasMore => _hasMore;
@@ -86,6 +89,10 @@ class PaginatedEventsController extends AsyncNotifier<List<Event>> {
     // Observar o filtro aqui faz o controller ser reconstruído a cada
     // mudança — a paginação reseta naturalmente, sem estado órfão.
     _filter = ref.watch(eventsFilterProvider);
+    // Só o id, e pelo [currentUserSummaryProvider] (que resolve o modo
+    // mock): editar o nome ou a foto não pode zerar a paginação.
+    _uid = await ref
+        .watch(currentUserSummaryProvider.selectAsync((user) => user.id));
     final page = await _fetchVisible(
       ref.watch(eventsRepositoryProvider),
       cursor: null,
@@ -119,19 +126,25 @@ class PaginatedEventsController extends AsyncNotifier<List<Event>> {
     }
   }
 
-  /// Busca a partir de [cursor] até vir algum evento, acabarem as páginas
-  /// ou bater [maxPagesPerLoad].
+  /// Busca a partir de [cursor] até vir algum evento de outra pessoa,
+  /// acabarem as páginas ou bater [maxPagesPerLoad].
+  ///
+  /// Os eventos do usuário saem aqui, e não na tela, para uma página só com
+  /// eventos dele contar como vazia e o laço buscar a próxima. O Firestore
+  /// não faz esse filtro: não existe "array não contém", e um `!=` em
+  /// `creator.id` obrigaria a ordenar por ele antes do `dateTime`.
   Future<PagedResult<Event>> _fetchVisible(
     EventsRepository repository, {
     required Object? cursor,
     required EventsFilter filter,
   }) async {
+    bool isOthers(Event event) => !event.participantIds.contains(_uid);
     var page = await repository.fetchPage(
       cursor: cursor,
       pageSize: pageSize,
       filter: filter,
     );
-    final items = <Event>[...page.items];
+    final items = <Event>[...page.items.where(isOthers)];
     for (var loaded = 1;
         items.isEmpty && page.hasMore && loaded < maxPagesPerLoad;
         loaded++) {
@@ -140,7 +153,7 @@ class PaginatedEventsController extends AsyncNotifier<List<Event>> {
         pageSize: pageSize,
         filter: filter,
       );
-      items.addAll(page.items);
+      items.addAll(page.items.where(isOthers));
     }
     return PagedResult<Event>(
       items: items,
@@ -176,14 +189,19 @@ final joinedActiveEventsProvider = StreamProvider<List<Event>>((ref) async* {
   yield* watchJoined(user.id);
 });
 
-/// Seção "Participando" — o [joinedActiveEventsProvider] com o filtro da
-/// folha aplicado no cliente (a duplicação com "Criados por mim" é
-/// intencional).
+/// Seção "Participando" — o [joinedActiveEventsProvider] sem os eventos que
+/// o usuário organiza (esses ficam só em "Criados por mim") e com o filtro
+/// da folha aplicado no cliente.
+///
+/// O corte fica aqui, e não no [joinedActiveEventsProvider], porque ele
+/// também alimenta o card ao vivo, que o Organizador precisa ver.
 final joinedEventsProvider = Provider<AsyncValue<List<Event>>>((ref) {
   final filter = ref.watch(eventsFilterProvider);
-  return ref
-      .watch(joinedActiveEventsProvider)
-      .whenData((events) => events.where(filter.matches).toList());
+  final uid =
+      ref.watch(currentUserSummaryProvider.select((u) => u.valueOrNull?.id));
+  return ref.watch(joinedActiveEventsProvider).whenData((events) => events
+      .where((event) => event.creator.id != uid && filter.matches(event))
+      .toList());
 });
 
 /// Eventos acontecendo agora de que o usuário participa — o card ao vivo
@@ -201,10 +219,11 @@ final liveEventsProvider = Provider<List<Event>>((ref) {
 
 /// Recarrega as três seções da aba Eventos e os eventos da Home.
 ///
-/// Sempre todas juntas: criar um evento mexe em "Criados por mim",
-/// "Participando" (o criador já entra como participante) e "Todos os
-/// eventos" ao mesmo tempo. Invalidar só uma deixa a tela mentindo. A Home
-/// entra porque lê os eventos uma vez só, sem listener.
+/// Sempre todas juntas: cada evento fica numa seção só, então criar ou
+/// entrar num evento muda a seção dele ("Outros eventos" para "Criados por
+/// mim" ou "Participando") e o card ao vivo. Invalidar só uma deixa o
+/// evento sumido ou repetido. A Home entra porque lê os eventos uma vez só,
+/// sem listener.
 void invalidateEventLists(WidgetRef ref) {
   ref.invalidate(paginatedEventsProvider);
   ref.invalidate(myEventsProvider);
