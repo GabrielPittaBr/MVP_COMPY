@@ -1,0 +1,302 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Bloquear.dc.html": {
+      "h": 880,
+      "is_interactive": true,
+      "page": "celular",
+      "radius": 24,
+      "title": "6 · Bloquear horário",
+      "w": 360,
+      "x": 2200,
+      "y": 0
+    },
+    "Equipe.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "is_interactive": true,
+      "page": "computador",
+      "title": "Equipe e convites",
+      "w": 1440,
+      "x": 6080,
+      "y": 0
+    },
+    "EventoLocal.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "celular",
+      "radius": 24,
+      "title": "7 · Evento do Local (v2)",
+      "w": 360,
+      "x": 2640,
+      "y": 0
+    },
+    "HojeComputador.dc.html": {
+      "expand": "fill",
+      "h": 1060,
+      "is_interactive": true,
+      "page": "computador",
+      "title": "Hoje no computador",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Login.dc.html": {
+      "h": 880,
+      "is_interactive": true,
+      "page": "celular",
+      "radius": 24,
+      "title": "1 · Entrar pelo convite",
+      "w": 360,
+      "x": 0,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "h": 1060,
+      "is_interactive": true,
+      "page": "celular",
+      "radius": 24,
+      "title": "2 · Hoje",
+      "w": 360,
+      "x": 440,
+      "y": 0
+    },
+    "NovaReserva.dc.html": {
+      "h": 880,
+      "is_interactive": true,
+      "page": "celular",
+      "radius": 24,
+      "title": "4 · Nova reserva (WhatsApp)",
+      "w": 360,
+      "x": 1320,
+      "y": 0
+    },
+    "Perfil.dc.html": {
+      "expand": "fill",
+      "h": 1420,
+      "is_interactive": true,
+      "page": "computador",
+      "title": "Perfil do local e tema",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "PublicarLivre.dc.html": {
+      "h": 880,
+      "is_interactive": true,
+      "page": "celular",
+      "radius": 24,
+      "title": "5 · Publicar horário livre",
+      "w": 360,
+      "x": 1760,
+      "y": 0
+    },
+    "Quadras.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "is_interactive": true,
+      "page": "computador",
+      "title": "Quadras, preços e regras",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Resultados.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "is_interactive": true,
+      "page": "computador",
+      "title": "Resultados do mês (v2)",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "Solicitacao.dc.html": {
+      "h": 880,
+      "is_interactive": true,
+      "page": "celular",
+      "radius": 24,
+      "title": "3 · Solicitação do app",
+      "w": 360,
+      "x": 880,
+      "y": 0
+    },
+    "Stories.dc.html": {
+      "h": 640,
+      "page": "temas",
+      "radius": 16,
+      "title": "Imagem para stories (v2)",
+      "w": 360,
+      "x": 1520,
+      "y": 0
+    },
+    "Temas.dc.html": {
+      "h": 760,
+      "page": "temas",
+      "title": "Os seis temas",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "LoginWeb.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "web-atendente",
+      "title": "1 · Entrar pelo convite",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "HojeWeb.dc.html": {
+      "expand": "fill",
+      "h": 1060,
+      "is_interactive": true,
+      "page": "web-atendente",
+      "title": "2 · Hoje",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "SolicitacaoWeb.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "is_interactive": true,
+      "page": "web-atendente",
+      "title": "3 · Solicitação do app",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "NovaReservaWeb.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "is_interactive": true,
+      "page": "web-atendente",
+      "title": "4 · Nova reserva (WhatsApp)",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "PublicarLivreWeb.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "is_interactive": true,
+      "page": "web-atendente",
+      "title": "5 · Publicar horário livre",
+      "w": 1440,
+      "x": 6080,
+      "y": 0
+    },
+    "BloquearWeb.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "is_interactive": true,
+      "page": "web-atendente",
+      "title": "6 · Bloquear horário",
+      "w": 1440,
+      "x": 7600,
+      "y": 0
+    },
+    "EventoLocalWeb.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "is_interactive": true,
+      "page": "web-atendente",
+      "title": "7 · Evento do Local (v2)",
+      "w": 1440,
+      "x": 9120,
+      "y": 0
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-18T21:55:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "page": "celular",
+    "view": "canvas"
+  },
+  "notes": {
+    "titulo_celular": {
+      "kind": "title1",
+      "maxW": 3000,
+      "page": "celular",
+      "text": "Celular · Atendente",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "titulo_computador": {
+      "kind": "title1",
+      "maxW": 7520,
+      "page": "computador",
+      "text": "Computador · Proprietário",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "titulo_temas": {
+      "kind": "title1",
+      "maxW": 1880,
+      "page": "temas",
+      "text": "Temas e divulgação",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "titulo_web_atendente": {
+      "kind": "title1",
+      "maxW": 10560,
+      "page": "web-atendente",
+      "text": "Computador · Atendente",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Login.dc.html",
+    "Solicitacao.dc.html",
+    "NovaReserva.dc.html",
+    "PublicarLivre.dc.html",
+    "Bloquear.dc.html",
+    "EventoLocal.dc.html",
+    "HojeComputador.dc.html",
+    "Resultados.dc.html",
+    "Quadras.dc.html",
+    "Perfil.dc.html",
+    "Equipe.dc.html",
+    "Temas.dc.html",
+    "Stories.dc.html",
+    "LoginWeb.dc.html",
+    "HojeWeb.dc.html",
+    "SolicitacaoWeb.dc.html",
+    "NovaReservaWeb.dc.html",
+    "PublicarLivreWeb.dc.html",
+    "BloquearWeb.dc.html",
+    "EventoLocalWeb.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "celular",
+      "name": "Celular · Atendente"
+    },
+    {
+      "id": "web-atendente",
+      "name": "Computador · Atendente"
+    },
+    {
+      "id": "computador",
+      "name": "Computador · Proprietário"
+    },
+    {
+      "id": "temas",
+      "name": "Temas e divulgação"
+    }
+  ],
+  "title": "Painel do Local — telas para validação"
+}
