@@ -10,6 +10,9 @@
         ],
         "site": [
           "compy-tcc"
+        ],
+        "gestor": [
+          "compy-tcc-gestor"
         ]
       }
     }

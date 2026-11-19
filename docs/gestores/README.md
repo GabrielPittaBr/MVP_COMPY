@@ -1,6 +1,6 @@
 # Painel do Local (plataforma dos gestores)
 
-Esta pasta junta tudo o que foi definido para o Painel do Local: a plataforma web em que a equipe de um local esportivo privado parceiro publica horários livres, recebe as reservas que vêm do app COMPY e organiza a agenda das quadras. Ainda não há código do painel. Esta pasta é o ponto de partida para construí-lo.
+Esta pasta junta tudo o que foi definido para o Painel do Local: a plataforma web em que a equipe de um local esportivo privado parceiro publica horários livres, recebe as reservas que vêm do app COMPY e organiza a agenda das quadras. Esta pasta é o ponto de partida para construí-lo. Já existe um protótipo só visual, com dados fictícios e sem Firebase, em `gestor/` (no ar em https://compy-tcc-gestor.web.app); o `gestor/README.md` diz o que ele mudou em relação às telas.
 
 ## O que ler, e em que ordem
 

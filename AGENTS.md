@@ -8,6 +8,7 @@ Guidance for AI coding agents working in this repository. `CLAUDE.md` imports th
 
 - **Languages:** Dart / Flutter 3.22+. The app itself has no Node dependency — the Firebase CLI used for `firebase.json`/`flutterfire configure` runs from a global `firebase-tools` install. Node packages, none of which ship with the mobile app: `tools/firestore-rules-tests/` (exercises `firestore.rules` and `storage.rules` against the emulators; rules cannot be tested from Dart), `functions/` (the admin panel's Cloud Functions, TypeScript, Node 22) and `tools/firebase-admin/` (local Admin SDK scripts). One Python tool, also outside the app: `tools/sport-icons/` generates the `CompySportIcons` font in `assets/fonts/` (see its README).
 - **Admin panel:** a separate Flutter Web app in `admin/` with its own `pubspec` (needs Dart ≥ 3.13.3) — see `docs/admin/painel-administrativo.md`.
+- **Painel do Local (venue panel):** a visual-only prototype in `gestor/`, another Flutter Web app with its own `pubspec`. All data is fictional and in memory (no Firebase yet); it imports nothing from the app or the admin. Hosted on the `compy-tcc-gestor` site (`firebase deploy --only hosting:gestor`). Requirements and reference screens: `docs/gestores/README.md`.
 - **State management:** Flutter Riverpod 2.5.1
 - **Routing:** GoRouter 14.2.0 (5-tab `StatefulShellRoute.indexedStack`)
 - **Backend:** Firebase Auth + Firestore + Storage for profile photos (`compy-tcc` project, region `southamerica-east1`)
