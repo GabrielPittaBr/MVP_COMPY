@@ -199,13 +199,11 @@ class RequestPage extends ConsumerWidget {
               ),
             ],
           ),
-        SizedBox(
-          height: 124,
-          child: CourtTile(
-            court: court,
-            item: item,
-            caption: timeRange(item.start, item.end),
-          ),
+        CourtTile(
+          court: court,
+          item: item,
+          caption: timeRange(item.start, item.end),
+          minHeight: 124,
         ),
         SectionCard(
           title: 'Reserva pedida',

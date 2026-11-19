@@ -124,10 +124,7 @@ class SlotActions extends ConsumerWidget {
           '${friendlyDate(day)}, ${timeRange(from, to)}',
           style: const TextStyle(color: GestorColors.onSurfaceVariant),
         ),
-      SizedBox(
-        height: 118,
-        child: CourtTile(court: c, item: item),
-      ),
+      CourtTile(court: c, item: item, minHeight: 118),
       ...switch (item?.kind) {
         null when started => [
           const NoteBox('Esse horário já passou e ficou vazio.'),

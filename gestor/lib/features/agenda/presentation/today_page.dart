@@ -327,15 +327,17 @@ class _CourtMap extends ConsumerWidget {
       for (final c in venue.activeCourts)
         if (items[c.number] == null) c.number,
     ];
-    final tiles = [
+    List<Widget> tiles({required bool portrait}) => [
       for (final c in venue.courts)
         CourtTile(
           court: c,
           item: items[c.number],
+          portrait: portrait,
           onTap: () =>
               openSlot(context, ref, court: c.number, day: 0, hour: hour),
         ),
     ];
+    final count = venue.courts.length;
     final when = now ? 'Agora' : 'Às ${hour}h';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -378,14 +380,13 @@ class _CourtMap extends ConsumerWidget {
         LayoutBuilder(
           builder: (context, box) {
             const gap = 12.0;
-            final standing =
-                (box.maxWidth - gap * (tiles.length - 1)) / tiles.length;
+            final standing = (box.maxWidth - gap * (count - 1)) / count;
             if (desktop && standing >= 140) {
               return SizedBox(
                 height: 300,
                 child: Row(
                   children: [
-                    for (final (i, t) in tiles.indexed) ...[
+                    for (final (i, t) in tiles(portrait: true).indexed) ...[
                       if (i > 0) const SizedBox(width: gap),
                       Expanded(child: t),
                     ],
@@ -399,8 +400,8 @@ class _CourtMap extends ConsumerWidget {
               spacing: gap,
               runSpacing: 10,
               children: [
-                for (final t in tiles)
-                  SizedBox(width: width, height: 112, child: t),
+                for (final t in tiles(portrait: false))
+                  SizedBox(width: width, child: t),
               ],
             );
           },

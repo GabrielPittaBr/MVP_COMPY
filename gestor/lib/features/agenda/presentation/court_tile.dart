@@ -134,6 +134,8 @@ class CourtTile extends StatelessWidget {
     required this.item,
     this.onTap,
     this.caption,
+    this.portrait = false,
+    this.minHeight = 112,
     super.key,
   });
 
@@ -144,73 +146,85 @@ class CourtTile extends StatelessWidget {
   /// Texto da plaqueta no lugar do estado (por exemplo, "19:00 às 20:00").
   final String? caption;
 
+  /// Em pé, lado a lado no computador; deitada nas listas e no celular.
+  final bool portrait;
+
+  /// Altura mínima da quadra deitada.
+  final double minHeight;
+
   @override
   Widget build(BuildContext context) {
     final look = SlotLook.of(item);
     final (title, detail) = describe(item);
     final style = court.floor.style;
     final closed = court.status != CourtStatus.ativa;
+    final number = _CourtNumber(court: court, ink: style.ink);
+    final plaque = _Plaque(
+      look: closed ? _closedLook : look,
+      title: closed ? court.status.label : (caption ?? title),
+      detail: closed ? 'sai da agenda e do app' : detail,
+    );
     return Semantics(
       button: onTap != null,
       label: '${court.name}, ${look.label}, $title, $detail',
       excludeSemantics: true,
-      child: LayoutBuilder(
-        builder: (context, box) {
-          final portrait = box.maxHeight > box.maxWidth;
-          final number = _CourtNumber(court: court, ink: style.ink);
-          final plaque = _Plaque(
-            look: closed ? _closedLook : look,
-            title: closed ? court.status.label : (caption ?? title),
-            detail: closed ? 'sai da agenda e do app' : detail,
-          );
-          return Material(
-            color: style.floor,
-            borderRadius: BorderRadius.circular(14),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: onTap,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CourtSurface(
-                    style: style,
-                    portrait: portrait,
-                    inset: 10,
-                    lineAlpha: 0.7,
-                  ),
-                  if (look.hatch || closed)
-                    const CustomPaint(
-                      painter: HatchPainter(color: Color(0x2E101C3F), gap: 12),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: portrait
-                        ? Column(
-                            children: [
-                              Expanded(child: Center(child: number)),
-                              plaque,
-                            ],
-                          )
-                        : Row(
-                            children: [
-                              Expanded(child: Center(child: number)),
-                              const SizedBox(width: 14),
-                              Expanded(child: plaque),
-                            ],
-                          ),
-                  ),
-                  if (look.border != null && !closed)
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: look.border!, width: 3),
-                      ),
-                    ),
-                ],
+      child: Material(
+        color: style.floor,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          // Deitada, a quadra cresce com a plaqueta: com a letra maior
+          // (texto a 200%), nada fica cortado.
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned.fill(
+                child: CourtSurface(
+                  style: style,
+                  portrait: portrait,
+                  inset: 10,
+                  lineAlpha: 0.7,
+                ),
               ),
-            ),
-          );
-        },
+              if (look.hatch || closed)
+                const Positioned.fill(
+                  child: CustomPaint(
+                    painter: HatchPainter(color: Color(0x2E101C3F), gap: 12),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: portrait
+                    ? Column(
+                        children: [
+                          Expanded(child: Center(child: number)),
+                          plaque,
+                        ],
+                      )
+                    : ConstrainedBox(
+                        constraints: BoxConstraints(minHeight: minHeight - 28),
+                        child: Row(
+                          children: [
+                            Expanded(child: Center(child: number)),
+                            const SizedBox(width: 14),
+                            Expanded(child: plaque),
+                          ],
+                        ),
+                      ),
+              ),
+              if (look.border != null && !closed)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: look.border!, width: 3),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
