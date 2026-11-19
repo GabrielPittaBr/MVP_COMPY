@@ -7,9 +7,12 @@ import '../../features/agenda/presentation/today_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/session_controller.dart';
 import '../../features/free_slots/presentation/free_slots_page.dart';
+import '../../features/more/presentation/more_pages.dart';
+import '../../features/results/presentation/results_page.dart';
+import '../../features/team/presentation/team_page.dart';
+import '../../features/venue/presentation/courts_page.dart';
+import '../../features/venue/presentation/profile_page.dart';
 import '../shell/gestor_shell.dart';
-import '../shell/page_scaffold.dart';
-import '../widgets/common.dart';
 
 /// Páginas só do Proprietário (e do Gerente, na 2ª versão).
 const ownerRoutes = <String>{
@@ -45,13 +48,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           _page('/hoje', const TodayPage()),
           _page('/agenda', const AgendaPage()),
           _page('/livres', const FreeSlotsPage()),
-          _page('/mais', const _Soon('Mais')),
-          _page('/resultados', const _Soon('Resultados')),
-          _page('/perfil', const _Soon('Perfil e tema')),
-          _page('/quadras', const _Soon('Quadras e preços')),
-          _page('/equipe', const _Soon('Equipe')),
-          _page('/plano', const _Soon('Plano')),
-          _page('/ajuda', const _Soon('Ajuda')),
+          _page('/mais', const MorePage()),
+          _page('/resultados', const ResultsPage()),
+          _page('/perfil', const ProfilePage()),
+          _page('/quadras', const CourtsPage()),
+          _page('/equipe', const TeamPage()),
+          _page('/plano', const PlanPage()),
+          _page('/ajuda', const HelpPage()),
         ],
       ),
     ],
@@ -64,15 +67,3 @@ GoRoute _page(String path, Widget child) => GoRoute(
   path: path,
   pageBuilder: (_, _) => NoTransitionPage(child: child),
 );
-
-class _Soon extends StatelessWidget {
-  const _Soon(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) => PageScaffold(
-    title: title,
-    children: const [NoteBox('Esta tela entra na próxima etapa do protótipo.')],
-  );
-}
