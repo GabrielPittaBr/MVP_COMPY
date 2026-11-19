@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/agenda/presentation/today_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/session_controller.dart';
 import '../shell/gestor_shell.dart';
@@ -39,7 +40,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) =>
             GestorShell(location: state.uri.path, child: child),
         routes: [
-          _page('/hoje', const _Soon('Hoje')),
+          _page('/hoje', const TodayPage()),
           _page('/agenda', const _Soon('Agenda')),
           _page('/livres', const _Soon('Horários livres')),
           _page('/mais', const _Soon('Mais')),
