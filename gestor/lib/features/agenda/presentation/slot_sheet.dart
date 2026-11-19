@@ -6,6 +6,7 @@ import '../../../core/layout.dart';
 import '../../../core/shell/page_scaffold.dart';
 import '../../../core/theme/gestor_colors.dart';
 import '../../../core/widgets/common.dart';
+import '../../free_slots/presentation/event_form.dart';
 import '../../free_slots/presentation/publish_form.dart';
 import '../../venue/presentation/venue_controller.dart';
 import '../domain/agenda.dart';
@@ -165,6 +166,12 @@ class SlotActions extends ConsumerWidget {
                 open(BlockForm(court: court, day: day, start: start)),
             icon: const Icon(Icons.block),
             label: const Text('Bloquear'),
+          ),
+          TextButton.icon(
+            onPressed: () =>
+                open(EventForm(court: court, day: day, start: start)),
+            icon: const Icon(Icons.groups_outlined),
+            label: const Text('Criar Evento do Local (2ª versão)'),
           ),
         ],
         ItemKind.reserva => [

@@ -6,6 +6,7 @@ import '../../features/agenda/presentation/agenda_page.dart';
 import '../../features/agenda/presentation/today_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/session_controller.dart';
+import '../../features/free_slots/presentation/free_slots_page.dart';
 import '../shell/gestor_shell.dart';
 import '../shell/page_scaffold.dart';
 import '../widgets/common.dart';
@@ -43,7 +44,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           _page('/hoje', const TodayPage()),
           _page('/agenda', const AgendaPage()),
-          _page('/livres', const _Soon('Horários livres')),
+          _page('/livres', const FreeSlotsPage()),
           _page('/mais', const _Soon('Mais')),
           _page('/resultados', const _Soon('Resultados')),
           _page('/perfil', const _Soon('Perfil e tema')),
