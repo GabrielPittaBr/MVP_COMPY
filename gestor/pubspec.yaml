@@ -1,0 +1,49 @@
+name: compy_gestor
+description: "Painel do Local do COMPY: protótipo visual com dados fictícios."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  flutter_web_plugins:
+    sdk: flutter
+  go_router: ^14.8.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/compy-icon-64.png
+
+  # Barlow (SIL OFL 1.1, ver assets/fonts/OFL.txt), embutida como no painel
+  # admin. CompySportIcons é a fonte de ícones das modalidades do app
+  # (tools/sport-icons).
+  fonts:
+    - family: Barlow
+      fonts:
+        - asset: assets/fonts/Barlow-Regular.ttf
+        - asset: assets/fonts/Barlow-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Barlow-SemiBold.ttf
+          weight: 600
+    - family: BarlowCondensed
+      fonts:
+        - asset: assets/fonts/BarlowCondensed-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/BarlowCondensed-Bold.ttf
+          weight: 700
+    - family: CompySportIcons
+      fonts:
+        - asset: assets/fonts/CompySportIcons.otf
